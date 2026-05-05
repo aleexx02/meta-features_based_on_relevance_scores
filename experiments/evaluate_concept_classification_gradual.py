@@ -41,6 +41,8 @@ from metafeatures.mf_extraction import (
     MF_NAMES_RAW_TEMPORAL
 )
 
+from classifier_sweep_komor import run_classifier_sweep, print_results, BASE_CLFS
+
 os.makedirs('results', exist_ok=True)
 os.makedirs('results/figures', exist_ok=True)
 
@@ -291,9 +293,6 @@ def extract_metafeatures_for_stream(random_state, extract_mf):
 #  MAIN — sweep across all MF_TYPES
 # ============================================================
 
-rskf = RepeatedStratifiedKFold(n_splits=2, n_repeats=5, random_state=3242)
-n_folds = 2 * 5
-
 all_mean_ba = {}
 all_std_ba = {}
 
@@ -304,27 +303,20 @@ for mf_type, mf_label, n_mf in MF_CONFIGS:
     print(f"{'='*60}")
 
     extract_mf = make_extract_mf(mf_type)
-    clf_res = np.zeros((N_REPLICATIONS, n_folds, len(base_clfs)))
+    all_clf_res = []
 
     for rep_id, rs in enumerate(RANDOM_STATES):
         print(f"Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
         X, y = extract_metafeatures_for_stream(rs, extract_mf)
 
-        np.random.seed(1233)
-        p = np.random.permutation(X.shape[0])
-        X_s, y_s = X[p], y[p]
+        mean_ba, std_ba, clf_res = run_classifier_sweep(X, y)
+        all_clf_res.append(clf_res)
 
-        for fold_id, (train, test) in enumerate(rskf.split(X_s, y_s)):
-            for clf_id, (name, base_clf) in enumerate(base_clfs):
-                clf = clone(base_clf)
-                pred = clf.fit(X_s[train], y_s[train]).predict(X_s[test])
-                clf_res[rep_id, fold_id, clf_id] = \
-                    balanced_accuracy_score(y_s[test], pred)
-
-        rep_means = np.mean(clf_res[rep_id], axis=0)
         print(f"{'Clf':<6s} {'Mean BA':>8s}")
-        for clf_id, (name, _) in enumerate(base_clfs):
-            print(f"{name:<6s} {rep_means[clf_id]:>8.4f}")
+        for clf_id, (name, _) in enumerate(BASE_CLFS):
+            print(f"{name:<6s} {mean_ba[clf_id]:>8.4f}")
+            
+    all_clf_res = np.array(all_clf_res) # shape  (N_REPLICATIONS, n_folds, n_clfs)
 
     save_path = f'results/clf_{mf_type}_{DRIFT_TYPE}.npy'
     np.save(save_path, clf_res)
@@ -332,7 +324,6 @@ for mf_type, mf_label, n_mf in MF_CONFIGS:
 
     all_mean_ba[mf_type] = np.mean(clf_res, axis=(0, 1))
     all_std_ba[mf_type] = np.std(clf_res,  axis=(0, 1))
-
 
 # ============================================================
 #  SUMMARY TABLE
