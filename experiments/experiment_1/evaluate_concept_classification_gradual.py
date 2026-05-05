@@ -1,17 +1,30 @@
 
 # ============================================================
-#  Experiment: Concept classification using ABFS relevance
-#  meta-features - comparison against Komorniczak et al.
-# Each of the classifiers is trained to predict the current concept label
-# (0, 1, ..., 20) based on the ABFS relevance scores as meta-features:
-# "when meta-features look like this, the concept is probably..."
-#  Protocol matches E1_extract_synthetic.py +
-#  E2_clf_synthetic.py from Komorniczak et al.:
-#    - StreamGenerator: n_drifts=20, n_chunks=5000,
-#      chunk_size=200, n_features=10, n_informative=10
-#    - 5 replications with random_states generated as:
-#      np.random.seed(1233); np.random.randint(100, 10000, 5)
-#    - RepeatedStratifiedKFold(n_splits=2, n_repeats=5, random_state=3242)
+# Evaluation of our ABFS-based meta-features using the same
+# experimental setup as Komorniczak et al. (2024):
+#   - Same streams: same StreamGenerator configuration and seeds
+#   - Same concept labelling: majority vote (sudden) and sigmoid
+#     threshold method (gradual)
+#   - Same evaluation protocol: classifier_sweep_komor.py
+
+# The only difference with respect to their pipeline is the
+# meta-features: instead of statistical descriptors computed
+# by pymfe directly from the raw instances, we use relevance
+# scores produced by ABFS — encoding which features are
+# currently predictive and how that relevance is evolving
+# over time.
+
+# By controlling for everything except the meta-features,
+# any difference in balanced accuracy observed when comparing
+# against replication_check.py can be attributed solely to
+# the meta-features themselves.
+
+# Steps:
+#   1. Generate a synthetic stream using StreamGenerator
+#   2. Run ABFS to compute per-feature relevance scores
+#   3. Extract meta-feature vectors from the relevance scores
+#   4. Assign concept labels to each window
+#   5. Run the classifier sweep (classifier_sweep_komor.py)
 # ============================================================
  
 import numpy as np
@@ -27,6 +40,8 @@ from sklearn import clone
 from strlearn.streams import StreamGenerator
 import warnings
 import os
+import sys
+sys.path.append('..')
 warnings.filterwarnings('ignore')
 
 from abfs.abfs_implementation import ABFS_match
