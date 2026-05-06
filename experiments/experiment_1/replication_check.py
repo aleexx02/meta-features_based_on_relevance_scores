@@ -35,8 +35,8 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 
-from classifier_sweep_komor import run_classifier_sweep, print_results, BASE_CLFS
-from plot_results import plot_heatmap_balanced_accuracy
+from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
+from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy
 
 # ============================================================
 #  CONFIGURATION
@@ -105,14 +105,18 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
         all_std_ba[measure] = overall_std
 
 
-        print_results(overall_mean, overall_std, label=f"  {drift_type} / {measure}")
 
 
+    MEASURE_CONFIGS = [(m, m, None) for m in MEASURES]
+    # ============================================================
+    #  SUMMARY TABLE
+    # ============================================================
+    print_summary_table_experiment1(all_mean_ba=all_mean_ba, MF_CONFIGS=MEASURE_CONFIGS, BASE_CLFS=BASE_CLFS,
+        drift_type=drift_type, n_concepts=n_concepts, random_baseline=1/n_concepts)
 
     # ============================================================
     #  HEATMAP
     # ============================================================
-    MEASURE_CONFIGS = [(m, m, None) for m in MEASURES]
     plot_heatmap_balanced_accuracy(all_mean_ba=all_mean_ba, all_std_ba=all_std_ba, MF_CONFIGS=MEASURE_CONFIGS, BASE_CLFS=BASE_CLFS,
     drift_type=drift_type, n_concepts=n_concepts, FIGURES_DIR=FIGURES_DIR,
-    title_prefix='Replication check — Komorniczak et al. ', filename=f'heatmap_replication_{drift_type}.png', figsize=(10, 5))
+    title_prefix='Replication check - Komorniczak et al. ', filename=f'heatmap_replication_{drift_type}.png', figsize=(10, 5))

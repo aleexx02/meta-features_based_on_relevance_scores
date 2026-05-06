@@ -94,12 +94,12 @@ def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, sh
     return mean_ba, std_ba, clf_res
 
 
-def print_results(mean_ba, std_ba, label=''):
-    clf_names = [name for name, _ in BASE_CLFS]
-    if label:
-        print(f"\n{label}")
-    print(f"{'Classifier':<10s} {'Mean BA':>10s} {'Std BA':>8s}")
-    print('-' * 30)
-    for clf_id, name in enumerate(clf_names):
-        print(f"{name:<10s} {mean_ba[clf_id]:>10.4f} "
-              f"{std_ba[clf_id]:>8.4f}")
+# def print_results(mean_ba, std_ba, label=''):
+#     clf_names = [name for name, _ in BASE_CLFS]
+#     if label:
+#         print(f"\n{label}")
+#     print(f"{'Classifier':<10s} {'Mean BA':>10s} {'Std BA':>8s}")
+#     print('-' * 30)
+#     for clf_id, name in enumerate(clf_names):
+#         print(f"{name:<10s} {mean_ba[clf_id]:>10.4f} "
+#               f"{std_ba[clf_id]:>8.4f}")

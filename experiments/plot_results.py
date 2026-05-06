@@ -7,6 +7,49 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+
+
+def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, meta_features, concept_labels, raw_vectors, n_features):
+    unique_concepts = np.unique(concept_labels)
+
+    print(f"\n{'='*60}")
+    print(f"Sanity check summary")
+    print(f"{'='*60}")
+    print(f"Stream: {stream_name}")
+    print(f"ABFS: {'ABFS_match' if is_streamlearn else 'ABFS_mismatch'}")
+    print(f"Meta-features: {mf_type} ({len(mf_names)} features)")
+    print(f"Total windows: {len(meta_features)}")
+    print(f"Unique concepts: {len(unique_concepts)} {list(unique_concepts)}")
+
+    print(f"\nMeta-feature means per concept:")
+    print(f"{'':22s}", end='')
+    for c in unique_concepts:
+        print(f"{'concept '+str(c):>14s}", end='')
+    print()
+    for k, name in enumerate(mf_names):
+        print(f"  {name:<22s}", end='')
+        for c in unique_concepts:
+            mean_val = meta_features[concept_labels == c, k].mean()
+            print(f"{mean_val:>14.4f}", end='')
+        print()
+
+    if raw_vectors.shape[0] > 0 and raw_vectors.ndim == 2:
+        print(f"\nMean raw relevance score per feature per concept:")
+        print(f"{'':14s}", end='')
+        for c in unique_concepts:
+            print(f"{'concept '+str(c):>12s}", end='')
+        print()
+        for j in range(n_features):
+            print(f"  f{j+1:<10d}", end='')
+            for c in unique_concepts:
+                mean_val = raw_vectors[concept_labels == c, j].mean()
+                print(f"{mean_val:>12.4f}", end='')
+            print()
+    else:
+        print(f"\nRaw relevance vectors not available for {mf_type} meta-features.")
+
+
+
 def print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, random_baseline, benchmark_label='Komorniczak et al. (MLP, sudden)', benchmark_value=0.881):
     clf_names = [name for name, _ in BASE_CLFS]
 

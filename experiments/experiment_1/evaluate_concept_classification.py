@@ -332,7 +332,6 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     # ============================================================
     #  HEATMAP - replicating Figure 12
     # ============================================================
-
     plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features - ',
         filename=f'heatmap_ABFS_{drift_type}.png', figsize=(8, 3.5))
 
