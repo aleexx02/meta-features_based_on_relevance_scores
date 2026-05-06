@@ -25,6 +25,7 @@
 #   3. Extract meta-feature vectors from the relevance scores
 #   4. Assign concept labels to each window
 #   5. Run the classifier sweep (classifier_sweep_komor.py)
+#   6. Compare output against Figure 12 of their paper
 # ============================================================
  
 import numpy as np

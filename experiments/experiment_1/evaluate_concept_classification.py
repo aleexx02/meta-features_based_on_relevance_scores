@@ -25,23 +25,15 @@
 #   3. Extract meta-feature vectors from the relevance scores
 #   4. Assign concept labels to each window
 #   5. Run the classifier sweep (classifier_sweep_komor.py)
+#   6. Compare output against Figure 12 of their paper
 # ============================================================
  
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.naive_bayes import GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import RepeatedStratifiedKFold
-from sklearn.metrics import balanced_accuracy_score
-from sklearn import clone
 from strlearn.streams import StreamGenerator
 import warnings
 import os
 import sys
-sys.path.append('..')
+sys.path.append('..') # points to experiments/ where classifier_sweep_komor.py is
 warnings.filterwarnings('ignore')
 
 from abfs.abfs_implementation import ABFS_match
@@ -56,11 +48,18 @@ from metafeatures.mf_extraction import (
     MF_NAMES_RAW_TEMPORAL
 )
 
-
 from classifier_sweep_komor import run_classifier_sweep, print_results, BASE_CLFS
+from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy
 
-os.makedirs('results', exist_ok=True)
-os.makedirs('results/figures', exist_ok=True)
+
+# path to results folder
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..')) # go up two levels to project root
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'figures')
+
+os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(FIGURES_DIR, exist_ok=True)
 
 
 # =============================================
@@ -83,7 +82,6 @@ os.makedirs('results/figures', exist_ok=True)
 #      concept%4==3: late     (e >= 0.1  / e >= 0.75)
 # ============================================================
 
-DRIFT_TYPE = 'sudden' # 'sudden' or 'gradual'
 
 N_CHUNKS = 5000
 CHUNK_SIZE = 200
@@ -91,53 +89,40 @@ N_FEATURES = 10
 WARMUP_WINDOWS = 10
 N_REPLICATIONS = 5
 
-if DRIFT_TYPE == 'sudden':
-    N_DRIFTS = 20
-    CONCEPT_SIGMOID_SPACING = 9999
-elif DRIFT_TYPE == 'gradual':
-    N_DRIFTS = 6
-    CONCEPT_SIGMOID_SPACING = 5
-else:
-    raise ValueError(f"Unknown DRIFT_TYPE: '{DRIFT_TYPE}'")
-
 # rows of the heatmap — one per meta-feature set
+MF_CONFIGS = [
+    ('aggstats', 'Aggregate stats (v1.1)', 8),
+    ('raw', 'Raw scores (v2.0)', 10),
+    ('raw_temporal', 'Raw + temporal (v2.1)', 12),
+]
+
 # MF_CONFIGS = [
-#     ('aggstats', 'Aggregate stats (v1.1)', 8),
-#     ('raw', 'Raw scores (v2.0)', 10),
-#     ('raw_temporal', 'Raw + temporal (v2.1)', 12),
+#     ('raw',          'Raw only (v2.0)',        10),
+#     ('raw_delta',    'Raw + delta_mean',        11),
+#     ('raw_cosine',   'Raw + cosine_sim',        11),
+#     ('raw_temporal', 'Raw + both (v2.1)',       12),
 # ]
 
-MF_CONFIGS = [
-    ('raw',          'Raw only (v2.0)',        10),
-    ('raw_delta',    'Raw + delta_mean',        11),
-    ('raw_cosine',   'Raw + cosine_sim',        11),
-    ('raw_temporal', 'Raw + both (v2.1)',       12),
+DRIFT_CONFIGS = [
+    ('sudden', 20, 9999),
+    ('gradual', 6, 5),
 ]
 
-base_clfs = [
-    ('GNB', GaussianNB()),
-    ('KNN', KNeighborsClassifier()),
-    ('SVM', SVC(random_state=11313)),
-    ('DT',  DecisionTreeClassifier(random_state=11313)),
-    ('MLP', MLPClassifier(random_state=11313))
-]
 
 np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
 
+clf_names = [name for name, _ in BASE_CLFS]
 
 # ============================================================
-#  HELPER — build extract_mf for a given MF_TYPE
+#  HELPER - build extract_mf for a given MF_TYPE
 # ============================================================
 
 def make_extract_mf(mf_type):
     if mf_type == 'aggstats':
         def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-            return extract_metafeatures(
-                wt=wt, wt_prev=wt_prev,
-                drift_count=drift_count,
-                time_since_drift=time_since_drift)
+            return extract_metafeatures(wt=wt, wt_prev=wt_prev, drift_count=drift_count, time_since_drift=time_since_drift)
     elif mf_type == 'raw':
         def extract_mf(wt, wt_prev, drift_count, time_since_drift):
             return extract_metafeatures_raw(wt)
@@ -156,8 +141,7 @@ def make_extract_mf(mf_type):
 
 
 # ============================================================
-#  HELPER — sigmoid threshold label assignment
-#  Used for gradual drift only (25 concepts).
+#  HELPER - sigmoid threshold label assignment (gradual drift)
 # ============================================================
  
 def assign_labels_gradual(stream, config):
@@ -172,9 +156,7 @@ def assign_labels_gradual(stream, config):
         Concept label for each chunk.
     """
     # sigmoid value per chunk: same as their e[chunk]
-    e = stream._sigmoid(
-        stream.concept_sigmoid_spacing, stream.n_drifts
-    )[1][::config['chunk_size']]
+    e = stream._sigmoid(stream.concept_sigmoid_spacing, stream.n_drifts)[1][::config['chunk_size']]
  
     concept = 0
     decreasing = True
@@ -217,30 +199,26 @@ def assign_labels_gradual(stream, config):
 
 
 # ============================================================
-#  HELPER — extract meta-features for one stream
+#  HELPER - extract meta-features for one stream
 # ============================================================
 
-def extract_metafeatures_for_stream(random_state, extract_mf):
+def extract_metafeatures_for_stream(random_state, extract_mf, drift_type, n_drifts, concept_sigmoid_spacing):
     config = {
-        'n_drifts': N_DRIFTS,
+        'n_drifts': n_drifts,
         'n_chunks': N_CHUNKS,
         'chunk_size': CHUNK_SIZE,
         'n_features': N_FEATURES,
         'n_informative': N_FEATURES,
         'n_redundant': 0,
         'n_repeated': 0,
-        'concept_sigmoid_spacing': CONCEPT_SIGMOID_SPACING,
+        'concept_sigmoid_spacing': concept_sigmoid_spacing,
         'random_state': random_state
     }
  
     stream = StreamGenerator(**config)
 
-    abfs = ABFS_match(
-        n_features=N_FEATURES,
-        categorical_features=[],
-        accuracy_window_size=CHUNK_SIZE,
-        class_window_size=CHUNK_SIZE
-    )
+    abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[], accuracy_window_size=CHUNK_SIZE,
+        class_window_size=CHUNK_SIZE)
 
     # pass 1: run ABFS, save concept_selector
     stream.reset()
@@ -249,22 +227,18 @@ def extract_metafeatures_for_stream(random_state, extract_mf):
             abfs.update(X_chunk[i], y_chunk[i])
 
     # concept labels: method depends on drift type
-    if DRIFT_TYPE == 'sudden':
+    if drift_type == 'sudden':
         # majority vote from concept_selector
         # equivalent to their threshold method for sudden drift
         concept_selector_saved = stream.concept_selector.copy()
  
-    elif DRIFT_TYPE == 'gradual':
-        # sigmoid threshold method matching Komorniczak et al.
+    elif drift_type == 'gradual':
+        # sigmoid threshold method
         all_chunk_labels = assign_labels_gradual(stream, config)
 
     # pass 2: extract meta-features
-    abfs = ABFS_match(
-        n_features=N_FEATURES,
-        categorical_features=[],
-        accuracy_window_size=CHUNK_SIZE,
-        class_window_size=CHUNK_SIZE
-    )
+    abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[], accuracy_window_size=CHUNK_SIZE,
+        class_window_size=CHUNK_SIZE)
 
     meta_features  = []
     concept_labels = []
@@ -290,12 +264,12 @@ def extract_metafeatures_for_stream(random_state, extract_mf):
 
     # assign labels after extraction
     for idx in window_indices:
-        if DRIFT_TYPE == 'sudden':
+        if drift_type == 'sudden':
             chunk_start = idx * CHUNK_SIZE
             chunk_end = min((idx + 1) * CHUNK_SIZE, len(concept_selector_saved))
             chunk_concepts = concept_selector_saved[chunk_start:chunk_end]
             concept_labels.append(int(np.bincount(chunk_concepts).argmax()))
-        elif DRIFT_TYPE == 'gradual':
+        elif drift_type == 'gradual':
             concept_labels.append(all_chunk_labels[idx])
 
     X = np.array(meta_features, dtype=float)
@@ -306,113 +280,58 @@ def extract_metafeatures_for_stream(random_state, extract_mf):
 
 
 # ============================================================
-#  MAIN — sweep across all MF_TYPES
+#  MAIN - sweep across all MF_TYPES
 # ============================================================
+for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
+    n_concepts = 25 if drift_type == 'gradual' else n_drifts + 1
+    random_baseline = 1 / n_concepts
 
-all_mean_ba = {}
-all_std_ba = {}
+    print(f"\n{'#'*60}")
+    print(f"DRIFT TYPE: {drift_type} ({n_concepts} concepts)")
+    print(f"{'#'*60}")
 
-for mf_type, mf_label, n_mf in MF_CONFIGS:
+    all_mean_ba = {}
+    all_std_ba  = {}
 
-    print(f"\n{'='*60}")
-    print(f"Meta-features: {mf_label} ({n_mf}) | Drift: {DRIFT_TYPE}")
-    print(f"{'='*60}")
+    for mf_type, mf_label, n_mf in MF_CONFIGS:
 
-    extract_mf = make_extract_mf(mf_type)
-    all_clf_res = []
+        print(f"\n{'='*60}")
+        print(f"Meta-features: {mf_label} ({n_mf}) | Drift: {drift_type}")
+        print(f"{'='*60}")
 
-    for rep_id, rs in enumerate(RANDOM_STATES):
-        print(f"Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
-        X, y = extract_metafeatures_for_stream(rs, extract_mf)
+        extract_mf = make_extract_mf(mf_type)
+        all_clf_res = []
 
-        mean_ba, std_ba, clf_res = run_classifier_sweep(X, y)
-        all_clf_res.append(clf_res)
+        for rep_id, rs in enumerate(RANDOM_STATES):
+            print(f"Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
+            X, y = extract_metafeatures_for_stream(rs, extract_mf, drift_type, n_drifts, concept_sigmoid_spacing)
 
-        print(f"{'Clf':<6s} {'Mean BA':>8s}")
-        for clf_id, (name, _) in enumerate(BASE_CLFS):
-            print(f"{name:<6s} {mean_ba[clf_id]:>8.4f}")
+            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y)
+            all_clf_res.append(clf_res)
 
-    all_clf_res = np.array(all_clf_res) # shape  (N_REPLICATIONS, n_folds, n_clfs)
+            print(f"{'Clf':<6s} {'Mean BA':>8s}")
+            for clf_id, (name, _) in enumerate(BASE_CLFS):
+                print(f"{name:<6s} {mean_ba[clf_id]:>8.4f}")
 
-    save_path = f'results/clf_{mf_type}_{DRIFT_TYPE}.npy'
-    np.save(save_path, clf_res)
-    print(f"Saved to {save_path}")
+        all_clf_res = np.array(all_clf_res) # shape  (N_REPLICATIONS, n_folds, n_clfs)
 
-    all_mean_ba[mf_type] = np.mean(clf_res, axis=(0, 1))
-    all_std_ba[mf_type] = np.std(clf_res,  axis=(0, 1))
+        save_path = os.path.join(RESULTS_DIR, f'clf_{mf_type}_{drift_type}.npy')
+        np.save(save_path, all_clf_res)
+        print(f"Saved to {save_path}")
 
-
-# ============================================================
-#  SUMMARY TABLE
-# ============================================================
-
-clf_names = [name for name, _ in base_clfs]
-
-if DRIFT_TYPE == 'sudden':
-    random_baseline = 1 / (N_DRIFTS + 1) # 1/21
-    n_concepts = N_DRIFTS + 1
-elif DRIFT_TYPE == 'gradual':
-    random_baseline = 1 / 25 # 25 concepts with transitions
-    n_concepts = 25   
-
-print(f"\n{'='*60}")
-print(f"Summary — {DRIFT_TYPE} drift")
-print(f"{'='*60}")
-print(f"\n{'Meta-features':<25s}", end='')
-for name in clf_names:
-    print(f"{name:>10s}", end='')
-print()
-print('-' * (25 + 10 * len(clf_names)))
-for mf_type, mf_label, _ in MF_CONFIGS:
-    print(f"{mf_label:<25s}", end='')
-    for clf_id in range(len(base_clfs)):
-        print(f"{all_mean_ba[mf_type][clf_id]:>10.4f}", end='')
-    print()
-print(f"\nKomorniczak et al. (GNB, sudden): 0.8660")
-print(f"Random baseline (1/{n_concepts}):  {random_baseline:.4f}")
+        all_mean_ba[mf_type] = np.mean(all_clf_res, axis=(0, 1))
+        all_std_ba[mf_type] = np.std(all_clf_res,  axis=(0, 1))
 
 
+    # ============================================================
+    #  SUMMARY TABLE
+    # ============================================================
+    print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, random_baseline)
 
+    # ============================================================
+    #  HEATMAP - replicating Figure 12
+    # ============================================================
 
-# ============================================================
-#  HEATMAP — replicating Figure 12 of paper by Komorniczak et al.
-# ============================================================
-
-n_mf_sets = len(MF_CONFIGS)
-n_clfs = len(base_clfs)
-matrix = np.zeros((n_mf_sets, n_clfs))
-row_labels = [label for _, label, _ in MF_CONFIGS]
-
-for row_idx, (mf_type, _, _) in enumerate(MF_CONFIGS):
-    matrix[row_idx] = all_mean_ba[mf_type]
-
-fig, ax = plt.subplots(figsize=(8, 3.5))
-im = ax.imshow(matrix, vmin=0.05, vmax=1.0, cmap='Blues', aspect='auto')
-
-for i in range(n_mf_sets):
-    for j in range(n_clfs):
-        val = matrix[i, j]
-        txt_color = 'white' if val > 0.6 else 'black'
-        ax.text(j, i, f'{val:.3f}',
-                ha='center', va='center',
-                fontsize=11, color=txt_color)
-
-ax.set_xticks(range(n_clfs))
-ax.set_xticklabels(clf_names, fontsize=11)
-ax.set_yticks(range(n_mf_sets))
-ax.set_yticklabels(row_labels, fontsize=10)
-n_concepts = 25 if DRIFT_TYPE == 'gradual' else N_DRIFTS + 1
-ax.set_title(
-    f'Concept classification — balanced accuracy\n'
-    f'ABFS meta-features, {DRIFT_TYPE} drift '
-    f'({n_concepts} concepts)',
-    fontsize=11
-)
-plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
-plt.tight_layout()
-
-heatmap_path = f'results/figures/heatmap_{DRIFT_TYPE}.png'
-plt.savefig(heatmap_path, dpi=150, bbox_inches='tight')
-plt.show()
-print(f"\nHeatmap saved to {heatmap_path}")
+    plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features - ',
+        filename=f'heatmap_ABFS_{drift_type}.png', figsize=(8, 3.5))
 
