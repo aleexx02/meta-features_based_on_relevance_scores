@@ -282,6 +282,7 @@ def extract_metafeatures_for_stream(random_state, extract_mf, drift_type, n_drif
 # ============================================================
 #  MAIN - sweep across all MF_TYPES
 # ============================================================
+np.random.seed(1233)  # for shuffles in classifier sweep
 for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     n_concepts = 25 if drift_type == 'gradual' else n_drifts + 1
     random_baseline = 1 / n_concepts
@@ -306,7 +307,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             print(f"Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
             X, y = extract_metafeatures_for_stream(rs, extract_mf, drift_type, n_drifts, concept_sigmoid_spacing)
 
-            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y)
+            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y, shuffle_seed=None)
             all_clf_res.append(clf_res)
 
             print(f"{'Clf':<6s} {'Mean BA':>8s}")

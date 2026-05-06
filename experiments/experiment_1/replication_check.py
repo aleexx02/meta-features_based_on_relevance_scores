@@ -1,5 +1,5 @@
 # Verification that our evaluation pipeline correctly replicates
-# the results of Komorniczak et al. (2024).
+# the results of Komorniczak et al.
 #
 # Uses the same streams (same StreamGenerator configuration and
 # seeds), the same concept labelling, and the same evaluation
@@ -43,7 +43,7 @@ from plot_results import plot_heatmap_balanced_accuracy
 # ============================================================
 
 # absolute path to their results folder
-THEIR_RESULTS_PATH = '/home/ptr/code_komor/results' # path in cluster
+THEIR_RESULTS_PATH = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results')
 
 
 # all measure groups produced by E1_extract_synthetic.py
@@ -71,7 +71,7 @@ clf_names = [name for name, _ in BASE_CLFS]
 # ============================================================
 #  LOAD AND EVALUATE
 # ============================================================
-
+np.random.seed(1233)
 for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
     print(f"\n{'='*60}")
     print(f"Drift type: {drift_type}")
@@ -96,7 +96,7 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
             X = rep_data[:, :-1].astype(float)  # meta-feature vectors
             y = rep_data[:, -1].astype(int)     # concept labels
 
-            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y)
+            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y, shuffle_seed=None)
             rep_mean_ba.append(mean_ba)
 
         overall_mean = np.mean(rep_mean_ba, axis=0)

@@ -7,7 +7,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-
 def print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, random_baseline, benchmark_label='Komorniczak et al. (MLP, sudden)', benchmark_value=0.881):
     clf_names = [name for name, _ in BASE_CLFS]
 

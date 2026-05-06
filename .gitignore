@@ -2,3 +2,4 @@
 *.stdout
 *.stderr
 *.log
+external/komorniczak/results/*.npy

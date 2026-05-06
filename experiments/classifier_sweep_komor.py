@@ -1,6 +1,6 @@
 
 # Replication of the classifier sweep protocol from:
-# Komorniczak et al. (2024)
+# Komorniczak et al.
 # https://github.com/w4k2/meta-concept-descriptor
 #
 # This module replicates the evaluation protocol from
@@ -37,9 +37,7 @@ BASE_CLFS = [
     ('MLP', MLPClassifier(random_state=11313))
 ]
 
-def run_classifier_sweep(X, y, n_splits=2, n_repeats=5,
-                         cv_random_state=3242,
-                         shuffle_seed=1233):
+def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, shuffle_seed=1233):
     """
     Run the classifier sweep on a meta-dataset.
 
@@ -73,14 +71,13 @@ def run_classifier_sweep(X, y, n_splits=2, n_repeats=5,
     X[np.isinf(X)] = 1
 
     # shuffle
-    np.random.seed(shuffle_seed)
-    p    = np.random.permutation(X.shape[0])
-    X_s  = X[p]
-    y_s  = y[p]
+    if shuffle_seed is not None:
+        np.random.seed(shuffle_seed)
+    p = np.random.permutation(X.shape[0])
+    X_s = X[p]
+    y_s = y[p]
 
-    rskf    = RepeatedStratifiedKFold(n_splits=n_splits,
-                                      n_repeats=n_repeats,
-                                      random_state=cv_random_state)
+    rskf = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=cv_random_state)
     n_folds = n_splits * n_repeats
     clf_res = np.zeros((n_folds, len(BASE_CLFS)))
 
