@@ -3,6 +3,10 @@
 # Produces a side-by-side heatmap for sudden and gradual drift.
 # Is their reported performance of their meta-features (Figure 12) consistent with the results we get when we run their code?
 
+
+# RUN: their meta-features evaluated with their protocol (E2 original evaluation script)
+# COMPARISON: their meta-features evaluated with their protocol (E2) vs Figure 12 of their paper (reported values for their meta-features on original evaluation script)
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os

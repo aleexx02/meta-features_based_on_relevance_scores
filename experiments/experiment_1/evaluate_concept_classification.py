@@ -25,10 +25,14 @@
 #   3. Extract meta-feature vectors from the relevance scores
 #   4. Assign concept labels to each window
 #   5. Run the classifier sweep (classifier_sweep_komor.py)
-#   6. Compare output against replication_check.py results:
-#      their meta-features evaluated with our protocol
+#   6. Compare output against replication_check.py results: their meta-features evaluated with our protocol
 # ============================================================
  
+
+# RUN: our meta-features evaluated with our protocol (classifier_sweep_komor.py)
+# COMPARISON: our meta-features evaluated with our protocol VS. their meta-features evaluated with our protocol
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from strlearn.streams import StreamGenerator
@@ -50,7 +54,7 @@ from metafeatures.mf_extraction import (
     MF_NAMES_RAW_TEMPORAL
 )
 
-from classifier_sweep_komor import run_classifier_sweep, print_results, BASE_CLFS
+from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
 from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy
 
 
@@ -317,7 +321,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             for clf_id, (name, _) in enumerate(BASE_CLFS):
                 print(f"{name:<6s} {mean_ba[clf_id]:>8.4f}")
 
-        all_clf_res = np.array(all_clf_res) # shape  (N_REPLICATIONS, n_folds, n_clfs)
+        all_clf_res = np.array(all_clf_res)
 
         save_path = os.path.join(RESULTS_DIR, f'clf_{mf_type}_{drift_type}.npy')
         np.save(save_path, all_clf_res)

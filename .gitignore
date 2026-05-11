@@ -3,3 +3,4 @@
 *.stderr
 *.log
 external/komorniczak/results/*.npy
+experiments/experiment_1/streams/*.npz

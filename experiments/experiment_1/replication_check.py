@@ -9,19 +9,15 @@
 # meta-features (produced by E1_extract_synthetic.py) instead
 # of computing ABFS-based relevance scores.
 #
-# Two comparisons are produced:
-#   1. Heatmap of our evaluation protocol results (classifier_sweep_komor.py)
-#      applied to their meta-features. One row per measure group.
-#   2. Side-by-side comparison of our evaluation protocol results vs E2
-#      (their original evaluation script). This confirms that any difference
-#      in results between their meta-features and ours is due solely to the meta-features
-#      and not to a difference in the evaluation protocol.
-#
+
 # Steps:
 #   1. Load their .npy files from the results/ folder
 #   2. Extract meta-feature vectors and concept labels
 #   3. Run the classifier sweep (classifier_sweep_komor.py)
 #   4. Compare output against E2 (their original evaluation script)
+
+# RUN: their meta-features evaluated with our protocol (classifier_sweep_komor.py)
+# COMPARISON: their meta-features evaluated with our protocol vs E2 (their meta-features on original evaluation script)
 
 # This is to verify whether we get the same results as in the comparison.py when running our evaluation protocol on their meta-features.
 # If we do, then we can be confident that any difference in results between their meta-features and ours is due solely to the meta-features and not to a difference in the evaluation protocol.
