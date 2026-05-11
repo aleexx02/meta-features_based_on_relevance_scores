@@ -13,4 +13,4 @@
    Loads the same `.npy` files from `external/komorniczak/results/` and runs them through our evaluation protocol (`classifier_sweep_komor.py`). Output should match E2 closely. If it does, our evaluation pipeline is confirmed equivalent to theirs and the subsequent comparison with our ABFS-based meta-features is fully controlled.
 
 5. **`experiments/experiment_1/evaluate_concept_classification.py`**
-   Generates the same synthetic streams, runs ABFS to extract our meta-feature vectors, and evaluates them using the same protocol as step 3. Any difference in balanced accuracy compared to step 3 is due solely to the meta-features.
+   Generates the same synthetic streams, runs ABFS to extract our meta-feature vectors, and evaluates them using the same protocol as step 4. Any difference in balanced accuracy compared to step 4 is due solely to the meta-features.
