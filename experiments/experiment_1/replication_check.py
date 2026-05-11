@@ -96,16 +96,14 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
         print(f"  {'-'*56}")
 
         data = np.load(f'{THEIR_RESULTS_PATH}/{measure}.npy')
-        # shape: (n_drift_types, n_replications, n_chunks, n_metafeatures + 1)
 
         data_drift = data[drift_idx]
-        # shape: (n_replications, n_chunks, n_metafeatures + 1)
 
         rep_mean_ba = []
 
         for rep_id, rep_data in enumerate(data_drift):
-            X = rep_data[:, :-1].astype(float)  # meta-feature vectors
-            y = rep_data[:, -1].astype(int)     # concept labels
+            X = rep_data[:, :-1].astype(float) # meta-feature vectors
+            y = rep_data[:, -1].astype(int) # concept labels
 
             mean_ba, std_ba, clf_res = run_classifier_sweep(X, y, shuffle_seed=None)
             rep_mean_ba.append(mean_ba)
@@ -115,10 +113,14 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
         all_mean_ba[measure] = overall_mean
         all_std_ba[measure] = overall_std
 
-
-
+    # save replication results for this drift type
+    rc_matrix = np.array([all_mean_ba[m] for m in MEASURES])
+    rc_std_matrix = np.array([all_std_ba[m] for m in MEASURES])
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_{drift_type}.npy'), rc_matrix)
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_std_{drift_type}.npy'), rc_std_matrix)
 
     MEASURE_CONFIGS = [(m, m, None) for m in MEASURES]
+    
     # ============================================================
     #  SUMMARY TABLE
     # ============================================================
