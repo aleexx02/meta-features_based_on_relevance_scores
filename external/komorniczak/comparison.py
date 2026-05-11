@@ -1,7 +1,7 @@
 
 # Compare E2 clf.npy results against Figure 12 of Komorniczak paper
 # Produces a side-by-side heatmap for sudden and gradual drift.
-
+# Is their reported performance of their meta-features (Figure 12) consistent with the results we get when we run their code?
 
 import numpy as np
 import matplotlib.pyplot as plt

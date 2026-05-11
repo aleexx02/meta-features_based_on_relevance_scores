@@ -10,7 +10,7 @@
 # The only difference with respect to their pipeline is the
 # meta-features: instead of statistical descriptors computed
 # by pymfe directly from the raw instances, we use relevance
-# scores produced by ABFS — encoding which features are
+# scores produced by ABFS, encoding which features are
 # currently predictive and how that relevance is evolving
 # over time.
 
