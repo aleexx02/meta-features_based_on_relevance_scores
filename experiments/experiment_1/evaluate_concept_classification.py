@@ -25,10 +25,12 @@
 #   3. Extract meta-feature vectors from the relevance scores
 #   4. Assign concept labels to each window
 #   5. Run the classifier sweep (classifier_sweep_komor.py)
-#   6. Compare output against Figure 12 of their paper
+#   6. Compare output against replication_check.py results:
+#      their meta-features evaluated with our protocol
 # ============================================================
  
 import numpy as np
+import matplotlib.pyplot as plt
 from strlearn.streams import StreamGenerator
 import warnings
 import os
@@ -55,8 +57,8 @@ from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_
 # path to results folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..')) # go up two levels to project root
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'figures')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1', 'figures')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -108,6 +110,7 @@ DRIFT_CONFIGS = [
     ('gradual', 6, 5),
 ]
 
+MEASURES = ['clustering', 'complexity', 'concept', 'general', 'info-theory', 'itemset', 'landmarking', 'model-based', 'statistical']
 
 np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
@@ -324,14 +327,72 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
         all_std_ba[mf_type] = np.std(all_clf_res,  axis=(0, 1))
 
 
-    # ============================================================
+    # ================
     #  SUMMARY TABLE
-    # ============================================================
+    # ================
     print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, random_baseline)
 
-    # ============================================================
-    #  HEATMAP - replicating Figure 12
-    # ============================================================
+
+    # ========================================
+    #  HEATMAP - our ABFS-based meta-features
+    # ========================================
     plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features - ',
         filename=f'heatmap_ABFS_{drift_type}.png', figsize=(8, 3.5))
 
+
+    # ============================================================
+    #  COMPARISON - our ABFS meta-features vs replication_check
+    # ============================================================
+    rc_path = os.path.join(RESULTS_DIR, f'clf_replication_{drift_type}.npy')
+    rc_std_path = os.path.join(RESULTS_DIR, f'clf_replication_std_{drift_type}.npy')
+
+    if os.path.exists(rc_path):
+        rc_matrix = np.load(rc_path)
+        rc_std_matrix = np.load(rc_std_path)
+
+        for mf_type, mf_label, _ in MF_CONFIGS:
+
+            fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+            # replication_check results (their features, our protocol)
+            ax = axes[0]
+            ax.imshow(rc_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
+            for i in range(len(MEASURES)):
+                for j in range(len(BASE_CLFS)):
+                    val = rc_matrix[i, j]
+                    std = rc_std_matrix[i, j]
+                    txt_color = 'white' if val > 0.6 else 'black'
+                    ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
+                            fontsize=8, color=txt_color, linespacing=1.4)
+            ax.set_xticks(range(len(BASE_CLFS)))
+            ax.set_xticklabels(clf_names, fontsize=9)
+            ax.set_yticks(range(len(MEASURES)))
+            ax.set_yticklabels(MEASURES, fontsize=9)
+            ax.set_title(f'Komorniczak et al. results\n({drift_type})', fontsize=10)
+
+            # our ABFS results for this meta-feature set
+            abfs_row = all_mean_ba[mf_type].reshape(1, -1)
+            abfs_std = all_std_ba[mf_type].reshape(1, -1)
+            ax = axes[1]
+            ax.imshow(abfs_row, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
+            for j in range(len(BASE_CLFS)):
+                val = abfs_row[0, j]
+                std = abfs_std[0, j]
+                txt_color = 'white' if val > 0.6 else 'black'
+                ax.text(j, 0, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
+                        fontsize=8, color=txt_color, linespacing=1.4)
+            ax.set_xticks(range(len(BASE_CLFS)))
+            ax.set_xticklabels(clf_names, fontsize=9)
+            ax.set_yticks([0])
+            ax.set_yticklabels([mf_label], fontsize=9)
+            ax.set_title(f'ABFS - {mf_label}\n({drift_type})', fontsize=10)
+
+            fig.suptitle(f'Komorniczak et al. vs ABFS ({mf_label}) - {drift_type} drift ({n_concepts} concepts)', fontsize=12)
+            plt.tight_layout()
+            comp_path = os.path.join(FIGURES_DIR, f'heatmap_komorniczak_vs_abfs_{mf_type}_{drift_type}.png')
+            plt.savefig(comp_path, dpi=150, bbox_inches='tight')
+            plt.show()
+            print(f"Saved to {comp_path}")
+
+    else:
+        print(f"\nWarning: {rc_path} not found - run replication_check.py first.")
