@@ -8,7 +8,10 @@ import matplotlib.pyplot as plt
 import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results')
+RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results') # folder where the results from their code are stored (after running E2)
+SAVE_PATH = os.path.join(SCRIPT_DIR, '..', '..', 'results', 'experiment_1', 'figures') # folder where the comparison figure will be saved
+os.makedirs(SAVE_PATH, exist_ok=True)
+
 
 # =============================
 #  EXPECTED VALUES (from paper)
@@ -92,7 +95,7 @@ plot_comparison(expected_gradual, actual_gradual, 'gradual', axes[1,0], axes[1,1
 fig.suptitle('Replication check - Actual vs Figure 12 (Komorniczak)', fontsize=13)
 plt.tight_layout()
 
-save_path = os.path.join(RESULTS_DIR, 'compare_expected_vs_actual_results_synthetic.png')
+save_path = os.path.join(SAVE_PATH, 'compare_expected_vs_actual_results_komorniczak_synthetic.png')
 plt.savefig(save_path, dpi=150, bbox_inches='tight')
 plt.show()
 print(f"Saved to {save_path}")
