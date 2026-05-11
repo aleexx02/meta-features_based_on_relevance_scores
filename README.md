@@ -6,7 +6,7 @@
 2. **`external/komorniczak/E2_clf_synthetic.py`**
    Loads the 9 `.npy` files and runs a classifier sweep (GNB, KNN, SVM, DT, MLP) on each measure group across all drift types and replications. Produces `external/komorniczak/results/clf.npy`. Compare the output against Figure 12 of Komorniczak et al. (2024) to confirm their pipeline runs correctly.
 
-3. **`external/komorniczak/comparison.py`**
+3. **`experiments/experiment_1/comparison.py`**
    Loads `external/komorniczak/results/clf.npy` and compares the balanced accuracy values against Figure 12 of Komorniczak et al. (2024) for sudden and gradual drift. Produces a side-by-side heatmap showing the paper values, the E2 output, and the difference between them, saved to `results/experiment_1/compare_expected_vs_actual_results_komorniczak_synthetic.png`. If the difference is small, the pipeline is confirmed to run correctly on our machine.
    
 4. **`experiments/experiment_1/replication_check.py`**
