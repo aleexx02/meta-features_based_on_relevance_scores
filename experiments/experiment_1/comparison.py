@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results') # folder where the results from their code are stored (after running E2)
-SAVE_PATH = os.path.join(SCRIPT_DIR, '..', '..', 'results', 'experiment_1', 'figures') # folder where the comparison figure will be saved
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))  # go up two levels to project root
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results') # folder where the results from their code are stored (after running E2)
+SAVE_PATH = os.path.join(PROJECT_ROOT, 'results', 'experiment_1', 'figures') # folder where the comparison figure will be saved
 os.makedirs(SAVE_PATH, exist_ok=True)
 
 
