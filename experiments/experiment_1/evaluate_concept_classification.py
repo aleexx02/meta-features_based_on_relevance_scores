@@ -31,7 +31,7 @@
 
 # RUN: our meta-features evaluated with our protocol (classifier_sweep_komor.py)
 # COMPARISON: our meta-features evaluated with our protocol VS. their meta-features evaluated with our protocol
-
+# COMPARE: meta-features (our ABFS-based meta-features vs their statistical meta-features) - using the same evaluation protocol (classifier_sweep_komor.py)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -336,13 +336,11 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     # ================
     print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, random_baseline)
 
-
-    # ========================================
-    #  HEATMAP - our ABFS-based meta-features
-    # ========================================
+    # =====================================================
+    # HEATMAP - our ABFS meta-features for this drift type
+    # =====================================================
     plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features - ',
-        filename=f'heatmap_ABFS_{drift_type}.png', figsize=(8, 3.5))
-
+        filename=f'heatmap_abfs_{drift_type}.png', figsize=(8, 3.5))
 
     # ============================================================
     #  COMPARISON - our ABFS meta-features vs replication_check
@@ -372,7 +370,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             ax.set_xticklabels(clf_names, fontsize=9)
             ax.set_yticks(range(len(MEASURES)))
             ax.set_yticklabels(MEASURES, fontsize=9)
-            ax.set_title(f'Komorniczak et al. results\n({drift_type})', fontsize=10)
+            ax.set_title(f'Komorniczak results\n({drift_type})', fontsize=10)
 
             # our ABFS results for this meta-feature set
             abfs_row = all_mean_ba[mf_type].reshape(1, -1)
@@ -391,7 +389,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             ax.set_yticklabels([mf_label], fontsize=9)
             ax.set_title(f'ABFS - {mf_label}\n({drift_type})', fontsize=10)
 
-            fig.suptitle(f'Komorniczak et al. vs ABFS ({mf_label}) - {drift_type} drift ({n_concepts} concepts)', fontsize=12)
+            fig.suptitle(f'Komorniczak vs ABFS ({mf_label}) - {drift_type} drift ({n_concepts} concepts)', fontsize=12)
             plt.tight_layout()
             comp_path = os.path.join(FIGURES_DIR, f'heatmap_komorniczak_vs_abfs_{mf_type}_{drift_type}.png')
             plt.savefig(comp_path, dpi=150, bbox_inches='tight')

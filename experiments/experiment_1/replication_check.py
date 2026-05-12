@@ -18,6 +18,7 @@
 
 # RUN: their meta-features evaluated with our protocol (classifier_sweep_komor.py)
 # COMPARISON: their meta-features evaluated with our protocol vs E2 (their meta-features on original evaluation script)
+# COMPARE: evaluation protocol (our protocol vs E2)
 
 # This is to verify whether we get the same results as in the comparison.py when running our evaluation protocol on their meta-features.
 # If we do, then we can be confident that any difference in results between their meta-features and ours is due solely to the meta-features and not to a difference in the evaluation protocol.
@@ -38,7 +39,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 
 
 from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
-from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy
+from plot_results import print_summary_table_experiment1
 
 # ============================================================
 #  CONFIGURATION
@@ -123,16 +124,9 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
     print_summary_table_experiment1(all_mean_ba=all_mean_ba, MF_CONFIGS=MEASURE_CONFIGS, BASE_CLFS=BASE_CLFS,
         drift_type=drift_type, n_concepts=n_concepts, random_baseline=1/n_concepts)
 
-    # ================================================================
-    #  HEATMAP: our evaluation protocol applied to their meta-features
-    # ================================================================
-    plot_heatmap_balanced_accuracy(all_mean_ba=all_mean_ba, all_std_ba=all_std_ba, MF_CONFIGS=MEASURE_CONFIGS, BASE_CLFS=BASE_CLFS,
-    drift_type=drift_type, n_concepts=n_concepts, FIGURES_DIR=FIGURES_DIR,
-    title_prefix='Replication check - Komorniczak et al. ', filename=f'heatmap_replication_{drift_type}.png', figsize=(10, 5))
-
 
     # ============================================================
-    #  COMPARISON - our protocol vs E2
+    #  COMPARISON - our protocol vs E2 (metric: balanced accuracy)
     # ============================================================
     e2_matrix = np.zeros((len(MEASURES), len(BASE_CLFS)))
     for m_idx, measure in enumerate(MEASURES):
