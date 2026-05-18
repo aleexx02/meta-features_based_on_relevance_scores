@@ -97,14 +97,14 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # =============================================
 
 #  Sudden drift:
-#    concept_sigmoid_spacing=9999, n_drifts=20 → 21 concepts
+#    concept_sigmoid_spacing=9999, n_drifts=20 -> 21 concepts
 #    label assignment: majority vote (equivalent to their
 #    threshold method since sigmoid is a step function)
 #
 #  Gradual drift:
-#    concept_sigmoid_spacing=5, n_drifts=6 → 25 concepts
+#    concept_sigmoid_spacing=5, n_drifts=6 -> 25 concepts
 #    label assignment: sigmoid threshold method from
-#    E1_extract_synthetic.py (Komorniczak et al.)
+#    E1_extract_synthetic.py (Komorniczak)
 #    4 stages per transition:
 #      concept%4==0: static   (e >= 0.9 / e <= 0.1)
 #      concept%4==1: early    (e >= 0.75 / e >= 0.1)
@@ -134,8 +134,8 @@ MF_CONFIGS = [
 # ]
 
 DRIFT_CONFIGS = [
-    ('sudden', 20, 9999),
-    ('gradual', 6, 5),
+    ('sudden', 20, 9999), # 20 drifts, so 21 concepts
+    ('gradual', 6, 5), # 6*4 = 24 drifts, so 25 concepts
 ]
 
 MEASURES = ['clustering', 'complexity', 'concept', 'general', 'info-theory', 'itemset', 'landmarking', 'model-based', 'statistical']

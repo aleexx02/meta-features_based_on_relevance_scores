@@ -13,17 +13,21 @@
 # streams (SEA_SUDDEN, STG_01, STG_12, STG_02) using only aggstats
 # meta-features.
 #
-# For each stream produces 4 outputs:
-#   1. relevance_scores_{stream_type}_{drift_type}_{mf_type}.png
-#      — ABFS relevance scores over time with drift markers
+# For each stream produces the following outputs:
+#   1. relevance_scores_{stream_type}_{drift_type}.png
+    #      ABFS relevance scores over time with drift markers.
+    #      One per drift type since relevance scores do not depend
+    #      on the meta-feature set, only on ABFS and the stream.
 #   2. metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png
-#      — meta-feature evolution across windows with drift markers
+    #      meta-feature evolution across windows with drift markers.
+    #      One per meta-feature set per drift type.
 #   3. pca_{stream_type}_{drift_type}_{mf_type}.png
-#      — PCA projection of meta-feature vectors coloured by concept
+    #      PCA projection of meta-feature vectors coloured by concept.
+    #      One per meta-feature set per drift type.
 #   4. Summary table printed to stdout: mean meta-feature values
-#      before and after drift and absolute difference
+#      per concept and absolute difference for binary concepts
 #      (matches Table tab:sanity_initial in the report)
-#
+
 # Outputs saved to results/sanity_check/figures/
 # ============================================================
 
