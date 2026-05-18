@@ -15,9 +15,12 @@
 # over time.
 
 # By controlling for everything except the meta-features,
-# any difference in balanced accuracy observed when comparing
+# any difference in results observed when comparing
 # against replication_check.py can be attributed solely to
 # the meta-features themselves.
+
+# Metrics computed: balanced accuracy, macro F1, Cohen's Kappa.
+# Results saved as clf_ba_*.npy, clf_f1_*.npy, clf_kappa_*.npy
 
 # Steps:
 #   1. Generate a synthetic stream using StreamGenerator
@@ -299,7 +302,11 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     print(f"{'#'*60}")
 
     all_mean_ba = {}
-    all_std_ba  = {}
+    all_std_ba = {}
+    all_mean_f1 = {}
+    all_std_f1 = {}
+    all_mean_kappa = {}
+    all_std_kappa = {}
 
     for mf_type, mf_label, n_mf in MF_CONFIGS:
 
@@ -308,27 +315,39 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
         print(f"{'='*60}")
 
         extract_mf = make_extract_mf(mf_type)
-        all_clf_res = []
+
+        all_clf_res_ba = []
+        all_clf_res_f1 = []
+        all_clf_res_kappa = []
 
         for rep_id, rs in enumerate(RANDOM_STATES):
             print(f"Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
             X, y = extract_metafeatures_for_stream(rs, extract_mf, drift_type, n_drifts, concept_sigmoid_spacing)
 
-            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y, shuffle_seed=None)
-            all_clf_res.append(clf_res)
+            mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa = run_classifier_sweep(X, y, shuffle_seed=None)
+            all_clf_res_ba.append(clf_res_ba)
+            all_clf_res_f1.append(clf_res_f1)
+            all_clf_res_kappa.append(clf_res_kappa)
 
-            print(f"{'Clf':<6s} {'Mean BA':>8s}")
+            print(f"{'Clf':<6s} {'Mean BA':>8s} {'Mean F1':>8s} {'Mean K':>8s}")
             for clf_id, (name, _) in enumerate(BASE_CLFS):
-                print(f"{name:<6s} {mean_ba[clf_id]:>8.4f}")
+                print(f"{name:<6s} {mean_ba[clf_id]:>8.4f} {mean_f1[clf_id]:>8.4f} {mean_kappa[clf_id]:>8.4f}")
 
-        all_clf_res = np.array(all_clf_res)
+        all_clf_res_ba = np.array(all_clf_res_ba)
+        all_clf_res_f1 = np.array(all_clf_res_f1)
+        all_clf_res_kappa = np.array(all_clf_res_kappa)
 
-        save_path = os.path.join(RESULTS_DIR, f'clf_{mf_type}_{drift_type}.npy')
-        np.save(save_path, all_clf_res)
-        print(f"Saved to {save_path}")
+        np.save(os.path.join(RESULTS_DIR, f'clf_ba_{mf_type}_{drift_type}.npy'),    all_clf_res_ba)
+        np.save(os.path.join(RESULTS_DIR, f'clf_f1_{mf_type}_{drift_type}.npy'),    all_clf_res_f1)
+        np.save(os.path.join(RESULTS_DIR, f'clf_kappa_{mf_type}_{drift_type}.npy'), all_clf_res_kappa)
+        print(f"Saved to {RESULTS_DIR}")
 
-        all_mean_ba[mf_type] = np.mean(all_clf_res, axis=(0, 1))
-        all_std_ba[mf_type] = np.std(all_clf_res,  axis=(0, 1))
+        all_mean_ba[mf_type] = np.mean(all_clf_res_ba, axis=(0, 1))
+        all_std_ba[mf_type] = np.std(all_clf_res_ba, axis=(0, 1))
+        all_mean_f1[mf_type] = np.mean(all_clf_res_f1, axis=(0, 1))
+        all_std_f1[mf_type] = np.std(all_clf_res_f1, axis=(0, 1))
+        all_mean_kappa[mf_type] = np.mean(all_clf_res_kappa, axis=(0, 1))
+        all_std_kappa[mf_type] = np.std(all_clf_res_kappa, axis=(0, 1))
 
 
     # ================
@@ -345,8 +364,8 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     # ============================================================
     #  COMPARISON - our ABFS meta-features vs replication_check
     # ============================================================
-    rc_path = os.path.join(RESULTS_DIR, f'clf_replication_{drift_type}.npy')
-    rc_std_path = os.path.join(RESULTS_DIR, f'clf_replication_std_{drift_type}.npy')
+    rc_path = os.path.join(RESULTS_DIR, f'clf_replication_ba_{drift_type}.npy')
+    rc_std_path = os.path.join(RESULTS_DIR, f'clf_replication_ba_std_{drift_type}.npy')
 
     if os.path.exists(rc_path):
         rc_matrix = np.load(rc_path)
