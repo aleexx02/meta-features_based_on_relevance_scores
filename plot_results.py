@@ -25,26 +25,46 @@ def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, m
     print(f"{'':22s}", end='')
     for c in unique_concepts:
         print(f"{'concept '+str(c):>14s}", end='')
-    print()
+    # only show |Delta| for binary concepts (SEA/STAGGER)
+    if len(unique_concepts) == 2:
+        print(f"{'|Delta|':>14s}")
+    else:
+        print()
+    print(f"{'-' * (20 + 14 * (len(unique_concepts) + (1 if len(unique_concepts) == 2 else 0)))}")
+
+
     for k, name in enumerate(mf_names):
         print(f"  {name:<22s}", end='')
+        vals = []
         for c in unique_concepts:
             mean_val = meta_features[concept_labels == c, k].mean()
+            vals.append(mean_val)
             print(f"{mean_val:>14.4f}", end='')
-        print()
+        if len(unique_concepts) == 2:
+            print(f"{abs(vals[-1] - vals[0]):>14.4f}")
+        else:
+            print()
 
     if raw_vectors.shape[0] > 0 and raw_vectors.ndim == 2:
         print(f"\nMean raw relevance score per feature per concept:")
         print(f"{'':14s}", end='')
         for c in unique_concepts:
             print(f"{'concept '+str(c):>12s}", end='')
-        print()
+        if len(unique_concepts) == 2:
+            print(f"{'|Delta|':>12s}")
+        else:
+            print()
         for j in range(n_features):
             print(f"  f{j+1:<10d}", end='')
+            vals = []
             for c in unique_concepts:
                 mean_val = raw_vectors[concept_labels == c, j].mean()
+                vals.append(mean_val)
                 print(f"{mean_val:>12.4f}", end='')
-            print()
+            if len(unique_concepts) == 2:
+                print(f"{abs(vals[-1] - vals[0]):>12.4f}")
+            else:
+                print()
     else:
         print(f"\nRaw relevance vectors not available for {mf_type} meta-features.")
 
