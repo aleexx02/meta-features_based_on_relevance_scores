@@ -27,9 +27,12 @@ from metafeatures.mf_extraction import (
 from plot_results import print_sanity_check_summary
 from strlearn.streams import StreamGenerator
  
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..')) # one level up to project root
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'figures')
+# path to results folder
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check', 'figures')
+
+os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 
