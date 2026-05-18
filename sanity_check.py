@@ -5,20 +5,33 @@
 #    1. Verify that relevance scores change at drift moments
 #    2. Verify that meta-features produce different vectors per concept
 #    3. Verify that concepts are separable in meta-feature space (PCA)
+
+# For StreamLearn streams, runs for all drift types
+# (sudden, gradual) and all meta-feature sets (aggstats, raw, raw_temporal).
+#
+# For SEA/STAGGER streams, runs for all configured
+# streams (SEA_SUDDEN, STG_01, STG_12, STG_02) using only aggstats
+# meta-features.
+#
+# For each stream produces 4 outputs:
+#   1. relevance_scores_{stream_type}_{drift_type}_{mf_type}.png
+#      — ABFS relevance scores over time with drift markers
+#   2. metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png
+#      — meta-feature evolution across windows with drift markers
+#   3. pca_{stream_type}_{drift_type}_{mf_type}.png
+#      — PCA projection of meta-feature vectors coloured by concept
+#   4. Summary table printed to stdout: mean meta-feature values
+#      before and after drift and absolute difference
+#      (matches Table tab:sanity_initial in the report)
+#
+# Outputs saved to results/sanity_check/figures/
 # ============================================================
-# 18 files saved to results/sanity_check/figures/ (9 per drift type):
-#   relevance_scores_{stream_name}_{mf_type}.png
-#   metafeatures_over_time_{stream_name}_{mf_type}.png
-#   pca_{stream_name}_{mf_type}.png
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import os
-
- 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 from streams.generators import (
     make_sea_sudden_drift, make_sea_gradual_drift,
@@ -34,7 +47,9 @@ from metafeatures.mf_extraction import (
 )
 from plot_results import print_sanity_check_summary
 from strlearn.streams import StreamGenerator
- 
+
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 # path to results folder
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check')
 FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check', 'figures')
@@ -47,417 +62,327 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 #  CONFIGURATION
 # ================
  
-# 1. Stream Selector
-# options:
-#   StreamLearn:  'SL_SUDDEN'  | 'SL_GRADUAL'
-#   SEA:          'SEA_SUDDEN' | 'SEA_GRADUAL' | 'SEA_STATIONARY' | 'SEA_MULTI'
-#   STAGGER:      'STG_01'     | 'STG_02'      | 'STG_12'
-#                 'STG_GRADUAL'| 'STG_RECURRING'| 'STG_MULTI'
-STREAM = 'SL_GRADUAL'
-# whether this is a StreamLearn stream (chunk-based) or
-# a SEA/STAGGER stream (instance-based, single drift)
-IS_STREAMLEARN = STREAM.startswith('SL_')
+# set to True to run StreamLearn, False for SEA/STAGGER
+RUN_STREAMLEARN = True
 
+# StreamLearn configuration
+SL_RANDOM_STATE = 42
+SL_N_CHUNKS = 5000
+SL_WINDOW_SIZE = 200
+SL_N_FEATURES = 10
+SL_WARMUP = 10
+SL_SCORE_INTERVAL = 100
 
-# 2. Meta-feature Selector
-# 'raw': 10 normalised raw relevance scores (use for StreamLearn)
-# 'aggstats': 8 aggregate statistics (use for SEA / STAGGER)
-MF_TYPE = None
- 
-# 3. Parameters for StreamLearn and SEA/STAGGER are separated below since they differ in how drift is generated and how time is measured (chunks vs instances).
-# Common parameters for both StreamLearn and SEA/STAGGER
-WINDOW_SIZE = 200
-SCORE_INTERVAL = 100
+# SUDDEN: 6 concepts: 5 drifts with concept_sigmoid_spacing=9999 (sudden)
+# GRADUAL: 6 concepts: 5 drifts with concept_sigmoid_spacing=5 (gradual)
+SL_DRIFT_CONFIGS = [
+    ('sudden', 5, 9999),
+    ('gradual', 5, 5),
+]
 
-# SL_SUDDEN: 21 concepts: 20 drifts with concept_sigmoid_spacing=9999 (sudden)
-# SL_GRADUAL: 6 concepts: 5 drifts with concept_sigmoid_spacing=5 (gradual)
-# StreamLearn parameters (only used for SL_SUDDEN / SL_GRADUAL)
-if IS_STREAMLEARN:
-    ABFS_CLASS = ABFS_match
-    N_CHUNKS = 5000
-    N_DRIFTS = 5   # 6 concepts
-    RANDOM_STATE = 42
-    N_FEATURES = 10
-    WARMUP_WINDOWS = 10 # first 10 windows (2000 instances) are warmup — no meta-features extracted
-    #MF_TYPE = 'raw' # 10 normalised raw relevance scores
-    MF_TYPE = 'raw_temporal' # 10 normalised raw relevance scores + 2 temporal features (delta_mean, cosine_sim)
-# SEA / STAGGER parameters (only used for non-StreamLearn streams)
-else:
-    DRIFT_POS = 5000 # instance index of drift point
-    N_INSTANCES = 10000 # total instances to process
-    N_FEATURES = 3 # number of features in SEA / STAGGER streams
-    WARMUP_WINDOWS = 0 # no warmup for SEA / STAGGER since they have a single drift and we want to see the full trajectory
-    MF_TYPE = 'aggstats' # 8 aggregate statistics (use for SEA / STAGGER)
-    ABFS_CLASS = ABFS_mismatch # default to mismatch.
-    # options: ABFS_match (accuracy_window = chunk_size), ABFS_mismatch (accuracy_window = 2000)
+SL_MF_CONFIGS = [
+    ('aggstats', MF_NAMES_AGGSTATS, 8),
+    ('raw', MF_NAMES_RAW,  5),
+    ('raw_temporal', MF_NAMES_RAW_TEMPORAL, 6),
+]
 
+# SEA / STAGGER configuration
+DRIFT_POS = 5000
+N_INSTANCES = 10000
+N_FEATURES_SS = 3
+SCORE_INTERVAL_SS = 100
+WINDOW_SIZE_SS = 200
 
+# streams to run: (stream_key, stream_type, drift_type, categorical_feats)
+SEA_STAGGER_CONFIGS = [
+    ('SEA_SUDDEN', 'SEA', 'sudden', []),
+    ('STG_01', 'STAGGER', 'sudden_01', [0, 1, 2]),
+    ('STG_12', 'STAGGER', 'sudden_12', [0, 1, 2]),
+    ('STG_02', 'STAGGER', 'sudden_02', [0, 1, 2]),
+]
 
-# ==============
-#  STREAM SETUP
-# ==============
-# StreamLearn streams
-# ==============
-
-def make_stream():
-    """Create a fresh stream instance. Call this before each iteration pass."""
-    if STREAM == 'SL_SUDDEN':
-        return StreamGenerator(
-            n_drifts=N_DRIFTS, n_chunks=N_CHUNKS, chunk_size=WINDOW_SIZE,
-            n_features=N_FEATURES, n_informative=N_FEATURES,
-            n_redundant=0, n_repeated=0, random_state=RANDOM_STATE
-        ), f"StreamLearn Sudden Drift (seed={RANDOM_STATE})", []
-
-    elif STREAM == 'SL_GRADUAL':
-        return StreamGenerator(
-            n_drifts=N_DRIFTS, n_chunks=N_CHUNKS, chunk_size=WINDOW_SIZE,
-            n_features=N_FEATURES, n_informative=N_FEATURES,
-            n_redundant=0, n_repeated=0,
-            concept_sigmoid_spacing=5, random_state=RANDOM_STATE
-        ), f"StreamLearn Gradual Drift (seed={RANDOM_STATE})", []
-
-    elif STREAM == 'SEA_SUDDEN':
-        return make_sea_sudden_drift(drift_position=DRIFT_POS), \
-               "SEA Sudden Boundary Drift", []
-
-    elif STREAM == 'SEA_GRADUAL':
-        return make_sea_gradual_drift(drift_position=DRIFT_POS), \
-               "SEA Gradual Boundary Drift", []
-
-    elif STREAM == 'SEA_STATIONARY':
-        return make_sea_stationary(), "SEA Stationary", []
-
-    elif STREAM == 'SEA_MULTI':
-        return make_sea_multi_drift(), "SEA Multiple Boundary Drifts", []
-
-    elif STREAM == 'STG_01':
-        return make_stagger_sudden_drift_01(drift_position=DRIFT_POS), \
-               "STAGGER Sudden Feature Drift (01)", [0, 1, 2]
-
-    elif STREAM == 'STG_02':
-        return make_stagger_sudden_drift_02(drift_position=DRIFT_POS), \
-               "STAGGER Sudden Feature Drift (02)", [0, 1, 2]
-
-    elif STREAM == 'STG_12':
-        return make_stagger_sudden_drift_12(drift_position=DRIFT_POS), \
-               "STAGGER Sudden Feature Drift (12)", [0, 1, 2]
-
-    elif STREAM == 'STG_GRADUAL':
-        return make_stagger_gradual_drift(drift_position=DRIFT_POS), \
-               "STAGGER Gradual Feature Drift", [0, 1, 2]
-
-    elif STREAM == 'STG_RECURRING':
-        return make_stagger_recurring(), \
-               "STAGGER Recurring Feature Drift", [0, 1, 2]
-
-    elif STREAM == 'STG_MULTI':
-        return make_stagger_multi_drift(), \
-               "STAGGER Multiple Feature Drifts", [0, 1, 2]
-
-    else:
-        raise ValueError(f"Unknown STREAM: '{STREAM}'")
-
-
-# Create stream
-stream, stream_name, categorical_feats = make_stream()
-
-
-# ==============
-#  ABFS SETUP
-# ==============
-# ABFS_match: accuracy_window = chunk_size (StreamLearn)
-# ABFS_mismatch: accuracy_window = 2000 (SEA / STAGGER)
-
-def make_abfs(abfs_class, n_features, categorical_feats, chunk_size):
-    if abfs_class == ABFS_match:
-        return ABFS_match(n_features=n_features, categorical_features=categorical_feats,
-        accuracy_window_size=chunk_size, class_window_size=chunk_size)
-    elif abfs_class == ABFS_mismatch:
-        return ABFS_mismatch(n_features=n_features, categorical_features=categorical_feats)
- 
-
-# Meta-feature function
-if MF_TYPE == 'raw':
-    def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-        return extract_metafeatures_raw(wt)
-    MF_NAMES = MF_NAMES_RAW
-    n_mf_cols = 5 # 2 x 5 = 10 subplots
-    FEATURE_NAMES = [f'f{j+1}' for j in range(N_FEATURES)]
- 
-elif MF_TYPE == 'aggstats':
-    def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-        return extract_metafeatures(wt=wt, wt_prev=wt_prev, drift_count=drift_count,
-        time_since_drift=time_since_drift)
-    MF_NAMES = MF_NAMES_AGGSTATS
-    n_mf_cols = 4 # 2 x 4 = 8 subplots
-    # feature names for plot legends
-    if categorical_feats == [0, 1, 2]:
-        FEATURE_NAMES = ['size', 'color', 'shape']
-    else:
-        FEATURE_NAMES = [f'f{j+1}' for j in range(N_FEATURES)]
-
-elif MF_TYPE == 'raw_temporal':
-    def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-        return extract_metafeatures_raw_temporal(wt=wt, wt_prev=wt_prev)
-    MF_NAMES = MF_NAMES_RAW_TEMPORAL
-    n_mf_cols = 6 # 2 x 6 = 12 subplots (10 raw + 2 temporal features)
-    FEATURE_NAMES = [f'f{j+1}' for j in range(N_FEATURES)]
- 
-else:
-    raise ValueError(f"Unknown MF_TYPE: '{MF_TYPE}'")
-
-
- 
-print(f"\nRunning sanity check:")
-print(f"Stream: {stream_name}")
-print(f"ABFS: {'ABFS_match' if IS_STREAMLEARN else 'ABFS_mismatch'}")
-print(f"Meta-features: {MF_TYPE} ({len(MF_NAMES)} features)")
-
-
-# ============================================================
-#  STEP 3: run ABFS and track relevance scores over time
-# ============================================================
- 
-abfs = make_abfs(ABFS_CLASS, N_FEATURES, categorical_feats, WINDOW_SIZE)
-scores_over_time = []
-drift_moments = [] # instance indices where drift was detected
-instance_counter = 0
- 
-if IS_STREAMLEARN:
-    stream.reset()
-    for X_chunk, y_chunk in stream:
-        for i in range(len(X_chunk)):
-            abfs.update(X_chunk[i], y_chunk[i])
-            if instance_counter % SCORE_INTERVAL == 0:
-                scores_over_time.append(abfs.relevance_scores())
-            instance_counter += 1
-    # save before any reset — stream.reset() wipes concept_selector to zeros
-    concept_selector_saved = stream.concept_selector.copy()
- 
-else:
-    for i, (x, y) in enumerate(stream):
-        if i >= N_INSTANCES:
-            break
-        x_arr = np.array(list(x.values()))
-        abfs.update(x_arr, y)
-        if abfs.drift_count > 0:
-            drift_moments.append(i)
-        if i % SCORE_INTERVAL == 0:
-            scores_over_time.append(abfs.relevance_scores())
-        instance_counter += 1
- 
-scores_over_time = np.array(scores_over_time)
-
- 
-# ============================================================
-#  STEP 4: plot relevance scores over time
-# ============================================================
- 
-fig, ax = plt.subplots(figsize=(14, 4))
-for j in range(N_FEATURES):
-    ax.plot(scores_over_time[:, j], label=f'{FEATURE_NAMES[j]} feature')
- 
-if IS_STREAMLEARN:
-    # concept_selector is per instance: index with chunk_idx * WINDOW_SIZE
-    prev_concept = int(np.bincount(concept_selector_saved[0:WINDOW_SIZE]).argmax())
-    for chunk_idx in range(1, N_CHUNKS):
-        chunk_start = chunk_idx * WINDOW_SIZE
-        chunk_end = min((chunk_idx + 1) * WINDOW_SIZE, len(concept_selector_saved))
-        if chunk_start >= len(concept_selector_saved):
-            break
-        chunk_concepts = concept_selector_saved[chunk_start:chunk_end]
-        curr_concept = int(np.bincount(chunk_concepts).argmax())
-        if curr_concept != prev_concept:
-            ax.axvline(x=chunk_start // SCORE_INTERVAL, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
-            prev_concept = curr_concept
-else:
-
-    # true drift position on the x-axis (converted to score_interval units)
-    ax.axvline(
-        x=DRIFT_POS // SCORE_INTERVAL,
-        color='red', linestyle='--', linewidth=1.5,
-        label=f'true drift (instance {DRIFT_POS})'
-    )
-
-    # detected drift moments
-    for dm in drift_moments:
-        ax.axvline(
-            x=dm // SCORE_INTERVAL,
-            color='orange', linestyle=':', linewidth=1,
-            alpha=0.6
-        )
-    if drift_moments:
-        ax.axvline(
-            x=drift_moments[0] // SCORE_INTERVAL,
-            color='orange', linestyle=':', linewidth=1,
-            alpha=0.6, label='detected drift'
-        )
-
- 
-ax.axvline(x=-1, color='red', linestyle='--', linewidth=1.5, label='concept boundary')
-ax.set_xlabel('Time (x100 instances)')
-ax.set_ylabel('Relevance score')
-ax.set_title(f'ABFS relevance scores over time - {stream_name}')
-ax.legend()
-fig.tight_layout()
-scores_filename = f'relevance_scores_{stream_name.replace(" ", "_")}_{MF_TYPE}.png'
-fig.savefig(os.path.join(FIGURES_DIR, scores_filename), dpi=150)
-plt.show()
-print(f"Plot saved: {os.path.join(FIGURES_DIR, scores_filename)}")
- 
-
-
-
-
-# ============================================================
-#  STEP 5: extract meta-features per window
-# ============================================================
- 
-abfs = make_abfs(ABFS_CLASS, N_FEATURES, categorical_feats, WINDOW_SIZE)
-wt_prev = None
-meta_features = []
-concept_labels = []
-window_indices = []
-raw_vectors = []
-window_counter = 0
- 
-if IS_STREAMLEARN:
-    stream.reset()
-    for X_chunk, y_chunk in stream:
-        for i in range(len(X_chunk)):
-            abfs.update(X_chunk[i], y_chunk[i])
- 
-        wt = abfs.relevance_scores()
-        drift_count = abfs.pop_drift_count()
- 
-        if window_counter >= WARMUP_WINDOWS:
-            mf = extract_mf(wt, wt_prev, drift_count, abfs.time_since_drift)
-            meta_features.append(mf)
-            window_indices.append(window_counter)
-            raw_vectors.append(wt)
- 
-        wt_prev = wt
-        window_counter += 1
- 
-    # assign labels after full iteration using saved concept_selector
-    # concept_selector is per instance: index with window * WINDOW_SIZE
-    # majority vote across all instances in the chunk to assign concept label to the window
-    for idx in window_indices:
-        chunk_start = idx * WINDOW_SIZE
-        chunk_end = min((idx + 1) * WINDOW_SIZE, len(concept_selector_saved))
-        chunk_concepts = concept_selector_saved[chunk_start:chunk_end]
-        concept_labels.append(int(np.bincount(chunk_concepts).argmax()))
- 
-else:
-    stream, _, _ = make_stream()
-    instance_buffer = 0
-    for i, (x, y) in enumerate(stream):
-        if i >= N_INSTANCES:
-            break
-
-        x_arr = np.array(list(x.values()))
-        
-        abfs.update(x_arr, y)
-        instance_buffer += 1
-
-        if instance_buffer == WINDOW_SIZE:
-            wt = abfs.relevance_scores()
-            drift_count = abfs.pop_drift_count()
-            mf = extract_mf(wt, wt_prev, drift_count, abfs.time_since_drift)
-
-            meta_features.append(mf)
-            concept_labels.append(0 if i < DRIFT_POS else 1)
-            window_indices.append(window_counter)
-            raw_vectors.append(wt)
-
-            wt_prev = wt
-            instance_buffer = 0
-            window_counter += 1
- 
-meta_features = np.array(meta_features)
-concept_labels = np.array(concept_labels)
-raw_vectors = np.array(raw_vectors)
-unique_concepts = np.unique(concept_labels)
- 
-print(f"Unique concept labels: {list(unique_concepts)}")
- 
- 
-# ============================================================
-#  STEP 6: plot meta-features over windows
-# ============================================================
- 
-fig, axes = plt.subplots(2, n_mf_cols, figsize=(4 * n_mf_cols, 6))
-axes = axes.flatten()
-
-for k, name in enumerate(MF_NAMES):
-    axes[k].plot(meta_features[:, k], color='steelblue')
- 
-    if IS_STREAMLEARN:
-        prev_concept = int(np.bincount(concept_selector_saved[WARMUP_WINDOWS*WINDOW_SIZE:(WARMUP_WINDOWS+1)*WINDOW_SIZE]).argmax())
-        for chunk_idx in range(WARMUP_WINDOWS + 1, N_CHUNKS):
-            chunk_start = chunk_idx * WINDOW_SIZE
-            chunk_end = min((chunk_idx + 1) * WINDOW_SIZE, len(concept_selector_saved))
-            if chunk_start >= len(concept_selector_saved):
-                break
-            chunk_concepts = concept_selector_saved[chunk_start:chunk_end]
-            curr_concept = int(np.bincount(chunk_concepts).argmax())
-            if curr_concept != prev_concept:
-                drift_w = chunk_idx - WARMUP_WINDOWS
-                axes[k].axvline(x=drift_w, color='red', linestyle='--', linewidth=1.5)
-                prev_concept = curr_concept
-    else:
-        axes[k].axvline(x=DRIFT_POS // WINDOW_SIZE, color='red', linestyle='--', linewidth=1.5)
- 
-    axes[k].set_title(name, fontsize=10)
-    axes[k].set_xlabel('Window')
-    axes[k].set_ylabel('Value')
- 
-fig.suptitle(f'Meta-features over windows — {stream_name}', fontsize=12)
-fig.tight_layout()
-mf_filename = f'metafeatures_over_time_{stream_name.replace(" ", "_")}_{MF_TYPE}.png'
-fig.savefig(os.path.join(FIGURES_DIR, mf_filename), dpi=150)
-plt.show()
-print(f"Plot saved: {os.path.join(FIGURES_DIR, mf_filename)}")
- 
-# ============================================================
-#  STEP 7: PCA
-# ============================================================
- 
-pca = PCA(n_components=2)
-projected = pca.fit_transform(meta_features)
-if IS_STREAMLEARN:
-    palette = [
+# COLORS
+palette = [
     '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
     '#42d4f4', '#f032e6', '#808000', '#c9a0dc', '#469990',
     '#7b3f91', '#9a6324', '#e6ac00', '#800000', '#2ecc71',
-    '#556b2f', '#d2691e', '#000075', "#5e5151", "#08332b",
+    '#556b2f', '#d2691e', '#000075', '#5e5151', '#08332b',
     '#000000'
 ]
+
+
+# ============================================================
+#  HELPERS
+# ============================================================
+
+def make_abfs_match(n_features, chunk_size):
+    return ABFS_match(n_features=n_features, categorical_features=[], accuracy_window_size=chunk_size, class_window_size=chunk_size)
+
+
+def make_abfs_mismatch(n_features, categorical_feats):
+    return ABFS_mismatch(n_features=n_features, categorical_features=categorical_feats)
+
+
+def plot_relevance_scores(scores_over_time, n_features, score_interval,drift_line, drift_moments, feature_names,title, filename):
+    fig, ax = plt.subplots(figsize=(14, 4))
+    for j in range(n_features):
+        ax.plot(scores_over_time[:, j], label=f'{feature_names[j]}')
+    if drift_line is not None:
+        ax.axvline(x=drift_line // score_interval, color='red',linestyle='--', linewidth=1.5,label=f'true drift (instance {drift_line})')
+    for dm in drift_moments:
+        ax.axvline(x=dm // score_interval, color='orange',linestyle=':', linewidth=1, alpha=0.6)
+    if drift_moments:
+        ax.axvline(x=drift_moments[0] // score_interval, color='orange', linestyle=':', linewidth=1, alpha=0.6, label='detected drift')
+    ax.set_xlabel(f'Time (x{score_interval} instances)')
+    ax.set_ylabel('Relevance score')
+    ax.set_title(title)
+    ax.legend(ncol=5, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
+    plt.close()
+    print(f"Saved: {os.path.join(FIGURES_DIR, filename)}")
+
+
+def plot_metafeatures(meta_features, mf_names, n_mf_cols,drift_window, warmup, title, filename):
+    fig, axes = plt.subplots(2, n_mf_cols, figsize=(4 * n_mf_cols, 6))
+    axes = axes.flatten()
+    for k, name in enumerate(mf_names):
+        axes[k].plot(meta_features[:, k], color='steelblue')
+        if drift_window is not None:
+            dw = drift_window - warmup
+            if dw > 0:
+                axes[k].axvline(x=dw, color='red', linestyle='--', linewidth=1.0)
+        axes[k].set_title(name, fontsize=9)
+        axes[k].set_xlabel('Window')
+        axes[k].set_ylabel('Value')
+    fig.suptitle(title, fontsize=11)
+    fig.tight_layout()
+    fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
+    plt.close()
+    print(f"Saved: {os.path.join(FIGURES_DIR, filename)}")
+
+
+def plot_pca(meta_features, concept_labels, title, filename):
+    unique_concepts = np.unique(concept_labels)
     colors = {c: palette[i % len(palette)] for i, c in enumerate(unique_concepts)}
+    pca = PCA(n_components=2)
+    projected = pca.fit_transform(meta_features)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for c in unique_concepts:
+        mask = concept_labels == c
+        label = f'concept {c}' if len(unique_concepts) > 2 else ('concept A (before drift)' if c == 0 else 'concept B (after drift)')
+        ax.scatter(projected[mask, 0], projected[mask, 1],
+                   color=colors[c], label=label,
+                   alpha=0.6, edgecolors='none', s=30)
+    ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}% variance)')
+    ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}% variance)')
+    ax.set_title(title)
+    ax.legend(ncol=4, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
+    plt.close()
+    print(f"Saved: {os.path.join(FIGURES_DIR, filename)}")
+
+
+
+# ============================================================
+#  STREAMLEARN STREAMS
+# ============================================================
+
+if RUN_STREAMLEARN:
+    for drift_type, n_drifts, concept_sigmoid_spacing in SL_DRIFT_CONFIGS:
+        print(f"\n{'='*60}")
+        print(f"StreamLearn - {drift_type} drift (seed={SL_RANDOM_STATE})")
+        print(f"{'='*60}")
+
+        stream_type = f'StreamLearn_seed{SL_RANDOM_STATE}'
+
+        config = {
+            'n_drifts': n_drifts,
+            'n_chunks': SL_N_CHUNKS,
+            'chunk_size': SL_WINDOW_SIZE,
+            'n_features': SL_N_FEATURES,
+            'n_informative': SL_N_FEATURES,
+            'n_redundant': 0,
+            'n_repeated': 0,
+            'concept_sigmoid_spacing': concept_sigmoid_spacing,
+            'random_state': SL_RANDOM_STATE
+        }
+
+        stream = StreamGenerator(**config)
+
+        # pass 1: relevance scores over time
+        abfs = make_abfs_match(SL_N_FEATURES, SL_WINDOW_SIZE)
+        scores_over_time = []
+        instance_counter = 0
+        stream.reset()
+        for X_chunk, y_chunk in stream:
+            for i in range(len(X_chunk)):
+                abfs.update(X_chunk[i], y_chunk[i])
+                if instance_counter % SL_SCORE_INTERVAL == 0:
+                    scores_over_time.append(abfs.relevance_scores())
+                instance_counter += 1
+        concept_selector_saved = stream.concept_selector.copy()
+        scores_over_time = np.array(scores_over_time)
+
+        # concept labels and boundaries
+        concept_labels_all = np.array([int(np.bincount(concept_selector_saved[i*SL_WINDOW_SIZE:(i+1)*SL_WINDOW_SIZE]).argmax())
+            for i in range(SL_N_CHUNKS)])
+        boundaries = [i for i in range(1, SL_N_CHUNKS) if concept_labels_all[i] != concept_labels_all[i-1]]
+
+        # plot relevance scores, mark concept boundaries
+        fig, ax = plt.subplots(figsize=(14, 4))
+        for j in range(SL_N_FEATURES):
+            ax.plot(scores_over_time[:, j], label=f'f{j+1}')
+        for b in boundaries:
+            ax.axvline(x=b * SL_WINDOW_SIZE // SL_SCORE_INTERVAL,
+                       color='red', linestyle='--', linewidth=1.0, alpha=0.7)
+        ax.axvline(x=-1, color='red', linestyle='--', linewidth=1.0,
+                   label='concept boundary')
+        ax.set_xlabel(f'Time (x{SL_SCORE_INTERVAL} instances)')
+        ax.set_ylabel('Relevance score')
+        ax.set_title(f'ABFS relevance scores - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})')
+        ax.legend(ncol=5, fontsize=8)
+        fig.tight_layout()
+        fname = f'relevance_scores_{stream_type}_{drift_type}.png'
+        fig.savefig(os.path.join(FIGURES_DIR, fname), dpi=150)
+        plt.close()
+        print(f"Saved: {os.path.join(FIGURES_DIR, fname)}")
+
+        # pass 2: meta-features per MF type
+        for mf_type, mf_names, n_mf_cols in SL_MF_CONFIGS:
+            print(f"\nMF type: {mf_type}")
+
+            abfs = make_abfs_match(SL_N_FEATURES, SL_WINDOW_SIZE)
+            meta_features = []
+            concept_labels = []
+            wt_prev = None
+            window_counter = 0
+
+            stream.reset()
+            for X_chunk, y_chunk in stream:
+                for i in range(len(X_chunk)):
+                    abfs.update(X_chunk[i], y_chunk[i])
+                wt = abfs.relevance_scores()
+                if window_counter >= SL_WARMUP:
+                    if mf_type == 'aggstats':
+                        mf = extract_metafeatures(wt=wt, wt_prev=wt_prev, drift_count=abfs.pop_drift_count(), time_since_drift=abfs.time_since_drift)
+                    elif mf_type == 'raw':
+                        mf = extract_metafeatures_raw(wt)
+                    elif mf_type == 'raw_temporal':
+                        mf = extract_metafeatures_raw_temporal(wt=wt, wt_prev=wt_prev)
+                    meta_features.append(mf)
+                    concept_labels.append(concept_labels_all[window_counter])
+                wt_prev = wt
+                window_counter += 1
+
+            meta_features = np.array(meta_features)
+            concept_labels = np.array(concept_labels)
+            raw_vectors = meta_features[:, :SL_N_FEATURES] if mf_type in ('raw', 'raw_temporal') else np.array([])
+
+            plot_metafeatures(meta_features, mf_names, n_mf_cols, boundaries[0] if boundaries else None,
+                SL_WARMUP,title=f'Meta-features ({mf_type}) - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})',
+                filename=f'metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png')
+
+            plot_pca(meta_features, concept_labels,title=f'PCA ({mf_type}) - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})',
+                filename=f'pca_{stream_type}_{drift_type}_{mf_type}.png')
+
+            print_sanity_check_summary(f'StreamLearn {drift_type} (seed={SL_RANDOM_STATE})',
+                True, mf_type, mf_names, meta_features, concept_labels,raw_vectors, SL_N_FEATURES)
+
+
+
+# ============================================================
+#  SEA / STAGGER STREAMS
+# ============================================================
 else:
-    colors = {0: 'steelblue', 1: 'coral'}
- 
-fig, ax = plt.subplots(figsize=(8, 5))
-for c in unique_concepts:
-    mask  = concept_labels == c
-    label = f'concept {c}' if IS_STREAMLEARN else \
-            ('concept A (before drift)' if c == 0 else 'concept B (after drift)')
-    ax.scatter(projected[mask, 0], projected[mask, 1],
-               color=colors[c], label=label,
-               alpha=0.6, edgecolors='none', s=30)
- 
-ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}% variance)')
-ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}% variance)')
-ax.set_title(f'Meta-feature vectors projected to 2D — {stream_name}')
-ax.legend(ncol=4, fontsize=8)
-fig.tight_layout()
-pca_filename = f'pca_{stream_name.replace(" ", "_")}_{MF_TYPE}.png'
-fig.savefig(os.path.join(FIGURES_DIR, pca_filename), dpi=150)
-plt.show()
-print(f"Plot saved: {os.path.join(FIGURES_DIR, pca_filename)}")
+    def make_stream(stream_key, categorical_feats):
+        if stream_key == 'SEA_SUDDEN':
+            return make_sea_sudden_drift(drift_position=DRIFT_POS)
+        elif stream_key == 'SEA_GRADUAL':
+            return make_sea_gradual_drift(drift_position=DRIFT_POS)
+        elif stream_key == 'STG_01':
+            return make_stagger_sudden_drift_01(drift_position=DRIFT_POS)
+        elif stream_key == 'STG_12':
+            return make_stagger_sudden_drift_12(drift_position=DRIFT_POS)
+        elif stream_key == 'STG_02':
+            return make_stagger_sudden_drift_02(drift_position=DRIFT_POS)
+        elif stream_key == 'STG_GRADUAL':
+            return make_stagger_gradual_drift(drift_position=DRIFT_POS)
+        elif stream_key == 'STG_RECURRING':
+            return make_stagger_recurring()
+        elif stream_key == 'STG_MULTI':
+            return make_stagger_multi_drift()
+        elif stream_key == 'SEA_STATIONARY':
+            return make_sea_stationary()
+        elif stream_key == 'SEA_MULTI':
+            return make_sea_multi_drift()
+        else:
+            raise ValueError(f"Unknown stream: {stream_key}")
 
+    for stream_key, stream_type, drift_type, categorical_feats in SEA_STAGGER_CONFIGS:
+        print(f"\n{'='*60}")
+        print(f"{stream_type} - {drift_type}")
+        print(f"{'='*60}")
 
-# ============================================================
-#  STEP 8: summary
-# ============================================================
-print_sanity_check_summary(stream_name, IS_STREAMLEARN, MF_TYPE, MF_NAMES, meta_features, concept_labels, raw_vectors, N_FEATURES)
+        mf_type = 'aggstats'
+        mf_names = MF_NAMES_AGGSTATS
+        n_mf_cols = 4
+
+        feature_names = ['size', 'color', 'shape'] if categorical_feats == [0, 1, 2] else [f'f{j+1}' for j in range(N_FEATURES_SS)]
+
+        stream = make_stream(stream_key, categorical_feats)
+
+        abfs = make_abfs_mismatch(N_FEATURES_SS, categorical_feats)
+        scores_over_time = []
+        drift_moments = []
+        meta_features = []
+        concept_labels = []
+        raw_vectors = []
+        wt_prev = None
+        instance_buffer = 0
+        window_counter = 0
+
+        for i, (x, y) in enumerate(stream):
+            if i >= N_INSTANCES:
+                break
+            x_arr = np.array(list(x.values()))
+            abfs.update(x_arr, y)
+            if abfs.drift_count > 0:
+                drift_moments.append(i)
+            if i % SCORE_INTERVAL_SS == 0:
+                scores_over_time.append(abfs.relevance_scores())
+            instance_buffer += 1
+            if instance_buffer == WINDOW_SIZE_SS:
+                wt = abfs.relevance_scores()
+                drift_count = abfs.pop_drift_count()
+                mf = extract_metafeatures(wt=wt, wt_prev=wt_prev,drift_count=drift_count,time_since_drift=abfs.time_since_drift)
+                meta_features.append(mf)
+                concept_labels.append(0 if i < DRIFT_POS else 1)
+                raw_vectors.append(wt)
+                wt_prev = wt
+                instance_buffer = 0
+                window_counter += 1
+
+        scores_over_time = np.array(scores_over_time)
+        meta_features = np.array(meta_features)
+        concept_labels = np.array(concept_labels)
+        raw_vectors = np.array(raw_vectors)
+
+        # drift window index
+        drift_window = DRIFT_POS // WINDOW_SIZE_SS
+
+        # relevance scores
+        plot_relevance_scores(scores_over_time, N_FEATURES_SS, SCORE_INTERVAL_SS,drift_line=DRIFT_POS, drift_moments=drift_moments,
+            feature_names=feature_names,title=f'ABFS relevance scores - {stream_type} {drift_type}',filename=f'relevance_scores_{stream_type}_{drift_type}_{mf_type}.png')
+
+        # meta-features over windows
+        plot_metafeatures(meta_features, mf_names, n_mf_cols,drift_window=drift_window, warmup=0,title=f'Meta-features ({mf_type}) - {stream_type} {drift_type}',
+            filename=f'metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png')
+
+        # PCA
+        plot_pca(meta_features, concept_labels,title=f'PCA ({mf_type}) - {stream_type} {drift_type}',
+            filename=f'pca_{stream_type}_{drift_type}_{mf_type}.png')
+
+        # summary table
+        print_sanity_check_summary(f'{stream_type} {drift_type}', False, mf_type, mf_names,meta_features, concept_labels, raw_vectors, N_FEATURES_SS)
