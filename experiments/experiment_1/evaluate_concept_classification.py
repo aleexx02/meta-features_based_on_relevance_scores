@@ -43,7 +43,7 @@
     # clf_ba_raw_temporal_sudden.npy, clf_ba_raw_temporal_gradual.npy
     # clf_f1_*.npy (same pattern, 6 files)
     # clf_kappa_*.npy (same pattern, 6 files)
-# Each file has shape (n_measures, n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each measure group, replication, fold, and classifier.
+# Each file has shape (n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each replication, fold, and classifier.
 
 # And 8 figures in results/experiment_1/figures (4 per drift type):
     # heatmap_abfs_sudden.png
@@ -385,12 +385,12 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     #  COMPARISON - our ABFS meta-features vs replication_check
     # ============================================================
     rc_path = os.path.join(RESULTS_DIR, f'clf_replication_ba_{drift_type}.npy')
-    rc_std_path = os.path.join(RESULTS_DIR, f'clf_replication_ba_std_{drift_type}.npy')
 
     if os.path.exists(rc_path):
-        rc_matrix = np.load(rc_path)
-        rc_std_matrix = np.load(rc_std_path)
-
+        rc_raw = np.load(rc_path) # shape: (n_measures, n_replications, n_folds, n_clfs)
+        rc_matrix = np.mean(rc_raw, axis=(1, 2))  # shape: (n_measures, n_clfs)
+        rc_std_matrix = np.std(rc_raw,  axis=(1, 2))  # shape: (n_measures, n_clfs)
+        
         for mf_type, mf_label, _ in MF_CONFIGS:
 
             fig, axes = plt.subplots(1, 2, figsize=(14, 5))
