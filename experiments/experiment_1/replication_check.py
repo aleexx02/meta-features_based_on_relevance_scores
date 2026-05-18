@@ -50,6 +50,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 sys.path.append('..') # points to experiments/ where classifier_sweep_komor.py is
+sys.path.append('../..') # points to project root where plot_results.py is
 import os
 # path to results folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

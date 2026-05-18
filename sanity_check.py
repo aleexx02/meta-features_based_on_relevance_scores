@@ -6,12 +6,20 @@
 #    2. Verify that meta-features produce different vectors per concept
 #    3. Verify that concepts are separable in meta-feature space (PCA)
 # ============================================================
+# 18 files saved to results/sanity_check/figures/ (9 per drift type):
+#   relevance_scores_{stream_name}_{mf_type}.png
+#   metafeatures_over_time_{stream_name}_{mf_type}.png
+#   pca_{stream_name}_{mf_type}.png
+
 
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import os
+
  
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 from streams.generators import (
     make_sea_sudden_drift, make_sea_gradual_drift,
     make_stagger_sudden_drift_01, make_stagger_gradual_drift,
@@ -28,7 +36,6 @@ from plot_results import print_sanity_check_summary
 from strlearn.streams import StreamGenerator
  
 # path to results folder
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check')
 FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check', 'figures')
 
@@ -290,7 +297,7 @@ else:
 ax.axvline(x=-1, color='red', linestyle='--', linewidth=1.5, label='concept boundary')
 ax.set_xlabel('Time (x100 instances)')
 ax.set_ylabel('Relevance score')
-ax.set_title(f'ABFS relevance scores over time — {stream_name}')
+ax.set_title(f'ABFS relevance scores over time - {stream_name}')
 ax.legend()
 fig.tight_layout()
 scores_filename = f'relevance_scores_{stream_name.replace(" ", "_")}_{MF_TYPE}.png'

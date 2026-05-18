@@ -63,6 +63,7 @@ import warnings
 import os
 import sys
 sys.path.append('..') # points to experiments/ where classifier_sweep_komor.py is
+sys.path.append('../..') # points to project root where plot_results.py is
 warnings.filterwarnings('ignore')
 
 from abfs.abfs_implementation import ABFS_match
