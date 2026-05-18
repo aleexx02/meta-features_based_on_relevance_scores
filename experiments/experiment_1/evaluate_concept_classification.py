@@ -337,8 +337,8 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
         all_clf_res_f1 = np.array(all_clf_res_f1)
         all_clf_res_kappa = np.array(all_clf_res_kappa)
 
-        np.save(os.path.join(RESULTS_DIR, f'clf_ba_{mf_type}_{drift_type}.npy'),    all_clf_res_ba)
-        np.save(os.path.join(RESULTS_DIR, f'clf_f1_{mf_type}_{drift_type}.npy'),    all_clf_res_f1)
+        np.save(os.path.join(RESULTS_DIR, f'clf_ba_{mf_type}_{drift_type}.npy'), all_clf_res_ba)
+        np.save(os.path.join(RESULTS_DIR, f'clf_f1_{mf_type}_{drift_type}.npy'), all_clf_res_f1)
         np.save(os.path.join(RESULTS_DIR, f'clf_kappa_{mf_type}_{drift_type}.npy'), all_clf_res_kappa)
         print(f"Saved to {RESULTS_DIR}")
 
