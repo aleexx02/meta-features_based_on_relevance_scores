@@ -31,7 +31,7 @@
 
 
 
-# It generates 6 .npy files in results/experiment_1:
+# It generates 6 .npy files in results/experiment_1 (3 per drift type):
     # clf_replication_ba_sudden.npy
     # clf_replication_f1_sudden.npy
     # clf_replication_kappa_sudden.npy
@@ -40,7 +40,7 @@
     # clf_replication_kappa_gradual.npy
 # Each file has shape (n_measures, n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each measure group, replication, fold, and classifier.
 
-# And 2 figures in results/experiment_1/figures:
+# And 2 figures in results/experiment_1/figures (1 per drift type):
     # compare_our_protocol_vs_e2_sudden.png
     # compare_our_protocol_vs_e2_gradual.png
 
