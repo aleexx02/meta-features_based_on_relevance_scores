@@ -12,16 +12,15 @@ import os
 def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, meta_features, concept_labels, raw_vectors, n_features):
     unique_concepts = np.unique(concept_labels)
 
-    print(f"\n{'='*30}")
-    print(f"Sanity check summary")
-    print(f"{'='*30}")
+    print(f"*** Sanity check summary: {stream_name} ***")
+    print(f"{'-'*25}")
     print(f"Stream: {stream_name}")
     print(f"ABFS: {'ABFS_match' if is_streamlearn else 'ABFS_mismatch'}")
     print(f"Meta-features: {mf_type} ({len(mf_names)} features)")
     print(f"Total windows: {len(meta_features)}")
     print(f"Unique concepts: {len(unique_concepts)} {list(unique_concepts)}")
 
-    print(f"\n***Meta-feature means per concept:***")
+    print(f"\n\n*** Meta-feature means per concept: ***")
     print(f"{'':22s}", end='')
     for c in unique_concepts:
         print(f"{'concept '+str(c):>14s}", end='')
@@ -46,7 +45,7 @@ def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, m
             print()
 
     if raw_vectors.shape[0] > 0 and raw_vectors.ndim == 2:
-        print(f"\n***Mean raw relevance score per feature per concept:***")
+        print(f"\n\n*** Mean raw relevance score per feature per concept: ***")
         print(f"{'':14s}", end='')
         for c in unique_concepts:
             print(f"{'concept '+str(c):>12s}", end='')
@@ -66,7 +65,7 @@ def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, m
             else:
                 print()
     else:
-        print(f"\n***Raw relevance vectors not available for {mf_type} meta-features.***")
+        print(f"\n\n*** Raw relevance vectors not available for {mf_type} meta-features. ***")
 
 
 
