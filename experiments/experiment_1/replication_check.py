@@ -10,6 +10,12 @@
 # of computing ABFS-based relevance scores.
 #
 
+
+# Metrics computed: balanced accuracy, macro F1, Cohen's Kappa.
+# Results saved as clf_replication_ba_*.npy, clf_replication_f1_*.npy,
+# clf_replication_kappa_*.npy
+
+
 # Steps:
 #   1. Load their .npy files from the results/ folder
 #   2. Extract meta-feature vectors and concept labels
@@ -86,7 +92,11 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
     print(f"{'='*60}")
 
     all_mean_ba = {}
-    all_std_ba  = {}
+    all_std_ba = {}
+    all_mean_f1 = {}
+    all_std_f1 = {}
+    all_mean_kappa = {}
+    all_std_kappa = {}
 
     for m_idx, measure in enumerate(MEASURES):
         print(f"\n  Measure group: {measure}")
@@ -97,24 +107,41 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
         data_drift = data[drift_idx]
 
         rep_mean_ba = []
+        rep_clf_res_f1 = []
+        rep_clf_res_kappa = []
 
         for rep_id, rep_data in enumerate(data_drift):
             X = rep_data[:, :-1].astype(float) # meta-feature vectors
             y = rep_data[:, -1].astype(int) # concept labels
 
-            mean_ba, std_ba, clf_res = run_classifier_sweep(X, y, shuffle_seed=None)
+            mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa = run_classifier_sweep(X, y, shuffle_seed=None)
             rep_mean_ba.append(mean_ba)
+            rep_clf_res_f1.append(clf_res_f1)
+            rep_clf_res_kappa.append(clf_res_kappa)
 
         overall_mean = np.mean(rep_mean_ba, axis=0)
-        overall_std  = np.std(rep_mean_ba, axis=0)
+        overall_std = np.std(rep_mean_ba, axis=0)
         all_mean_ba[measure] = overall_mean
         all_std_ba[measure] = overall_std
+        all_mean_f1[measure] = np.mean(rep_clf_res_f1,    axis=(0, 1))
+        all_std_f1[measure] = np.std(rep_clf_res_f1,     axis=(0, 1))
+        all_mean_kappa[measure] = np.mean(rep_clf_res_kappa, axis=(0, 1))
+        all_std_kappa[measure] = np.std(rep_clf_res_kappa,  axis=(0, 1))
 
     # save replication results for this drift type
-    rc_matrix = np.array([all_mean_ba[m] for m in MEASURES])
-    rc_std_matrix = np.array([all_std_ba[m] for m in MEASURES])
-    np.save(os.path.join(RESULTS_DIR, f'clf_replication_{drift_type}.npy'), rc_matrix)
-    np.save(os.path.join(RESULTS_DIR, f'clf_replication_std_{drift_type}.npy'), rc_std_matrix)
+    rc_matrix_ba = np.array([all_mean_ba[m] for m in MEASURES])
+    rc_std_matrix_ba = np.array([all_std_ba[m] for m in MEASURES])
+    rc_matrix_f1 = np.array([all_mean_f1[m] for m in MEASURES])
+    rc_std_matrix_f1 = np.array([all_std_f1[m] for m in MEASURES])
+    rc_matrix_kappa = np.array([all_mean_kappa[m] for m in MEASURES])
+    rc_std_matrix_kappa = np.array([all_std_kappa[m] for m in MEASURES])
+
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_ba_{drift_type}.npy'), rc_matrix_ba)
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_ba_std_{drift_type}.npy'), rc_std_matrix_ba)
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_f1_{drift_type}.npy'), rc_matrix_f1)
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_f1_std_{drift_type}.npy'), rc_std_matrix_f1)
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_kappa_{drift_type}.npy'), rc_matrix_kappa)
+    np.save(os.path.join(RESULTS_DIR, f'clf_replication_kappa_std_{drift_type}.npy'), rc_std_matrix_kappa)
 
     MEASURE_CONFIGS = [(m, m, None) for m in MEASURES]
     
@@ -132,14 +159,14 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
     for m_idx, measure in enumerate(MEASURES):
         e2_matrix[m_idx] = np.mean(clf_res_e2[m_idx, drift_idx], axis=(0, 1))
 
-    rc_matrix = np.array([all_mean_ba[m] for m in MEASURES])
-    diff = rc_matrix - e2_matrix
+    rc_matrix_ba_plot = np.array([all_mean_ba[m] for m in MEASURES])
+    diff = rc_matrix_ba_plot - e2_matrix
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     for ax, matrix, title in [
         (axes[0], e2_matrix, f'E2 output ({drift_type})'),
-        (axes[1], rc_matrix, f'Replication check ({drift_type})'),
+        (axes[1], rc_matrix_ba_plot, f'Replication check ({drift_type})'),
         (axes[2], diff, f'Difference: Our protocol - E2 ({drift_type})')
     ]:
         vmin, vmax = (0.0, 1.0) if 'Difference' not in title else (-0.1, 0.1)
