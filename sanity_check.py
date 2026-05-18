@@ -140,7 +140,7 @@ def plot_relevance_scores(scores_over_time, n_features, score_interval,drift_lin
     fig.tight_layout()
     fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
     plt.close()
-    print(f"Saved: {os.path.join(FIGURES_DIR, filename)}")
+    print(f"\n\tABFS relevance scores saved at:\n\t '{os.path.join(FIGURES_DIR, filename)}'")
 
 
 def plot_metafeatures(meta_features, mf_names, n_mf_cols,drift_window, warmup, title, filename):
@@ -159,7 +159,7 @@ def plot_metafeatures(meta_features, mf_names, n_mf_cols,drift_window, warmup, t
     fig.tight_layout()
     fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
     plt.close()
-    print(f"Saved: {os.path.join(FIGURES_DIR, filename)}")
+    print(f"\n\tMeta-features per window saved at:\n\t '{os.path.join(FIGURES_DIR, filename)}'")
 
 
 def plot_pca(meta_features, concept_labels, title, filename):
@@ -181,7 +181,7 @@ def plot_pca(meta_features, concept_labels, title, filename):
     fig.tight_layout()
     fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
     plt.close()
-    print(f"Saved: {os.path.join(FIGURES_DIR, filename)}")
+    print(f"\n\tPCA plot saved at:\n\t '{os.path.join(FIGURES_DIR, filename)}'")
 
 
 
@@ -247,11 +247,13 @@ if RUN_STREAMLEARN:
         fname = f'relevance_scores_{stream_type}_{drift_type}.png'
         fig.savefig(os.path.join(FIGURES_DIR, fname), dpi=150)
         plt.close()
-        print(f"Saved: {os.path.join(FIGURES_DIR, fname)}")
+        print(f"\n\tPlot of ABFS relevance scores for {drift_type} stream saved at:\n\t '{os.path.join(FIGURES_DIR, fname)}'")
 
         # pass 2: meta-features per MF type
         for mf_type, mf_names, n_mf_cols in SL_MF_CONFIGS:
-            print(f"\nMF type: {mf_type}")
+            print(f"\n\t{'='*30}")
+            print(f"\n\tMF type: {mf_type}")
+            print(f"\t{'='*30}")
 
             abfs = make_abfs_match(SL_N_FEATURES, SL_WINDOW_SIZE)
             meta_features = []
