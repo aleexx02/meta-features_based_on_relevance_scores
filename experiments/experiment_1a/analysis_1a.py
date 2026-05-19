@@ -387,8 +387,8 @@ if RUN_SHAP:
             # or a single (n_samples, n_features) array (binary)
             shap_array = np.array(shap_values)  # shape: (n_classes, n_samples, n_features) or (n_samples, n_features)
             if shap_array.ndim == 3:
-                # multiclass: average over classes and samples
-                mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 1))  # shape: (n_features,)
+                # shap_array shape: (n_samples, n_features, n_classes)
+                mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 2))  # shape: (n_features,)
             else:
                 # binary: average over samples only
                 mean_abs_shap = np.mean(np.abs(shap_array), axis=0)  # shape: (n_features,)
