@@ -51,7 +51,7 @@ BASE_CLFS = [
     ('MLP', MLPClassifier(random_state=11313))
 ]
 
-def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, shuffle_seed=1233):
+def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, shuffle_seed=1233, shuffle=True):
     """
     Run the classifier sweep on a meta-dataset.
 
@@ -68,6 +68,8 @@ def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, sh
         Random state for RepeatedStratifiedKFold.
     shuffle_seed: int
         Random seed for shuffling before cross-validation.
+    shuffle: bool
+        Whether to shuffle the data before cross-validation (default: True).
 
     Returns:
     mean_ba: np.ndarray, shape (n_classifiers,)
@@ -94,12 +96,15 @@ def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, sh
     X[np.isnan(X)] = 1
     X[np.isinf(X)] = 1
 
-    # shuffle
-    if shuffle_seed is not None:
-        np.random.seed(shuffle_seed)
-    p = np.random.permutation(X.shape[0])
-    X_s = X[p]
-    y_s = y[p]
+    if shuffle: # shuffle
+        if shuffle_seed is not None:
+            np.random.seed(shuffle_seed)
+        p = np.random.permutation(X.shape[0])
+        X_s = X[p]
+        y_s = y[p]
+
+    else: # no shuffle
+        X_s, y_s = X, y
 
     rskf = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=cv_random_state)
     n_folds = n_splits * n_repeats
@@ -124,14 +129,3 @@ def run_classifier_sweep(X, y, n_splits=2, n_repeats=5, cv_random_state=3242, sh
     std_kappa = np.std(clf_res_kappa, axis=0)
 
     return mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa
-
-
-# def print_results(mean_ba, std_ba, label=''):
-#     clf_names = [name for name, _ in BASE_CLFS]
-#     if label:
-#         print(f"\n{label}")
-#     print(f"{'Classifier':<10s} {'Mean BA':>10s} {'Std BA':>8s}")
-#     print('-' * 30)
-#     for clf_id, name in enumerate(clf_names):
-#         print(f"{name:<10s} {mean_ba[clf_id]:>10.4f} "
-#               f"{std_ba[clf_id]:>8.4f}")
