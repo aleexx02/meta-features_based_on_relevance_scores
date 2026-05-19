@@ -393,9 +393,9 @@ if RUN_SHAP:
                 # binary: average over samples only
                 mean_abs_shap = np.mean(np.abs(shap_array), axis=0)  # shape: (n_features,)
 
-            print(f"shap_array shape: {shap_array.shape}")
-            print(f"mean_abs_shap shape: {mean_abs_shap.shape}")
-            print(f"n_features: {len(mf_names)}")
+            # print(f"shap_array shape: {shap_array.shape}")
+            # print(f"mean_abs_shap shape: {mean_abs_shap.shape}")
+            # print(f"n_features: {len(mf_names)}")
 
             sorted_idx = np.argsort(mean_abs_shap)[::-1]
             fig, ax = plt.subplots(figsize=(10, 4))
