@@ -383,14 +383,19 @@ if RUN_SHAP:
             shap_values = explainer.shap_values(shap.sample(X_all, 200), nsamples=100)
 
             # mean absolute SHAP per feature across all classes
-            if isinstance(shap_values, list):
-                # multiclass: list of (n_samples, n_features) arrays, one per class
-                mean_abs_shap = np.mean([np.abs(sv) for sv in shap_values], axis=0)
-                # mean_abs_shap is now (n_samples, n_features) — average over samples
-                mean_abs_shap = np.mean(mean_abs_shap, axis=0)  # shape: (n_features,)
+            # shap_values is either a list of (n_samples, n_features) arrays (one per class)
+            # or a single (n_samples, n_features) array (binary)
+            shap_array = np.array(shap_values)  # shape: (n_classes, n_samples, n_features) or (n_samples, n_features)
+            if shap_array.ndim == 3:
+                # multiclass: average over classes and samples
+                mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 1))  # shape: (n_features,)
             else:
-                # binary: single (n_samples, n_features) array
-                mean_abs_shap = np.mean(np.abs(shap_values), axis=0)
+                # binary: average over samples only
+                mean_abs_shap = np.mean(np.abs(shap_array), axis=0)  # shape: (n_features,)
+
+            print(f"shap_array shape: {shap_array.shape}")
+            print(f"mean_abs_shap shape: {mean_abs_shap.shape}")
+            print(f"n_features: {len(mf_names)}")
 
             sorted_idx = np.argsort(mean_abs_shap)[::-1]
             fig, ax = plt.subplots(figsize=(10, 4))
