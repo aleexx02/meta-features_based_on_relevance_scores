@@ -31,7 +31,7 @@
 
 
 
-# It generates 6 .npy files in results/experiment_1a (3 per drift type):
+# It generates 6 .npy files in results/experiment_1b (3 per drift type):
     # clf_replication_ba_sudden.npy
     # clf_replication_f1_sudden.npy
     # clf_replication_kappa_sudden.npy
@@ -40,7 +40,7 @@
     # clf_replication_kappa_gradual.npy
 # Each file has shape (n_measures, n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each measure group, replication, fold, and classifier.
 
-# And 2 figures in results/experiment_1a/figures (1 per drift type):
+# And 2 figures in results/experiment_1b/figures (1 per drift type):
     # compare_our_protocol_vs_e2_sudden.png
     # compare_our_protocol_vs_e2_gradual.png
 
@@ -55,8 +55,8 @@ import os
 # path to results folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..')) # go up two levels to project root
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1a')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1a', 'figures')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1b')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1b', 'figures')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -103,7 +103,7 @@ clf_res_e2 = np.load(os.path.join(THEIR_RESULTS_PATH, 'clf.npy'))
 # ========================================
 #  LOAD AND EVALUATE THEIR META-FEATURES
 # ========================================
-np.random.seed(1233)
+
 for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
     print(f"\n{'='*60}")
     print(f"Drift type: {drift_type}")
@@ -130,7 +130,7 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
             X = rep_data[:, :-1].astype(float) # meta-feature vectors
             y = rep_data[:, -1].astype(int) # concept labels
 
-            mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa = run_classifier_sweep(X, y, shuffle_seed=None)
+            mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa = run_classifier_sweep(X, y, shuffle = False) # no shuffle
             
             rep_mean_ba.append(mean_ba)
             measure_reps_ba[measure].append(clf_res_ba)
@@ -178,8 +178,8 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
 
     for ax, matrix, title in [
         (axes[0], e2_matrix, f'E2 output ({drift_type})'),
-        (axes[1], rc_matrix_ba_plot, f'Replication check 1a - with shuffle ({drift_type})'),
-        (axes[2], diff, f'Difference: Our protocol (1a) - E2 ({drift_type})')
+        (axes[1], rc_matrix_ba_plot, f'Replication check 1b - no shuffle ({drift_type})'),
+        (axes[2], diff, f'Difference: Our protocol (1b) - E2 ({drift_type})')
     ]:
         vmin, vmax = (0.0, 1.0) if 'Difference' not in title else (-0.1, 0.1)
         cmap = 'Blues' if 'Difference' not in title else 'RdYlGn'
@@ -195,7 +195,7 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
         ax.set_yticklabels(MEASURES, fontsize=9)
         ax.set_title(title, fontsize=10)
 
-    fig.suptitle(f'Replication check 1a - with shuffle vs E2 ({drift_type})', fontsize=13)
+    fig.suptitle(f'Replication check 1b - no shuffle vs E2 ({drift_type})', fontsize=13)
     plt.tight_layout()
     comp_path = os.path.join(FIGURES_DIR, f'compare_our_protocol_vs_e2_{drift_type}.png')
     plt.savefig(comp_path, dpi=150, bbox_inches='tight')

@@ -379,7 +379,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     # =====================================================
     # HEATMAP - our ABFS meta-features for this drift type
     # =====================================================
-    plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features - ',
+    plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features 1a (with shuffle) - ',
         filename=f'heatmap_abfs_{drift_type}.png', figsize=(8, 3.5))
 
     # ============================================================
@@ -427,9 +427,9 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             ax.set_xticklabels(clf_names, fontsize=9)
             ax.set_yticks([0])
             ax.set_yticklabels([mf_label], fontsize=9)
-            ax.set_title(f'ABFS - {mf_label}\n({drift_type})', fontsize=10)
+            ax.set_title(f'ABFS 1a - {mf_label}\n({drift_type})', fontsize=10)
 
-            fig.suptitle(f'Komorniczak vs ABFS ({mf_label}) - {drift_type} drift ({n_concepts} concepts)', fontsize=12)
+            fig.suptitle(f'Komorniczak vs ABFS ({mf_label}) - {drift_type} drift - with shuffle ({n_concepts} concepts)', fontsize=12)
             plt.tight_layout()
             comp_path = os.path.join(FIGURES_DIR, f'heatmap_komorniczak_vs_abfs_{mf_type}_{drift_type}.png')
             plt.savefig(comp_path, dpi=150, bbox_inches='tight')

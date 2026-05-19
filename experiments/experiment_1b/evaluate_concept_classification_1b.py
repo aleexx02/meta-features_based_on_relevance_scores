@@ -37,7 +37,7 @@
 # COMPARE: meta-features (our ABFS-based meta-features vs their statistical meta-features) - using the same evaluation protocol (classifier_sweep_komor.py)
 
 
-# It generates 18 .npy files in results/experiment_1 (9 per drift type):
+# It generates 18 .npy files in results/experiment_1b (9 per drift type):
     # clf_ba_aggstats_sudden.npy, clf_ba_aggstats_gradual.npy
     # clf_ba_raw_sudden.npy, clf_ba_raw_gradual.npy
     # clf_ba_raw_temporal_sudden.npy, clf_ba_raw_temporal_gradual.npy
@@ -45,7 +45,7 @@
     # clf_kappa_*.npy (same pattern, 6 files)
 # Each file has shape (n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each replication, fold, and classifier.
 
-# And 8 figures in results/experiment_1/figures (4 per drift type):
+# And 8 figures in results/experiment_1b/figures (4 per drift type):
     # heatmap_abfs_sudden.png
     # heatmap_abfs_gradual.png
     # heatmap_komorniczak_vs_abfs_aggstats_sudden.png
@@ -85,8 +85,8 @@ from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_
 # path to results folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..')) # go up two levels to project root
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1', 'figures')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1b')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1b', 'figures')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -313,7 +313,7 @@ def extract_metafeatures_for_stream(random_state, extract_mf, drift_type, n_drif
 # ============================================================
 #  MAIN - sweep across all MF_TYPES
 # ============================================================
-np.random.seed(1233)  # for shuffles in classifier sweep
+
 for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     n_concepts = 25 if drift_type == 'gradual' else n_drifts + 1
     random_baseline = 1 / n_concepts
@@ -345,7 +345,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             print(f"Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
             X, y = extract_metafeatures_for_stream(rs, extract_mf, drift_type, n_drifts, concept_sigmoid_spacing)
 
-            mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa = run_classifier_sweep(X, y, shuffle_seed=None)
+            mean_ba, std_ba, clf_res_ba, mean_f1, std_f1, clf_res_f1, mean_kappa, std_kappa, clf_res_kappa = run_classifier_sweep(X, y, shuffle = False) # no shuffle
             all_clf_res_ba.append(clf_res_ba)
             all_clf_res_f1.append(clf_res_f1)
             all_clf_res_kappa.append(clf_res_kappa)
@@ -379,7 +379,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     # =====================================================
     # HEATMAP - our ABFS meta-features for this drift type
     # =====================================================
-    plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features - ',
+    plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features 1b (no shuffle) - ',
         filename=f'heatmap_abfs_{drift_type}.png', figsize=(8, 3.5))
 
     # ============================================================
@@ -427,9 +427,9 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             ax.set_xticklabels(clf_names, fontsize=9)
             ax.set_yticks([0])
             ax.set_yticklabels([mf_label], fontsize=9)
-            ax.set_title(f'ABFS - {mf_label}\n({drift_type})', fontsize=10)
+            ax.set_title(f'ABFS 1b- {mf_label}\n({drift_type})', fontsize=10)
 
-            fig.suptitle(f'Komorniczak vs ABFS ({mf_label}) - {drift_type} drift ({n_concepts} concepts)', fontsize=12)
+            fig.suptitle(f'Komorniczak vs ABFS ({mf_label}) - {drift_type} drift - no shuffle ({n_concepts} concepts)', fontsize=12)
             plt.tight_layout()
             comp_path = os.path.join(FIGURES_DIR, f'heatmap_komorniczak_vs_abfs_{mf_type}_{drift_type}.png')
             plt.savefig(comp_path, dpi=150, bbox_inches='tight')
