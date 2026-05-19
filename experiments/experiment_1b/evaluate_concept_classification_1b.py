@@ -37,7 +37,7 @@
 # COMPARE: meta-features (our ABFS-based meta-features vs their statistical meta-features) - using the same evaluation protocol (classifier_sweep_komor.py)
 
 
-# It generates 18 .npy files in results/experiment_1a (9 per drift type):
+# It generates 18 .npy files in results/experiment_1 (9 per drift type):
     # clf_ba_aggstats_sudden.npy, clf_ba_aggstats_gradual.npy
     # clf_ba_raw_sudden.npy, clf_ba_raw_gradual.npy
     # clf_ba_raw_temporal_sudden.npy, clf_ba_raw_temporal_gradual.npy
@@ -45,7 +45,7 @@
     # clf_kappa_*.npy (same pattern, 6 files)
 # Each file has shape (n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each replication, fold, and classifier.
 
-# And 8 figures in results/experiment_1a/figures (4 per drift type):
+# And 8 figures in results/experiment_1/figures (4 per drift type):
     # heatmap_abfs_sudden.png
     # heatmap_abfs_gradual.png
     # heatmap_komorniczak_vs_abfs_aggstats_sudden.png
@@ -85,8 +85,8 @@ from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_
 # path to results folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..')) # go up two levels to project root
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1a')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1a', 'figures')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1', 'figures')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)

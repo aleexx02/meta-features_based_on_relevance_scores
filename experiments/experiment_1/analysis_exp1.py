@@ -1,7 +1,7 @@
 # ============================================================
 # Analysis of Experiment 1 results.
 #
-# Loads pre-computed results (.npy files) from results/experiment_1/ and
+# Loads pre-computed results (.npy files) from results/experiment_1a/ and
 # produces the following analyses for each drift type and
 # meta-feature set:
 #
@@ -23,12 +23,12 @@
 #      - Same format as balanced accuracy heatmaps
 #      - Includes Komorniczak (statistical) as baseline
 #
-# Inputs (from results/experiment_1/):
+# Inputs (from results/experiment_1a/):
 #   clf_ba_*.npy, clf_f1_*.npy, clf_kappa_*.npy
 #   clf_replication_ba_*.npy, clf_replication_f1_*.npy,
 #   clf_replication_kappa_*.npy
 #
-# Outputs saved to results/experiment_1/figures/analysis/
+# Outputs saved to results/experiment_1a/figures/analysis/
 # ============================================================
 
 import numpy as np
@@ -59,8 +59,8 @@ from plot_results import print_sanity_check_summary
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1', 'figures', 'analysis')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 # =================
