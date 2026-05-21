@@ -115,7 +115,6 @@ N_REPLICATIONS = 5
 
 # rows of the heatmap — one per meta-feature set
 MF_CONFIGS = [
-    ('aggstats', 'Aggregate stats (v1.1)', 8),
     ('raw', 'Raw scores (v2.0)', 10),
     ('raw_temporal', 'Raw + temporal (v2.1)', 12),
 ]
