@@ -66,11 +66,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal,
     extract_metafeatures_raw_delta,
-    extract_metafeatures_raw_cosine,
-    MF_NAMES_AGGSTATS,
-    MF_NAMES_RAW,
-    MF_NAMES_RAW_TEMPORAL
-)
+    extract_metafeatures_raw_cosine)
 
 from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
 from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy_comparison
@@ -114,10 +110,7 @@ WARMUP_WINDOWS = 10
 N_REPLICATIONS = 5
 
 # rows of the heatmap — one per meta-feature set
-MF_CONFIGS = [
-    ('raw', 'Raw scores (v2.0)', 10),
-    ('raw_temporal', 'Raw + temporal (v2.1)', 12),
-]
+MF_CONFIGS = [('aggstats', 'Aggregate stats (v1.1)', 8),('raw', 'Raw scores (v2.0)', 10),('raw_temporal', 'Raw + temporal (v2.1)', 12)]
 
 # MF_CONFIGS = [
 #     ('raw',          'Raw only (v2.0)',        10),
@@ -146,19 +139,13 @@ clf_names = [name for name, _ in BASE_CLFS]
 def make_extract_mf(mf_type):
     if mf_type == 'aggstats':
         def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-            return extract_metafeatures(wt=wt, wt_prev=wt_prev, drift_count=drift_count, time_since_drift=time_since_drift)
+            return extract_metafeatures(wt=wt, wt_prev=wt_prev,drift_count=drift_count, time_since_drift=time_since_drift)
     elif mf_type == 'raw':
         def extract_mf(wt, wt_prev, drift_count, time_since_drift):
             return extract_metafeatures_raw(wt)
     elif mf_type == 'raw_temporal':
         def extract_mf(wt, wt_prev, drift_count, time_since_drift):
             return extract_metafeatures_raw_temporal(wt, wt_prev=wt_prev)
-    elif mf_type == 'raw_delta':
-        def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-            return extract_metafeatures_raw_delta(wt, wt_prev=wt_prev)
-    elif mf_type == 'raw_cosine':
-        def extract_mf(wt, wt_prev, drift_count, time_since_drift):
-            return extract_metafeatures_raw_cosine(wt, wt_prev=wt_prev)
     else:
         raise ValueError(f"Unknown MF_TYPE: '{mf_type}'")
     return extract_mf
