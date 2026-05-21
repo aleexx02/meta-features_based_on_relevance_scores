@@ -17,6 +17,12 @@
 #   clf_kappa_*.npy (same pattern, 6 files)
 # Each file has shape (n_replications, n_windows, n_clfs)
 # where n_windows = N_CHUNKS - WARMUP_WINDOWS = 4990
+
+# And 2 figures in results/experiment_1c/figures (1 per drift type):
+#   heatmap_comparison_komorniczak_ABFS_sudden.png
+#   heatmap_comparison_komorniczak_ABFS_gradual.png
+# Note: run komor_concept_classification_1c.py first to generate
+# the Komorniczak baseline files needed for the comparison plots.
 # ============================================================
 
 import numpy as np
@@ -35,6 +41,8 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal)
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_RIVER
+from plot_results import plot_heatmap_balanced_accuracy_comparison
+
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
@@ -59,6 +67,9 @@ clf_names = [name for name, _ in BASE_CLFS_RIVER]
 np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
+
+MEASURES = ['clustering', 'complexity', 'concept', 'general', 'info-theory',
+    'itemset', 'landmarking', 'model-based', 'statistical']
 
 
 def assign_labels_gradual(stream, n_chunks, chunk_size):
@@ -189,13 +200,16 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     print(f"DRIFT TYPE: {drift_type} ({n_concepts} concepts)")
     print(f"{'#'*60}")
 
+    all_mean_ba = {}
+    all_std_ba  = {}
+
     for mf_type, mf_label, n_mf in MF_CONFIGS:
         print(f"\n{'='*60}")
         print(f"Meta-features: {mf_label} ({n_mf}) | Drift: {drift_type}")
         print(f"{'='*60}")
 
-        all_ba = []
-        all_f1 = []
+        all_ba  = []
+        all_f1  = []
         all_kap = []
 
         for rep_id, rs in enumerate(RANDOM_STATES):
@@ -203,7 +217,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
 
             X, y = extract_metafeatures_for_stream(rs, mf_type, drift_type, n_drifts, concept_sigmoid_spacing)
             mean_ba, std_ba, traj_ba, mean_f1, std_f1, traj_f1, mean_kappa, std_kappa, traj_kappa = run_prequential_sweep(X, y)
-            
+
             all_ba.append(traj_ba)
             all_f1.append(traj_f1)
             all_kap.append(traj_kappa)
@@ -215,17 +229,35 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
                       f"{traj_kappa[-1, clf_id]:>10.4f}")
 
         # shape: (n_replications, n_windows, n_clfs)
-        all_ba = np.array(all_ba)
-        all_f1 = np.array(all_f1)
+        all_ba  = np.array(all_ba)
+        all_f1  = np.array(all_f1)
         all_kap = np.array(all_kap)
 
-        np.save(os.path.join(RESULTS_DIR,f'clf_ba_{mf_type}_{drift_type}.npy'),    all_ba)
-        np.save(os.path.join(RESULTS_DIR,f'clf_f1_{mf_type}_{drift_type}.npy'),    all_f1)
-        np.save(os.path.join(RESULTS_DIR,f'clf_kappa_{mf_type}_{drift_type}.npy'), all_kap)
+        np.save(os.path.join(RESULTS_DIR, f'clf_ba_{mf_type}_{drift_type}.npy'),    all_ba)
+        np.save(os.path.join(RESULTS_DIR, f'clf_f1_{mf_type}_{drift_type}.npy'),    all_f1)
+        np.save(os.path.join(RESULTS_DIR, f'clf_kappa_{mf_type}_{drift_type}.npy'), all_kap)
         print(f"\nSaved to {RESULTS_DIR}")
 
-        mean_final_ba = np.mean(all_ba[:, -1, :], axis=0)
+        all_mean_ba[mf_type] = np.mean(all_ba[:, -1, :], axis=0)
+        all_std_ba[mf_type]  = np.std(all_ba[:, -1, :],  axis=0)
+
         print(f"\nMean final BA across replications:")
         print(f"{'Clf':<6s} {'Mean BA':>10s}")
         for clf_id, name in enumerate(clf_names):
-            print(f"{name:<6s} {mean_final_ba[clf_id]:>10.4f}")
+            print(f"{name:<6s} {all_mean_ba[mf_type][clf_id]:>10.4f}")
+
+    # ============================================================
+    #  COMPARISON - our ABFS meta-features vs komor_concept_classif
+    # ============================================================
+    rc_path = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_ba_{drift_type}.npy')
+
+    if os.path.exists(rc_path):
+        rc_raw = np.load(rc_path)  # shape: (n_measures, n_replications, n_windows, n_clfs)
+        plot_heatmap_balanced_accuracy_comparison(
+            all_mean_ba, all_std_ba,
+            rc_raw, MEASURES, BASE_CLFS_RIVER,
+            drift_type, n_concepts, FIGURES_DIR,
+            exp_label='1c',
+            filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
+    else:
+        print(f"\nWarning: {rc_path} not found - run komor_concept_classification_1c.py first.")
