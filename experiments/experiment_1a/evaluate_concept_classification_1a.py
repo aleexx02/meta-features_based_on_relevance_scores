@@ -45,15 +45,9 @@
     # clf_kappa_*.npy (same pattern, 6 files)
 # Each file has shape (n_replications, n_folds, n_clfs) and contains the raw results of the classifier sweep for each replication, fold, and classifier.
 
-# And 8 figures in results/experiment_1a/figures (4 per drift type):
-    # heatmap_abfs_sudden.png
-    # heatmap_abfs_gradual.png
-    # heatmap_komorniczak_vs_abfs_aggstats_sudden.png
-    # heatmap_komorniczak_vs_abfs_aggstats_gradual.png
-    # heatmap_komorniczak_vs_abfs_raw_sudden.png
-    # heatmap_komorniczak_vs_abfs_raw_gradual.png
-    # heatmap_komorniczak_vs_abfs_raw_temporal_sudden.png
-    # heatmap_komorniczak_vs_abfs_raw_temporal_gradual.png
+# And 2 figures in results/experiment_1a/figures (1 per drift type):
+    # heatmap_comparison_komorniczak_ABFS_sudden.png
+    # heatmap_comparison_komorniczak_ABFS_gradual.png
 
 
 import numpy as np
@@ -79,7 +73,7 @@ from metafeatures.mf_extraction import (
 )
 
 from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
-from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy
+from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy_comparison
 
 
 # path to results folder
@@ -376,65 +370,15 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     # ================
     print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, random_baseline)
 
-    # =====================================================
-    # HEATMAP - our ABFS meta-features for this drift type
-    # =====================================================
-    plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='ABFS meta-features 1a (with shuffle) - ',
-        filename=f'heatmap_abfs_{drift_type}.png', figsize=(8, 3.5))
 
     # ============================================================
-    #  COMPARISON - our ABFS meta-features vs replication_check
+    #  COMPARISON - our ABFS meta-features vs replication_check_1a
     # ============================================================
     rc_path = os.path.join(RESULTS_DIR, f'clf_replication_ba_{drift_type}.npy')
 
     if os.path.exists(rc_path):
         rc_raw = np.load(rc_path) # shape: (n_measures, n_replications, n_folds, n_clfs)
-        rc_matrix = np.mean(rc_raw, axis=(1, 2))  # shape: (n_measures, n_clfs)
-        rc_std_matrix = np.std(rc_raw,  axis=(1, 2))  # shape: (n_measures, n_clfs)
-        
-        for mf_type, mf_label, _ in MF_CONFIGS:
-
-            fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-            # replication_check results (their features, our protocol)
-            ax = axes[0]
-            ax.imshow(rc_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
-            for i in range(len(MEASURES)):
-                for j in range(len(BASE_CLFS)):
-                    val = rc_matrix[i, j]
-                    std = rc_std_matrix[i, j]
-                    txt_color = 'white' if val > 0.6 else 'black'
-                    ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
-                            fontsize=8, color=txt_color, linespacing=1.4)
-            ax.set_xticks(range(len(BASE_CLFS)))
-            ax.set_xticklabels(clf_names, fontsize=9)
-            ax.set_yticks(range(len(MEASURES)))
-            ax.set_yticklabels(MEASURES, fontsize=9)
-            ax.set_title(f'Komorniczak results\n({drift_type})', fontsize=10)
-
-            # our ABFS results for this meta-feature set
-            abfs_row = all_mean_ba[mf_type].reshape(1, -1)
-            abfs_std = all_std_ba[mf_type].reshape(1, -1)
-            ax = axes[1]
-            ax.imshow(abfs_row, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
-            for j in range(len(BASE_CLFS)):
-                val = abfs_row[0, j]
-                std = abfs_std[0, j]
-                txt_color = 'white' if val > 0.6 else 'black'
-                ax.text(j, 0, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
-                        fontsize=8, color=txt_color, linespacing=1.4)
-            ax.set_xticks(range(len(BASE_CLFS)))
-            ax.set_xticklabels(clf_names, fontsize=9)
-            ax.set_yticks([0])
-            ax.set_yticklabels([mf_label], fontsize=9)
-            ax.set_title(f'ABFS 1a - {mf_label}\n({drift_type})', fontsize=10)
-
-            fig.suptitle(f'Komorniczak vs ABFS ({mf_label}) - {drift_type} drift - with shuffle ({n_concepts} concepts)', fontsize=12)
-            plt.tight_layout()
-            comp_path = os.path.join(FIGURES_DIR, f'heatmap_komorniczak_vs_abfs_{mf_type}_{drift_type}.png')
-            plt.savefig(comp_path, dpi=150, bbox_inches='tight')
-            plt.show()
-            print(f"Saved to {comp_path}")
-
+        plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba,rc_raw, MEASURES, BASE_CLFS,
+        drift_type, n_concepts, FIGURES_DIR,exp_label='1a',filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
     else:
         print(f"\nWarning: {rc_path} not found - run replication_check.py first.")
