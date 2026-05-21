@@ -265,7 +265,7 @@ if RUN_SANITY_CHECK:
             ax.axvline(x=-1, color='red', linestyle='--', linewidth=1.0, label='concept boundary')
             ax.set_xlabel('Time (x100 instances)')
             ax.set_ylabel('Relevance score')
-            ax.set_title(f'ABFS relevance scores - {drift_type} drift (seed={rs}) [{EXP}]')
+            ax.set_title(f'ABFS relevance scores - {drift_type} drift (seed={rs}) - experiment [{EXP}]')
             ax.legend(ncol=5, fontsize=8)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'relevance_scores_{drift_type}_rep{rep_id}.png')
@@ -289,7 +289,7 @@ if RUN_SANITY_CHECK:
                     axes[k].set_title(name, fontsize=9)
                     axes[k].set_xlabel('Window')
                     axes[k].set_ylabel('Value')
-                fig.suptitle(f'Meta-features ({mf_type}) - {drift_type} drift (seed={rs}) [{EXP}]', fontsize=11)
+                fig.suptitle(f'Meta-features ({mf_type}) - {drift_type} drift (seed={rs}) - experiment [{EXP}]', fontsize=11)
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR, f'metafeatures_{mf_type}_{drift_type}_rep{rep_id}.png')
                 fig.savefig(fname, dpi=150)
@@ -306,7 +306,7 @@ if RUN_SANITY_CHECK:
                         label=f'concept {c}', alpha=0.6, edgecolors='none', s=30)
                 ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}% variance)')
                 ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}% variance)')
-                ax.set_title(f'PCA ({mf_type}) - {drift_type} drift (seed={rs}) [{EXP}]')
+                ax.set_title(f'PCA ({mf_type}) - {drift_type} drift (seed={rs}) - experiment [{EXP}]')
                 ax.legend(ncol=4, fontsize=8)
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR, f'pca_{mf_type}_{drift_type}_rep{rep_id}.png')
@@ -345,7 +345,7 @@ if RUN_VARIANCE:
             ax.axhline(y=1/n_concepts, color='red', linestyle='--', linewidth=1.0, label='random baseline')
             ax.set_xlabel('Replication')
             ax.set_ylabel('Mean balanced accuracy')
-            ax.set_title(f'Performance variance - {mf_label} - {drift_type} drift [{EXP}]')
+            ax.set_title(f'Performance variance - {mf_label} - {drift_type} drift - experiment [{EXP}]')
             ax.set_xticks(x + width * 2)
             ax.set_xticklabels([f'Rep {i+1}\n(seed={RANDOM_STATES[i]})' for i in range(N_REPLICATIONS)], fontsize=8)
             ax.legend(fontsize=9)
@@ -402,7 +402,7 @@ if RUN_SHAP:
             ax.set_xticks(range(len(mf_names)))
             ax.set_xticklabels([mf_names[i] for i in sorted_idx], rotation=45, ha='right', fontsize=9)
             ax.set_ylabel('Mean absolute SHAP value')
-            ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift [{EXP}]\n'
+            ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift - experiment [{EXP}]\n'
                 f'(MLP, averaged over {N_REPLICATIONS} replications)')
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'shap_{mf_type}_{drift_type}.png')
@@ -452,7 +452,7 @@ if RUN_METRICS:
             matrix_std = np.array([r[2] for r in all_rows])
             row_labels = [r[0] for r in all_rows]
 
-            print(f"\n{metric_label} - {drift_type} drift [{EXP}]")
+            print(f"\n{metric_label} - {drift_type} drift - experiment [{EXP}]")
             print(f"{'Meta-features':<25s}", end='')
             for name in clf_names:
                 print(f"{name:>10s}", end='')
@@ -477,7 +477,7 @@ if RUN_METRICS:
             ax.set_xticklabels(clf_names, fontsize=9)
             ax.set_yticks(range(len(all_rows)))
             ax.set_yticklabels(row_labels, fontsize=9)
-            ax.set_title(f'{metric_label} - {drift_type} drift ({n_concepts} concepts) [{EXP}]', fontsize=10)
+            ax.set_title(f'{metric_label} - {drift_type} drift ({n_concepts} concepts) - experiment [{EXP}]', fontsize=10)
             plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'heatmap_{metric}_{drift_type}.png')
