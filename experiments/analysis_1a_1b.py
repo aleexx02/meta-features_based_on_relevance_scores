@@ -77,26 +77,26 @@ RUN_SHAP = args.shap
 RUN_METRICS = args.metrics
 
 print(f"\nRunning analysis for Experiment {EXP}")
-print(f"Sanity check : {RUN_SANITY_CHECK}")
-print(f"Variance     : {RUN_VARIANCE}")
-print(f"SHAP         : {RUN_SHAP}")
-print(f"Metrics      : {RUN_METRICS}")
+print(f"Sanity check: {RUN_SANITY_CHECK}")
+print(f"Variance: {RUN_VARIANCE}")
+print(f"SHAP: {RUN_SHAP}")
+print(f"Metrics: {RUN_METRICS}")
 
 # ============================================================
 #  PATHS
 # ============================================================
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
-RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', f'experiment_{EXP}')
-FIGURES_DIR  = os.path.join(PROJECT_ROOT, 'results', f'experiment_{EXP}', 'figures', 'analysis')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', f'experiment_{EXP}')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', f'experiment_{EXP}', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-N_CHUNKS      = 5000
-CHUNK_SIZE    = 200
-N_FEATURES    = 10
+N_CHUNKS = 5000
+CHUNK_SIZE = 200
+N_FEATURES = 10
 WARMUP_WINDOWS = 10
 SCORE_INTERVAL = 100
 N_REPLICATIONS = 5
@@ -105,21 +105,13 @@ np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
 
-MF_CONFIGS = [
-    ('raw',          'Raw scores (v2.0)',    MF_NAMES_RAW,          5),
-    ('raw_temporal', 'Raw + temporal (v2.1)', MF_NAMES_RAW_TEMPORAL, 6),
-]
+MF_CONFIGS = [('raw', 'Raw scores (v2.0)', MF_NAMES_RAW, 5),
+    ('raw_temporal', 'Raw + temporal (v2.1)', MF_NAMES_RAW_TEMPORAL, 6)]
 
-DRIFT_CONFIGS = [
-    ('sudden',  20, 9999, 21),
-    ('gradual',  6,    5, 25),
-]
+DRIFT_CONFIGS = [('sudden', 20, 9999, 21), ('gradual', 6, 5, 25)]
 
-ABFS_MF_CONFIGS_FULL = [
-    ('aggstats',     'Aggregate stats (v1.1)'),
-    ('raw',          'Raw scores (v2.0)'),
-    ('raw_temporal', 'Raw + temporal (v2.1)'),
-]
+ABFS_MF_CONFIGS_FULL = [('aggstats', 'Aggregate stats (v1.1)'),
+    ('raw', 'Raw scores (v2.0)'), ('raw_temporal', 'Raw + temporal (v2.1)')]
 
 MEASURES = ['clustering', 'complexity', 'concept', 'general',
     'info-theory', 'itemset', 'landmarking', 'model-based', 'statistical']
@@ -279,7 +271,7 @@ if RUN_SANITY_CHECK:
             fname = os.path.join(FIGURES_DIR, f'relevance_scores_{drift_type}_rep{rep_id}.png')
             fig.savefig(fname, dpi=150)
             plt.close()
-            print(f"\tRelevance scores saved at: '{fname}'")
+            print(f"Relevance scores saved at: '{fname}'")
 
             for mf_type, mf_label, mf_names, n_mf_cols in MF_CONFIGS:
                 X = mf_results[mf_type]['X']
@@ -302,7 +294,7 @@ if RUN_SANITY_CHECK:
                 fname = os.path.join(FIGURES_DIR, f'metafeatures_{mf_type}_{drift_type}_rep{rep_id}.png')
                 fig.savefig(fname, dpi=150)
                 plt.close()
-                print(f"\tMeta-features per window saved at: '{fname}'")
+                print(f"Meta-features per window saved at: '{fname}'")
 
                 colors = {c: palette[i % len(palette)] for i, c in enumerate(unique_concepts)}
                 pca = PCA(n_components=2)
@@ -320,7 +312,7 @@ if RUN_SANITY_CHECK:
                 fname = os.path.join(FIGURES_DIR, f'pca_{mf_type}_{drift_type}_rep{rep_id}.png')
                 fig.savefig(fname, dpi=150)
                 plt.close()
-                print(f"\tPCA plot saved at: '{fname}'")
+                print(f"PCA plot saved at: '{fname}'")
 
                 print_sanity_check_summary(f'{drift_type} drift (seed={rs})', True,
                     mf_type, mf_names, X, y, X[:, :N_FEATURES], N_FEATURES)
@@ -339,7 +331,7 @@ if RUN_VARIANCE:
 
             path = os.path.join(RESULTS_DIR, f'clf_ba_{mf_type}_{drift_type}.npy')
             if not os.path.exists(path):
-                print(f"\tWarning: {path} not found, skipping.")
+                print(f"Warning: {path} not found, skipping.")
                 continue
 
             clf_res = np.load(path)  # (n_replications, n_folds, n_clfs)
@@ -361,7 +353,7 @@ if RUN_VARIANCE:
             fname = os.path.join(FIGURES_DIR, f'variance_{mf_type}_{drift_type}.png')
             fig.savefig(fname, dpi=150)
             plt.close()
-            print(f"\tPerformance variance plot saved at: '{fname}'")
+            print(f"Performance variance plot saved at: '{fname}'")
 
 
 # ============================================================
@@ -416,7 +408,7 @@ if RUN_SHAP:
             fname = os.path.join(FIGURES_DIR, f'shap_{mf_type}_{drift_type}.png')
             fig.savefig(fname, dpi=150)
             plt.close()
-            print(f"\tSHAP plot saved: {fname}")
+            print(f"SHAP plot saved: {fname}")
 
 
 # ============================================================
@@ -437,7 +429,7 @@ if RUN_METRICS:
                 rc_std  = np.std(rc_raw[STATISTICAL_IDX],  axis=(0, 1))
             else:
                 rc_mean = None
-                print(f"\tWarning: {rc_path} not found")
+                print(f"Warning: {rc_path} not found")
 
             all_rows = []
             for mf_type, mf_display_label in ABFS_MF_CONFIGS_FULL:
@@ -460,14 +452,14 @@ if RUN_METRICS:
             matrix_std = np.array([r[2] for r in all_rows])
             row_labels = [r[0] for r in all_rows]
 
-            print(f"\n\t{metric_label} - {drift_type} drift [{EXP}]")
-            print(f"\t\t{'Meta-features':<25s}", end='')
+            print(f"\n{metric_label} - {drift_type} drift [{EXP}]")
+            print(f"{'Meta-features':<25s}", end='')
             for name in clf_names:
                 print(f"{name:>10s}", end='')
             print()
-            print(f"\t\t{'-' * (25 + 10 * len(clf_names))}")
+            print(f"{'-' * (25 + 10 * len(clf_names))}")
             for label, mean_vals, _ in all_rows:
-                print(f"\t\t{label:<25s}", end='')
+                print(f"{label:<25s}", end='')
                 for v in mean_vals:
                     print(f"{v:>10.3f}", end='')
                 print()
@@ -491,4 +483,4 @@ if RUN_METRICS:
             fname = os.path.join(FIGURES_DIR, f'heatmap_{metric}_{drift_type}.png')
             fig.savefig(fname, dpi=150)
             plt.close()
-            print(f"\tHeatmap for metric {metric_label} saved at: '{fname}'")
+            print(f"Heatmap for metric {metric_label} saved at: '{fname}'")
