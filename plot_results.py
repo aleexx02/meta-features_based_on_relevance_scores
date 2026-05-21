@@ -89,41 +89,90 @@ def print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_ty
     print(f"Random baseline (1/{n_concepts}):  {random_baseline:.4f}")
 
 
-def plot_heatmap_balanced_accuracy(all_mean_ba, all_std_ba, MF_CONFIGS, BASE_CLFS, drift_type, n_concepts, FIGURES_DIR, title_prefix='',
-    filename=None, figsize=(8, 3.5)):
+def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba,rc_raw, MEASURES, BASE_CLFS,
+        drift_type, n_concepts, FIGURES_DIR, exp_label='1a', filename=None):
+    """
+    One figure with two heatmaps side by side:
+      - Left: Komorniczak results (their features, our protocol)
+      - Right: ABFS results (raw v2.0 and raw+temporal v2.1 only)
+
+    Parameters
+    ----------
+    all_mean_ba : dict  {mf_type: np.ndarray (n_clfs,)}
+    all_std_ba  : dict  {mf_type: np.ndarray (n_clfs,)}
+    rc_raw      : np.ndarray, shape (n_measures, n_replications, n_folds, n_clfs)
+    MEASURES    : list of str
+    BASE_CLFS   : list of (name, clf)
+    drift_type  : str
+    n_concepts  : int
+    FIGURES_DIR : str
+    exp_label   : str  e.g. '1a' or '1b'
+    filename    : str or None
+    """
     clf_names = [name for name, _ in BASE_CLFS]
-    n_mf_sets = len(MF_CONFIGS)
-    n_clfs = len(BASE_CLFS)
-    matrix = np.zeros((n_mf_sets, n_clfs))
-    matrix_std = np.zeros((n_mf_sets, n_clfs))
-    row_labels = [label for _, label, _ in MF_CONFIGS]
+    n_clfs    = len(BASE_CLFS)
 
-    for row_idx, (mf_type, _, _) in enumerate(MF_CONFIGS):
-        matrix[row_idx] = all_mean_ba[mf_type]
-        matrix_std[row_idx] = all_std_ba[mf_type]
+    # Komorniczak: average over replications and folds
+    rc_matrix     = np.mean(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
+    rc_std_matrix = np.std(rc_raw,  axis=(1, 2))  # (n_measures, n_clfs)
 
-    fig, ax = plt.subplots(figsize=(8, 3.5))
-    im = ax.imshow(matrix, vmin=0.05, vmax=1.0, cmap='Blues', aspect='auto')
+    # ABFS: raw and raw_temporal only
+    abfs_configs = [
+        ('raw',          'Raw scores (v2.0)'),
+        ('raw_temporal', 'Raw + temporal (v2.1)'),
+    ]
+    abfs_matrix     = np.array([all_mean_ba[mf_type] for mf_type, _ in abfs_configs])
+    abfs_std_matrix = np.array([all_std_ba[mf_type]  for mf_type, _ in abfs_configs])
+    abfs_row_labels = [label for _, label in abfs_configs]
 
-    for i in range(n_mf_sets):
+    n_measures = len(MEASURES)
+    n_abfs     = len(abfs_configs)
+
+    # width_ratios keeps cell widths roughly equal across both heatmaps
+    fig, axes = plt.subplots(
+        1, 2, figsize=(7 + 3 * n_clfs / 5, max(4, n_measures * 0.55)),
+        gridspec_kw={'width_ratios': [n_measures, n_abfs]})
+
+    # ── left: Komorniczak ──────────────────────────────────────
+    ax = axes[0]
+    ax.imshow(rc_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
+    for i in range(n_measures):
         for j in range(n_clfs):
-            val = matrix[i, j]
-            std = matrix_std[i, j]
+            val = rc_matrix[i, j]
+            std = rc_std_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center', fontsize=9, color=txt_color, linespacing=1.4)
-
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
+                fontsize=8, color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
-    ax.set_xticklabels(clf_names, fontsize=11)
-    ax.set_yticks(range(n_mf_sets))
-    ax.set_yticklabels(row_labels, fontsize=10)
-    ax.set_title(f'{title_prefix}Balanced accuracy (mean ± std)\n'
-    f'{drift_type} drift ({n_concepts} concepts)', fontsize=11)
-    plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
+    ax.set_xticklabels(clf_names, fontsize=9)
+    ax.set_yticks(range(n_measures))
+    ax.set_yticklabels(MEASURES, fontsize=9)
+    ax.set_title(f'Komorniczak meta-features - balanced accuracy', fontsize=10)
+
+    # ── right: ABFS ────────────────────────────────────────────
+    ax = axes[1]
+    im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
+    for i in range(n_abfs):
+        for j in range(n_clfs):
+            val = abfs_matrix[i, j]
+            std = abfs_std_matrix[i, j]
+            txt_color = 'white' if val > 0.6 else 'black'
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
+                fontsize=8, color=txt_color, linespacing=1.4)
+    ax.set_xticks(range(n_clfs))
+    ax.set_xticklabels(clf_names, fontsize=9)
+    ax.set_yticks(range(n_abfs))
+    ax.set_yticklabels(abfs_row_labels, fontsize=9)
+    ax.set_title(f'ABFS meta-features - balanced accuracy', fontsize=10)
+
+    plt.colorbar(im, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
+    fig.suptitle(f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',
+        fontsize=11)
     plt.tight_layout()
 
     if filename is None:
-        filename = f'heatmap_{drift_type}.png'
-    heatmap_path = os.path.join(FIGURES_DIR, filename)
-    plt.savefig(heatmap_path, dpi=150, bbox_inches='tight')
+        filename = f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png'
+    path = os.path.join(FIGURES_DIR, filename)
+    plt.savefig(path, dpi=150, bbox_inches='tight')
     plt.show()
-    print(f"\nHeatmap saved to {heatmap_path}")
+    print(f"\nComparison heatmap saved to {path}")
