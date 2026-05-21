@@ -24,17 +24,16 @@
 # ============================================================
 
 import numpy as np
-from river import naive_bayes, neighbors, linear_model, tree, neural_net, metrics
+from river import naive_bayes, neighbors, linear_model, tree, metrics
 
 
 BASE_CLFS_RIVER = [
     ('GNB', lambda: naive_bayes.GaussianNB()),
     ('KNN', lambda: neighbors.KNNClassifier()),
-    ('SVM', lambda: linear_model.SVM()),
+    ('PAC', lambda: linear_model.PAClassifier()),
     ('HT',  lambda: tree.HoeffdingTreeClassifier()),
-    ('MLP', lambda: neural_net.MLPClassifier()),
+    ('LR',  lambda: linear_model.LogisticRegression()),
 ]
-
 
 def make_river_clfs():
     """Instantiate a fresh set of River classifiers."""
