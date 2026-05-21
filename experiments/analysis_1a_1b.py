@@ -426,7 +426,7 @@ if RUN_METRICS:
             if os.path.exists(rc_path):
                 rc_raw = np.load(rc_path)  # (n_measures, n_replications, n_folds, n_clfs)
                 rc_mean = np.mean(rc_raw[STATISTICAL_IDX], axis=(0, 1))
-                rc_std  = np.std(rc_raw[STATISTICAL_IDX],  axis=(0, 1))
+                rc_std  = np.std(rc_raw[STATISTICAL_IDX], axis=(0, 1))
             else:
                 rc_mean = None
                 print(f"Warning: {rc_path} not found")

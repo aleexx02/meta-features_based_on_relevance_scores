@@ -177,9 +177,9 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     for ax, matrix, title in [
-        (axes[0], e2_matrix, f'E2 output ({drift_type})'),
-        (axes[1], rc_matrix_ba_plot, f'Replication check 1a - with shuffle ({drift_type})'),
-        (axes[2], diff, f'Difference: Our protocol (1a) - E2 ({drift_type})')
+        (axes[0], e2_matrix, f'E2 output - {drift_type} drift'),
+        (axes[1], rc_matrix_ba_plot, f'Replication check experiment 1a (with shuffle) - {drift_type} drift'),
+        (axes[2], diff, f'Difference: Our protocol (1a) - E2 ({drift_type} drift)')
     ]:
         vmin, vmax = (0.0, 1.0) if 'Difference' not in title else (-0.1, 0.1)
         cmap = 'Blues' if 'Difference' not in title else 'RdYlGn'
@@ -195,7 +195,7 @@ for drift_idx, drift_type, n_concepts in DRIFT_TYPES:
         ax.set_yticklabels(MEASURES, fontsize=9)
         ax.set_title(title, fontsize=10)
 
-    fig.suptitle(f'Replication check 1a - with shuffle vs E2 ({drift_type})', fontsize=13)
+    fig.suptitle(f'Replication check experiment 1a (with shuffle vs E2) - {drift_type} drift - Balanced Accuracy', fontsize=13)
     plt.tight_layout()
     comp_path = os.path.join(FIGURES_DIR, f'compare_our_protocol_vs_e2_{drift_type}.png')
     plt.savefig(comp_path, dpi=150, bbox_inches='tight')
