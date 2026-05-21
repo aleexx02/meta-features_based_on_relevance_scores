@@ -89,7 +89,7 @@ def print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_ty
     print(f"Random baseline (1/{n_concepts}):  {random_baseline:.4f}")
 
 
-def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba,rc_raw, MEASURES, BASE_CLFS,
+def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, MEASURES, BASE_CLFS,
         drift_type, n_concepts, FIGURES_DIR, exp_label='1a', filename=None):
     """
     One figure with two heatmaps side by side:
@@ -123,15 +123,19 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba,rc_raw, ME
     ]
     abfs_matrix     = np.array([all_mean_ba[mf_type] for mf_type, _ in abfs_configs])
     abfs_std_matrix = np.array([all_std_ba[mf_type]  for mf_type, _ in abfs_configs])
-    abfs_row_labels = [label for _, label in abfs_configs]
+
+    # right panel y-axis labels include mean std
+    abfs_row_labels = [
+        f'{label}\n(±{abfs_std_matrix[i].mean():.3f})'
+        for i, (_, label) in enumerate(abfs_configs)
+    ]
 
     n_measures = len(MEASURES)
     n_abfs     = len(abfs_configs)
 
-    # width_ratios keeps cell widths roughly equal across both heatmaps
     fig, axes = plt.subplots(
-        1, 2, figsize=(7 + 3 * n_clfs / 5, max(4, n_measures * 0.55)),
-        gridspec_kw={'width_ratios': [n_measures, n_abfs]})
+        1, 2, figsize=(18, max(5, n_measures * 0.65)),
+        gridspec_kw={'width_ratios': [3, 1]})
 
     # ── left: Komorniczak ──────────────────────────────────────
     ax = axes[0]
@@ -147,7 +151,7 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba,rc_raw, ME
     ax.set_xticklabels(clf_names, fontsize=9)
     ax.set_yticks(range(n_measures))
     ax.set_yticklabels(MEASURES, fontsize=9)
-    ax.set_title(f'Komorniczak meta-features - balanced accuracy', fontsize=10)
+    ax.set_title('Komorniczak meta-features - balanced accuracy', fontsize=10)
 
     # ── right: ABFS ────────────────────────────────────────────
     ax = axes[1]
@@ -155,18 +159,18 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba,rc_raw, ME
     for i in range(n_abfs):
         for j in range(n_clfs):
             val = abfs_matrix[i, j]
-            std = abfs_std_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
-                fontsize=8, color=txt_color, linespacing=1.4)
+            ax.text(j, i, f'{val:.3f}', ha='center', va='center',
+                fontsize=8, color=txt_color)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=9)
     ax.set_yticks(range(n_abfs))
     ax.set_yticklabels(abfs_row_labels, fontsize=9)
-    ax.set_title(f'ABFS meta-features - balanced accuracy', fontsize=10)
+    ax.set_title('ABFS meta-features - balanced accuracy', fontsize=10)
 
     plt.colorbar(im, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
-    fig.suptitle(f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',
+    fig.suptitle(
+        f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',
         fontsize=11)
     plt.tight_layout()
 
