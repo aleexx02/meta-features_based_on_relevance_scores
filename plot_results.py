@@ -134,8 +134,8 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
     n_abfs     = len(abfs_configs)
 
     fig, axes = plt.subplots(
-        1, 2, figsize=(18, max(5, n_measures * 0.65)),
-        gridspec_kw={'width_ratios': [3, 1]})
+        1, 2, figsize=(22, max(5, n_measures * 0.65)),
+        gridspec_kw={'width_ratios': [3, 1.5]})
 
     # ── left: Komorniczak ──────────────────────────────────────
     ax = axes[0]
@@ -156,6 +156,8 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
     # ── right: ABFS ────────────────────────────────────────────
     ax = axes[1]
     im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
+    # force same y extent as left panel so cells are same height
+    ax.set_ylim(n_measures - 0.5, -0.5)
     for i in range(n_abfs):
         for j in range(n_clfs):
             val = abfs_matrix[i, j]
