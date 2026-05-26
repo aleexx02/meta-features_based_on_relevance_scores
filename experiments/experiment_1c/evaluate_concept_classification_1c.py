@@ -202,6 +202,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
 
     all_mean_ba = {}
     all_std_ba  = {}
+    all_median_ba = {}
 
     for mf_type, mf_label, n_mf in MF_CONFIGS:
         print(f"\n{'='*60}")
@@ -240,6 +241,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
 
         all_mean_ba[mf_type] = np.mean(all_ba[:, -1, :], axis=0)
         all_std_ba[mf_type]  = np.std(all_ba[:, -1, :],  axis=0)
+        all_median_ba[mf_type] = np.median(all_ba[:, -1, :], axis=0)                           
 
         print(f"\nMean final BA across replications:")
         print(f"{'Clf':<6s} {'Mean BA':>10s}")
@@ -253,11 +255,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
 
     if os.path.exists(rc_path):
         rc_raw = np.load(rc_path)  # shape: (n_measures, n_replications, n_windows, n_clfs)
-        plot_heatmap_balanced_accuracy_comparison(
-            all_mean_ba, all_std_ba,
-            rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,
-            drift_type, n_concepts, FIGURES_DIR,
-            exp_label='1c',
-            filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
+        plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,drift_type, n_concepts, FIGURES_DIR,
+            exp_label='1c',filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
     else:
         print(f"\nWarning: {rc_path} not found - run komor_concept_classification_1c.py first.")

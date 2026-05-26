@@ -89,47 +89,44 @@ def print_summary_table_experiment1(all_mean_ba, MF_CONFIGS, BASE_CLFS, drift_ty
     print(f"Random baseline (1/{n_concepts}):  {random_baseline:.4f}")
 
 
-def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, MEASURES, BASE_CLFS,
-        drift_type, n_concepts, FIGURES_DIR, exp_label='1a', filename=None):
+def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS,drift_type, n_concepts, FIGURES_DIR, exp_label='1a', filename=None):
     """
     One figure with two heatmaps side by side:
       - Left: Komorniczak results (their features, our protocol)
-      - Right: ABFS results (raw v2.0 and raw+temporal v2.1 only)
+      - Right: ABFS results (aggstats v1.1, raw v2.0 and raw+temporal v2.1)
 
     Parameters
     ----------
-    all_mean_ba : dict  {mf_type: np.ndarray (n_clfs,)}
-    all_std_ba  : dict  {mf_type: np.ndarray (n_clfs,)}
-    rc_raw      : np.ndarray, shape (n_measures, n_replications, n_folds, n_clfs)
-    MEASURES    : list of str
-    BASE_CLFS   : list of (name, clf)
-    drift_type  : str
-    n_concepts  : int
-    FIGURES_DIR : str
-    exp_label   : str  e.g. '1a' or '1b'
-    filename    : str or None
+    all_mean_ba   : dict  {mf_type: np.ndarray (n_clfs,)}
+    all_std_ba    : dict  {mf_type: np.ndarray (n_clfs,)}
+    all_median_ba : dict  {mf_type: np.ndarray (n_clfs,)}
+    rc_raw        : np.ndarray, shape (n_measures, n_replications, n_folds, n_clfs)
+    MEASURES      : list of str
+    BASE_CLFS     : list of (name, clf)
+    drift_type    : str
+    n_concepts    : int
+    FIGURES_DIR   : str
+    exp_label     : str  e.g. '1a', '1b', '1c'
+    filename      : str or None
     """
     clf_names = [name for name, _ in BASE_CLFS]
     n_clfs    = len(BASE_CLFS)
 
     # Komorniczak: average over replications and folds
-    rc_matrix     = np.mean(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
-    rc_std_matrix = np.std(rc_raw,  axis=(1, 2))  # (n_measures, n_clfs)
+    rc_matrix        = np.mean(rc_raw,   axis=(1, 2))  # (n_measures, n_clfs)
+    rc_std_matrix    = np.std(rc_raw,    axis=(1, 2))  # (n_measures, n_clfs)
+    rc_median_matrix = np.median(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
 
-    # ABFS: raw and raw_temporal only
+    # ABFS: aggstats, raw and raw_temporal
     abfs_configs = [
         ('aggstats',     'Aggregate stats (v1.1)'),
         ('raw',          'Raw scores (v2.0)'),
         ('raw_temporal', 'Raw + temporal (v2.1)'),
     ]
-    abfs_matrix     = np.array([all_mean_ba[mf_type] for mf_type, _ in abfs_configs])
-    abfs_std_matrix = np.array([all_std_ba[mf_type]  for mf_type, _ in abfs_configs])
-
-    # right panel y-axis labels include mean std
-    abfs_row_labels = [
-        f'{label}\n(±{abfs_std_matrix[i].mean():.3f})'
-        for i, (_, label) in enumerate(abfs_configs)
-    ]
+    abfs_matrix        = np.array([all_mean_ba[mf_type]   for mf_type, _ in abfs_configs])
+    abfs_std_matrix    = np.array([all_std_ba[mf_type]    for mf_type, _ in abfs_configs])
+    abfs_median_matrix = np.array([all_median_ba[mf_type] for mf_type, _ in abfs_configs])
+    abfs_row_labels    = [label for _, label in abfs_configs]
 
     n_measures = len(MEASURES)
     n_abfs     = len(abfs_configs)
@@ -143,11 +140,13 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
     ax.imshow(rc_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
     for i in range(n_measures):
         for j in range(n_clfs):
-            val = rc_matrix[i, j]
-            std = rc_std_matrix[i, j]
+            val    = rc_matrix[i, j]
+            std    = rc_std_matrix[i, j]
+            median = rc_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
-                fontsize=8, color=txt_color, linespacing=1.4)
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
+                ha='center', va='center', fontsize=7,
+                color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=9)
     ax.set_yticks(range(n_measures))
@@ -157,13 +156,16 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
     # ── right: ABFS ────────────────────────────────────────────
     ax = axes[1]
     im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
-    ax.set_ylim(n_abfs - 0.5, -0.5)  # tight to actual number of rows
+    ax.set_ylim(n_abfs - 0.5, -0.5)
     for i in range(n_abfs):
         for j in range(n_clfs):
-            val = abfs_matrix[i, j]
+            val    = abfs_matrix[i, j]
+            std    = abfs_std_matrix[i, j]
+            median = abfs_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}', ha='center', va='center',
-                fontsize=8, color=txt_color)
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
+                ha='center', va='center', fontsize=6,
+                color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=9)
     ax.set_yticks(range(n_abfs))
