@@ -145,7 +145,7 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
             median = rc_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
             ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
-                ha='center', va='center', fontsize=7,
+                ha='center', va='center', fontsize=9,
                 color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=9)
@@ -164,7 +164,7 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
             median = abfs_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
             ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
-                ha='center', va='center', fontsize=6,
+                ha='center', va='center', fontsize=9,
                 color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=9)
