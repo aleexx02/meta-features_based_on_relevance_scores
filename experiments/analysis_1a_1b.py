@@ -352,7 +352,7 @@ if RUN_VARIANCE:
             ax.set_title(f'Performance variance - {mf_label} - {drift_type} drift - experiment [{EXP}]')
             ax.set_xticks(x + width * 2)
             ax.set_xticklabels([f'Rep {i+1}\n(seed={RANDOM_STATES[i]})' for i in range(N_REPLICATIONS)], fontsize=8)
-            ax.legend(fontsize=9)
+            ax.legend(fontsize=9, bbox_to_anchor=(1.01, 1), loc='upper left', borderaxespad=0)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'variance_{mf_type}_{drift_type}.png')
             fig.savefig(fname, dpi=150)
