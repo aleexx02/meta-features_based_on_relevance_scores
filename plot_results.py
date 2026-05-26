@@ -97,86 +97,75 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
 
     Parameters
     ----------
-    all_mean_ba   : dict  {mf_type: np.ndarray (n_clfs,)}
-    all_std_ba    : dict  {mf_type: np.ndarray (n_clfs,)}
-    all_median_ba : dict  {mf_type: np.ndarray (n_clfs,)}
-    rc_raw        : np.ndarray, shape (n_measures, n_replications, n_folds, n_clfs)
-    MEASURES      : list of str
-    BASE_CLFS     : list of (name, clf)
-    drift_type    : str
-    n_concepts    : int
-    FIGURES_DIR   : str
-    exp_label     : str  e.g. '1a', '1b', '1c'
-    filename      : str or None
+    all_mean_ba: dict  {mf_type: np.ndarray (n_clfs,)}
+    all_std_ba: dict  {mf_type: np.ndarray (n_clfs,)}
+    all_median_ba: dict  {mf_type: np.ndarray (n_clfs,)}
+    rc_raw: np.ndarray, shape (n_measures, n_replications, n_folds, n_clfs)
+    MEASURES: list of str
+    BASE_CLFS: list of (name, clf)
+    drift_type: str
+    n_concepts: int
+    FIGURES_DIR: str
+    exp_label: str  e.g. '1a', '1b', '1c'
+    filename: str or None
     """
     clf_names = [name for name, _ in BASE_CLFS]
-    n_clfs    = len(BASE_CLFS)
+    n_clfs = len(BASE_CLFS)
 
     # Komorniczak: average over replications and folds
-    rc_matrix        = np.mean(rc_raw,   axis=(1, 2))  # (n_measures, n_clfs)
-    rc_std_matrix    = np.std(rc_raw,    axis=(1, 2))  # (n_measures, n_clfs)
+    rc_matrix = np.mean(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
+    rc_std_matrix = np.std(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
     rc_median_matrix = np.median(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
 
-    # ABFS: aggstats, raw and raw_temporal
-    abfs_configs = [
-        ('aggstats',     'Aggregate stats (v1.1)'),
-        ('raw',          'Raw scores (v2.0)'),
-        ('raw_temporal', 'Raw + temporal (v2.1)'),
-    ]
-    abfs_matrix        = np.array([all_mean_ba[mf_type]   for mf_type, _ in abfs_configs])
-    abfs_std_matrix    = np.array([all_std_ba[mf_type]    for mf_type, _ in abfs_configs])
+    # ABFS 
+    abfs_configs = [('aggstats', 'Aggregate stats (v1.1)'), ('raw', 'Raw scores (v2.0)'), ('raw_temporal', 'Raw + temporal (v2.1)')]
+
+    abfs_matrix = np.array([all_mean_ba[mf_type] for mf_type, _ in abfs_configs])
+    abfs_std_matrix = np.array([all_std_ba[mf_type] for mf_type, _ in abfs_configs])
     abfs_median_matrix = np.array([all_median_ba[mf_type] for mf_type, _ in abfs_configs])
-    abfs_row_labels    = [label for _, label in abfs_configs]
+    abfs_row_labels = [label for _, label in abfs_configs]
 
     n_measures = len(MEASURES)
-    n_abfs     = len(abfs_configs)
+    n_abfs = len(abfs_configs)
 
-    fig, axes = plt.subplots(
-        1, 2, figsize=(22, max(5, n_measures * 0.65)),
-        gridspec_kw={'width_ratios': [3, 1.5]})
+    fig, axes = plt.subplots(1, 2, figsize=(26, max(5, n_measures * 0.75)), gridspec_kw={'width_ratios': [3, 1.5]})
 
-    # ── left: Komorniczak ──────────────────────────────────────
+    # Left heatmap: Komorniczak 
     ax = axes[0]
     ax.imshow(rc_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
     for i in range(n_measures):
         for j in range(n_clfs):
-            val    = rc_matrix[i, j]
-            std    = rc_std_matrix[i, j]
+            val = rc_matrix[i, j]
+            std = rc_std_matrix[i, j]
             median = rc_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
-                ha='center', va='center', fontsize=9,
-                color=txt_color, linespacing=1.4)
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}', ha='center', va='center', fontsize=10, color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
-    ax.set_xticklabels(clf_names, fontsize=9)
+    ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(n_measures))
-    ax.set_yticklabels(MEASURES, fontsize=9)
-    ax.set_title('Komorniczak meta-features - balanced accuracy', fontsize=10)
+    ax.set_yticklabels(MEASURES, fontsize=10)
+    ax.set_title('Komorniczak meta-features - balanced accuracy', fontsize=11)
 
-    # ── right: ABFS ────────────────────────────────────────────
+    # Right heatmap: ABFS
     ax = axes[1]
     im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
     ax.set_ylim(n_abfs - 0.5, -0.5)
     for i in range(n_abfs):
         for j in range(n_clfs):
-            val    = abfs_matrix[i, j]
-            std    = abfs_std_matrix[i, j]
+            val = abfs_matrix[i, j]
+            std = abfs_std_matrix[i, j]
             median = abfs_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
-                ha='center', va='center', fontsize=9,
-                color=txt_color, linespacing=1.4)
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',ha='center', va='center', fontsize=10,color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
-    ax.set_xticklabels(clf_names, fontsize=9)
+    ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(n_abfs))
-    ax.set_yticklabels(abfs_row_labels, fontsize=9)
-    ax.set_title('ABFS meta-features - balanced accuracy', fontsize=10)
+    ax.set_yticklabels(abfs_row_labels, fontsize=10)
+    ax.set_title('ABFS meta-features - balanced accuracy', fontsize=11)
 
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
 
-    fig.suptitle(
-        f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',
-        fontsize=11)
+    fig.suptitle(f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',fontsize=11)
     plt.tight_layout()
 
     if filename is None:
