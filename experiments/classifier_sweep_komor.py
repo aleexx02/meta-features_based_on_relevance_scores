@@ -32,6 +32,14 @@
 #   Useful when the number of concepts is large and the random baseline is very low.
 
 
+# Key difference from classifier_sweep_prequential.py:
+# Here, the entire meta-dataset is split into train/test folds and the
+# classifier is trained on all training windows at once (batch training).
+# Each sample presented to the classifier is one meta-feature vector,
+# extracted from a 200-instance chunk of the stream. Windows can be shuffled (Experiment 1a) or kept
+# in temporal order (Experiment 1b), but in both cases the classifier
+# sees all training windows together before making any predictions.
+
 
 import numpy as np
 from sklearn.naive_bayes import GaussianNB

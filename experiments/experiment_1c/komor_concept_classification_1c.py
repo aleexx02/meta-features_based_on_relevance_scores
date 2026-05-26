@@ -46,7 +46,7 @@ import sys
 sys.path.append('..')
 sys.path.append('../..')
 
-from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_RIVER
+from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
@@ -62,7 +62,7 @@ MEASURES = ['clustering', 'complexity', 'concept', 'general', 'info-theory',
 
 DRIFT_TYPES = [(0, 'sudden',  21), (1, 'gradual', 25)]
 
-clf_names = [name for name, _ in BASE_CLFS_RIVER]
+clf_names = [name for name, _ in BASE_CLFS_PREQUENTIAL]
 
 
 for drift_idx, drift_type, n_concepts in DRIFT_TYPES:

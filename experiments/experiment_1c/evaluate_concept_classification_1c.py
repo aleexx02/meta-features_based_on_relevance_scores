@@ -40,7 +40,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures,
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal)
-from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_RIVER
+from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 from plot_results import plot_heatmap_balanced_accuracy_comparison
 
 
@@ -62,7 +62,7 @@ MF_CONFIGS = [('aggstats', 'Aggregate stats (v1.1)', 8), ('raw', 'Raw scores (v2
 
 DRIFT_CONFIGS = [('sudden', 20, 9999), ('gradual', 6, 5)]
 
-clf_names = [name for name, _ in BASE_CLFS_RIVER]
+clf_names = [name for name, _ in BASE_CLFS_PREQUENTIAL]
 
 np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
@@ -255,7 +255,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
         rc_raw = np.load(rc_path)  # shape: (n_measures, n_replications, n_windows, n_clfs)
         plot_heatmap_balanced_accuracy_comparison(
             all_mean_ba, all_std_ba,
-            rc_raw, MEASURES, BASE_CLFS_RIVER,
+            rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,
             drift_type, n_concepts, FIGURES_DIR,
             exp_label='1c',
             filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')

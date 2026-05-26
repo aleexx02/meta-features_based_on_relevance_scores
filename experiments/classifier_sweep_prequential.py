@@ -13,6 +13,16 @@
 # in results can be attributed to the meta-features themselves
 # rather than to a difference in the evaluation protocol.
 #
+# Classifiers:
+#   - GNB: River GaussianNB
+#   - KNN: River KNNClassifier
+#   - PAC: River PAClassifier (Passive-Aggressive, linear margin-based)
+#   - HT:  River HoeffdingTreeClassifier
+#   - MLP: sklearn MLPClassifier with partial_fit for incremental updates
+#          Note: River does not provide an MLPClassifier for classification.
+#          sklearn MLP with partial_fit allows direct comparison with the
+#          MLP used in experiments 1a/1b.
+
 # Evaluation protocol:
 #   For each window t:
 #     1. Test: predict concept label using current classifier
@@ -21,25 +31,64 @@
 #   Metrics: cumulative balanced accuracy, macro F1, Cohen's Kappa.
 #
 # Returns per-window trajectories of shape (n_windows, n_clfs).
-# ============================================================
+
+# Key difference from classifier_sweep_komor.py:
+# Here, windows are processed one by one in temporal order. For each
+# window, the classifier first predicts the concept label (test), then
+# updates itself with the true label (train). The classifier is never
+# retrained from scratch, it accumulates knowledge incrementally.
+# Each sample presented to the classifier is one meta-feature vector,
+# extracted from a 200-instance chunk of the stream, processed
+# sequentially in temporal order.
+# This is closer to a real stream deployment scenario where only past
+# windows are available at training time.
+
 
 import numpy as np
 from river import naive_bayes, neighbors, linear_model, tree, metrics
+from sklearn.neural_network import MLPClassifier
 
 
-BASE_CLFS_RIVER = [
-    ('GNB', lambda: naive_bayes.GaussianNB()),
-    ('KNN', lambda: neighbors.KNNClassifier()),
-    ('PAC', lambda: linear_model.PAClassifier()),
-    ('HT',  lambda: tree.HoeffdingTreeClassifier()),
-    ('LR',  lambda: linear_model.LogisticRegression()),
+class SklearnMLPWrapper:
+    """
+    Wraps sklearn MLPClassifier to expose the same
+    predict_one / learn_one interface as River classifiers,
+    using partial_fit for incremental updates.
+    """
+    def __init__(self, classes, random_state=11313):
+        self.clf = MLPClassifier(random_state=random_state)
+        self.classes = classes
+        self.fitted = False
+
+    def predict_one(self, x_dict):
+        if not self.fitted:
+            return None  # cold start
+        x = np.array([x_dict[i] for i in range(len(x_dict))]).reshape(1, -1)
+        return int(self.clf.predict(x)[0])
+
+    def learn_one(self, x_dict, y_true):
+        x = np.array([x_dict[i] for i in range(len(x_dict))]).reshape(1, -1)
+        self.clf.partial_fit(x, [y_true], classes=self.classes)
+        self.fitted = True
+
+
+BASE_CLFS_PREQUENTIAL = [
+    ('GNB', lambda classes: naive_bayes.GaussianNB()),
+    ('KNN', lambda classes: neighbors.KNNClassifier()),
+    ('PAC', lambda classes: linear_model.PAClassifier()),
+    ('HT',  lambda classes: tree.HoeffdingTreeClassifier()),
+    ('MLP', lambda classes: SklearnMLPWrapper(classes)),
 ]
 
-def make_river_clfs():
-    """Instantiate a fresh set of River classifiers."""
-    return [(name, clf()) for name, clf in BASE_CLFS_RIVER]
+def make_prequential_clfs(classes):
+    """Instantiate a fresh set of classifiers."""
+    return [(name, clf_fn(classes)) for name, clf_fn in BASE_CLFS_PREQUENTIAL]
 
 
+
+# ============================================================
+#  PREQUENTIAL SWEEP
+# ============================================================
 def run_prequential_sweep(X, y):
     """
     Run the prequential classifier sweep on a meta-dataset.
@@ -54,39 +103,28 @@ def run_prequential_sweep(X, y):
     Returns
     -------
     mean_ba : np.ndarray, shape (n_clfs,)
-        Mean cumulative balanced accuracy per classifier.
-    std_ba : np.ndarray, shape (n_clfs,)
-        Std cumulative balanced accuracy per classifier.
+    std_ba  : np.ndarray, shape (n_clfs,)
     traj_ba : np.ndarray, shape (n_windows, n_clfs)
-        Per-window cumulative balanced accuracy trajectory.
     mean_f1 : np.ndarray, shape (n_clfs,)
-        Mean cumulative macro F1 per classifier.
-    std_f1 : np.ndarray, shape (n_clfs,)
-        Std cumulative macro F1 per classifier.
+    std_f1  : np.ndarray, shape (n_clfs,)
     traj_f1 : np.ndarray, shape (n_windows, n_clfs)
-        Per-window cumulative macro F1 trajectory.
     mean_kappa : np.ndarray, shape (n_clfs,)
-        Mean cumulative Cohen's Kappa per classifier.
-    std_kappa : np.ndarray, shape (n_clfs,)
-        Std cumulative Cohen's Kappa per classifier.
+    std_kappa  : np.ndarray, shape (n_clfs,)
     traj_kappa : np.ndarray, shape (n_windows, n_clfs)
-        Per-window cumulative Cohen's Kappa trajectory.
     """
-    # preprocessing
     X = X.copy().astype(float)
     X[np.isnan(X)] = 1
     X[np.isinf(X)] = 1
 
-    clfs      = make_river_clfs()
+    classes   = list(np.unique(y))
+    clfs      = make_prequential_clfs(classes)
     n_windows = len(X)
     n_clfs    = len(clfs)
-    classes   = list(np.unique(y))
 
     traj_ba    = np.zeros((n_windows, n_clfs))
     traj_f1    = np.zeros((n_windows, n_clfs))
     traj_kappa = np.zeros((n_windows, n_clfs))
 
-    # one cumulative metric object per classifier
     ba_metrics    = [metrics.BalancedAccuracy() for _ in clfs]
     f1_metrics    = [metrics.MacroF1()          for _ in clfs]
     kappa_metrics = [metrics.CohenKappa()       for _ in clfs]
@@ -99,7 +137,7 @@ def run_prequential_sweep(X, y):
             # test
             y_pred = clf.predict_one(x_dict)
             if y_pred is None:
-                y_pred = classes[0]  # cold start: predict first class
+                y_pred = classes[0]  # cold start
 
             ba_metrics[clf_id].update(y_true, y_pred)
             f1_metrics[clf_id].update(y_true, y_pred)
