@@ -118,6 +118,7 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
 
     # ABFS: raw and raw_temporal only
     abfs_configs = [
+        ('aggstats',     'Aggregate stats (v1.1)'),
         ('raw',          'Raw scores (v2.0)'),
         ('raw_temporal', 'Raw + temporal (v2.1)'),
     ]
@@ -156,8 +157,7 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
     # ── right: ABFS ────────────────────────────────────────────
     ax = axes[1]
     im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
-    # force same y extent as left panel so cells are same height
-    ax.set_ylim(n_measures - 0.5, -0.5)
+    ax.set_ylim(n_abfs - 0.5, -0.5)  # tight to actual number of rows
     for i in range(n_abfs):
         for j in range(n_clfs):
             val = abfs_matrix[i, j]
@@ -170,7 +170,8 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, rc_raw, M
     ax.set_yticklabels(abfs_row_labels, fontsize=9)
     ax.set_title('ABFS meta-features - balanced accuracy', fontsize=10)
 
-    plt.colorbar(im, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
+    fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
+
     fig.suptitle(
         f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',
         fontsize=11)
