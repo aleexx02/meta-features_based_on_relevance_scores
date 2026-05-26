@@ -334,14 +334,18 @@ if RUN_VARIANCE:
                 print(f"Warning: {path} not found, skipping.")
                 continue
 
-            clf_res = np.load(path)  # (n_replications, n_folds, n_clfs)
-            rep_means = np.mean(clf_res, axis=1)  # (n_replications, n_clfs)
+            clf_res = np.load(path) # (n_replications, n_folds, n_clfs)
+            rep_means = np.mean(clf_res, axis=1) # (n_replications, n_clfs)
+            rep_medians = np.median(clf_res, axis=1) # (n_replications, n_clfs)
+            rep_stds = np.std(clf_res, axis=1) # (n_replications, n_clfs)
 
             fig, ax = plt.subplots(figsize=(10, 4))
             x = np.arange(N_REPLICATIONS)
             width = 0.15
             for clf_id, (name, _) in enumerate(BASE_CLFS):
-                ax.bar(x + clf_id * width, rep_means[:, clf_id], width=width, label=name, alpha=0.8)
+                ax.bar(x + clf_id * width, rep_means[:, clf_id], width=width, label=name, alpha=0.6)
+                ax.errorbar(x + clf_id * width, rep_means[:, clf_id], yerr=rep_stds[:, clf_id], fmt='none', color='black', capsize=3, linewidth=1)
+                ax.scatter(x + clf_id * width, rep_medians[:, clf_id], marker='_', color='black', s=100, zorder=5)
             ax.axhline(y=1/n_concepts, color='red', linestyle='--', linewidth=1.0, label='random baseline')
             ax.set_xlabel('Replication')
             ax.set_ylabel('Mean balanced accuracy')
@@ -426,7 +430,7 @@ if RUN_METRICS:
             if os.path.exists(rc_path):
                 rc_raw = np.load(rc_path)  # (n_measures, n_replications, n_folds, n_clfs)
                 rc_mean = np.mean(rc_raw[STATISTICAL_IDX], axis=(0, 1))
-                rc_std  = np.std(rc_raw[STATISTICAL_IDX], axis=(0, 1))
+                rc_std = np.std(rc_raw[STATISTICAL_IDX], axis=(0, 1))
             else:
                 rc_mean = None
                 print(f"Warning: {rc_path} not found")
@@ -438,18 +442,20 @@ if RUN_METRICS:
                     print(f"Warning: {path} not found, skipping.")
                     continue
                 raw = np.load(path)
-                mean_vals = np.mean(raw, axis=(0, 1))
-                std_vals  = np.std(raw,  axis=(0, 1))
-                all_rows.append((mf_display_label, mean_vals, std_vals))
+                mean_vals = np.mean(raw,   axis=(0, 1))
+                std_vals = np.std(raw,    axis=(0, 1))
+                median_vals = np.median(raw, axis=(0, 1))
+                all_rows.append((mf_display_label, mean_vals, std_vals, median_vals))
 
             if rc_mean is not None:
-                all_rows.append(('Komorniczak (statistical)', rc_mean, rc_std))
-
+                rc_median = np.median(rc_raw[STATISTICAL_IDX], axis=(0, 1))
+                all_rows.append(('Komorniczak (statistical)', rc_mean, rc_std, rc_median))
             if not all_rows:
                 continue
 
-            matrix     = np.array([r[1] for r in all_rows])
+            matrix = np.array([r[1] for r in all_rows])
             matrix_std = np.array([r[2] for r in all_rows])
+            matrix_median = np.array([r[3] for r in all_rows])
             row_labels = [r[0] for r in all_rows]
 
             print(f"\n{metric_label} - {drift_type} drift - experiment [{EXP}]")
@@ -458,7 +464,7 @@ if RUN_METRICS:
                 print(f"{name:>10s}", end='')
             print()
             print(f"{'-' * (25 + 10 * len(clf_names))}")
-            for label, mean_vals, _ in all_rows:
+            for label, mean_vals, _, __ in all_rows:
                 print(f"{label:<25s}", end='')
                 for v in mean_vals:
                     print(f"{v:>10.3f}", end='')
@@ -466,13 +472,15 @@ if RUN_METRICS:
 
             fig, ax = plt.subplots(figsize=(10, max(3, len(all_rows) * 0.9)))
             im = ax.imshow(matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
+            
             for i in range(len(all_rows)):
                 for j in range(len(BASE_CLFS)):
                     val = matrix[i, j]
                     std = matrix_std[i, j]
+                    median = matrix_median[i, j]
                     txt_color = 'white' if val > 0.6 else 'black'
-                    ax.text(j, i, f'{val:.3f}\n(±{std:.3f})', ha='center', va='center',
-                        fontsize=8, color=txt_color, linespacing=1.4)
+                    ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}', ha='center', va='center', fontsize=7, color=txt_color, linespacing=1.4)
+            
             ax.set_xticks(range(len(BASE_CLFS)))
             ax.set_xticklabels(clf_names, fontsize=9)
             ax.set_yticks(range(len(all_rows)))
