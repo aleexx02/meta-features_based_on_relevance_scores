@@ -139,12 +139,12 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
             std = rc_std_matrix[i, j]
             median = rc_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}', ha='center', va='center', fontsize=10, color=txt_color, linespacing=1.4)
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}', ha='center', va='center', fontsize=11, color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(n_measures))
     ax.set_yticklabels(MEASURES, fontsize=10)
-    ax.set_title('Komorniczak meta-features - balanced accuracy', fontsize=11)
+    ax.set_title('Komorniczak meta-features - balanced accuracy', fontsize=12)
 
     # Right heatmap: ABFS
     ax = axes[1]
@@ -156,12 +156,12 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
             std = abfs_std_matrix[i, j]
             median = abfs_median_matrix[i, j]
             txt_color = 'white' if val > 0.6 else 'black'
-            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',ha='center', va='center', fontsize=10,color=txt_color, linespacing=1.4)
+            ax.text(j, i, f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',ha='center', va='center', fontsize=11,color=txt_color, linespacing=1.4)
     ax.set_xticks(range(n_clfs))
     ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(n_abfs))
     ax.set_yticklabels(abfs_row_labels, fontsize=10)
-    ax.set_title('ABFS meta-features - balanced accuracy', fontsize=11)
+    ax.set_title('ABFS meta-features - balanced accuracy', fontsize=12)
 
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
 
