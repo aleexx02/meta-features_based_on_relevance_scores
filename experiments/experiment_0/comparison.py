@@ -1,11 +1,22 @@
 
-# Compare E2 clf.npy results against Figure 12 of Komorniczak paper
+# ============================================================
+# Experiment 0: Pipeline Verification - Step 1
+#
+# Compares E2 clf.npy results against Figure 12 of Komorniczak paper
 # Produces a side-by-side heatmap for sudden and gradual drift.
 # Is their reported performance of their meta-features (Figure 12) consistent with the results we get when we run their code?
-
-
+#
 # RUN: their meta-features evaluated with their protocol (E2 original evaluation script)
 # COMPARISON: their meta-features evaluated with their protocol (E2) vs Figure 12 of their paper (reported values for their meta-features on original evaluation script)
+
+#
+# If the difference is small, their pipeline is confirmed to
+# run correctly on our machine. Small differences are expected
+# due to the random seed fix applied to E1_extract_synthetic.py.
+#
+# Output: 'compare_expected_vs_actual_results_komorniczak_synthetic.png' saved to results/experiment_0/figures/
+# ============================================================
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +25,7 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))  # go up two levels to project root
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results') # folder where the results from their code are stored (after running E2)
-SAVE_PATH = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a', 'figures') # folder where the comparison figure will be saved
+SAVE_PATH = os.path.join(PROJECT_ROOT, 'results', 'experiment_0', 'figures') # folder where the comparison figure will be saved
 os.makedirs(SAVE_PATH, exist_ok=True)
 
 

@@ -27,9 +27,10 @@
 #      - Includes Komorniczak (statistical) as baseline
 #
 # Inputs (from results/experiment_{exp}/):
-#   clf_ba_*.npy, clf_f1_*.npy, clf_kappa_*.npy
-#   clf_replication_ba_*.npy, clf_replication_f1_*.npy,
-#   clf_replication_kappa_*.npy
+#   For 1a: clf_replication_ba_*.npy, clf_replication_f1_*.npy,
+#            clf_replication_kappa_*.npy (from replication_check_1a.py)
+#   For 1b: clf_komor_concept_classif_ba_*.npy, etc.
+#            (from komor_concept_classification_1b.py)
 #
 # Outputs saved to results/experiment_{exp}/figures/analysis/
 # ============================================================
@@ -426,11 +427,17 @@ if RUN_METRICS:
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for metric, metric_label in [('f1', 'F1'), ('kappa', 'Kappa')]:
 
-            rc_path = os.path.join(RESULTS_DIR, f'clf_replication_{metric}_{drift_type}.npy')
+            # Komorniczak baseline: for 1a use replication files (shuffled CV),
+            # for 1b use komor_concept_classif files (no-shuffle CV)
+            if EXP == '1a':
+                rc_path = os.path.join(RESULTS_DIR, f'clf_replication_{metric}_{drift_type}.npy')
+            else:  # 1b
+                rc_path = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_{metric}_{drift_type}.npy')
+
             if os.path.exists(rc_path):
-                rc_raw = np.load(rc_path)  # (n_measures, n_replications, n_folds, n_clfs)
+                rc_raw  = np.load(rc_path)  # (n_measures, n_replications, n_folds, n_clfs)
                 rc_mean = np.mean(rc_raw[STATISTICAL_IDX], axis=(0, 1))
-                rc_std = np.std(rc_raw[STATISTICAL_IDX], axis=(0, 1))
+                rc_std  = np.std(rc_raw[STATISTICAL_IDX],  axis=(0, 1))
             else:
                 rc_mean = None
                 print(f"Warning: {rc_path} not found")
