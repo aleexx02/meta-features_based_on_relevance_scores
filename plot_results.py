@@ -165,7 +165,7 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
 
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
 
-    fig.suptitle(f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',fontsize=11)
+    fig.suptitle(f'Komorniczak vs ABFS - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',fontsize=15)
     plt.tight_layout()
 
     if filename is None:
