@@ -87,10 +87,8 @@ warnings.filterwarnings('ignore')
 sys.path.append('..') # experiments/
 sys.path.append('../..') # project root
 
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
- 
+
 from strlearn.streams import StreamGenerator
 from abfs.abfs_implementation import ABFS_match
 from metafeatures.mf_extraction import extract_metafeatures_raw
@@ -350,7 +348,7 @@ def extract_komor_metafeatures(random_state, drift_type, n_drifts,
         concept_labels.append(concept_labels_all[window_counter])
         window_counter += 1
 
-        
+
     # pad to uniform width (pymfe can return varying lengths per chunk)
     lengths    = [len(f) for f in meta_features]
     target_len = max(set(lengths), key=lengths.count)
