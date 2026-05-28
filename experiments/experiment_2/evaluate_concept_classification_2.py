@@ -330,10 +330,11 @@ def extract_komor_metafeatures(random_state, drift_type, n_drifts,
     concept_labels = []
  
     stream.reset()
-    chunks = list(stream)
- 
-    for window_counter, (X_chunk, y_chunk) in enumerate(chunks):
+    window_counter = 0
+
+    for X_chunk, y_chunk in stream:   # one chunk at a time — no OOM
         if window_counter < WARMUP_WINDOWS:
+            window_counter += 1
             continue
  
         try:
@@ -347,7 +348,9 @@ def extract_komor_metafeatures(random_state, drift_type, n_drifts,
  
         meta_features.append(ft_vals)
         concept_labels.append(concept_labels_all[window_counter])
- 
+        window_counter += 1
+
+        
     # pad to uniform width (pymfe can return varying lengths per chunk)
     lengths    = [len(f) for f in meta_features]
     target_len = max(set(lengths), key=lengths.count)
