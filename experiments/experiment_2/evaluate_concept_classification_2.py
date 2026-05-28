@@ -2,7 +2,7 @@
 # ==============================================================================
 # Experiment 2: Stream Configuration Sensitivity
 #
-# Tests how our ABFS-based meta-features (raw scores, v2.0) and
+# Tests how our ABFS-based meta-features (raw scores, v2.0 and raw + temporal, v2.1) and
 # Komorniczak statistical meta-features respond to changes in:
 #   - chunk_size: 100, 200, 500, 1000
 #   - n_informative: 3, 5, 10, 15 (n_features fixed at 20)
@@ -23,7 +23,7 @@
 #   - Prequential (Experiment 1c protocol):
 #       test-then-train per window, 5 replications
 #
-# Meta-features: raw scores (v2.0) only.
+# Meta-features: raw scores (v2.0) and raw + temporal (v2.1).
 #
 # Komorniczak baseline: statistical measure group, re-extracted
 # on the same streams using pymfe, evaluated under both protocols.
@@ -46,30 +46,36 @@
 #     {protocol}_{features}_{metric}_chunk{cs}_ninf{ni}_{drift}.npy
 #       where:
 #         - protocol: 'cv' or 'preq'
-#         - features: 'abfs' or 'komor'
+#         - features: 'ABFS_raw' or 'ABFS_temporal' or 'komor'
 #         - metric: 'ba', 'f1', or 'kappa'
 #         - cs: chunk_size (100, 200, 500, 1000)
 #         - ni: n_informative (3, 5, 10, 15)
 #         - drift: 'sudden' or 'gradual'
 #
 #   CV protocol (shape: n_replications x n_folds x n_clfs):
-#     cv_abfs_ba_chunk{cs}_ninf{ni}_{drift}.npy
-#     cv_abfs_f1_chunk{cs}_ninf{ni}_{drift}.npy
-#     cv_abfs_kappa_chunk{cs}_ninf{ni}_{drift}.npy
+#     cv_ABFS_raw_ba_chunk{cs}_ninf{ni}_{drift}.npy
+#     cv_ABFS_raw_f1_chunk{cs}_ninf{ni}_{drift}.npy
+#     cv_ABFS_raw_kappa_chunk{cs}_ninf{ni}_{drift}.npy
+#     cv_ABFS_temporal_ba_chunk{cs}_ninf{ni}_{drift}.npy
+#     cv_ABFS_temporal_f1_chunk{cs}_ninf{ni}_{drift}.npy
+#     cv_ABFS_temporal_kappa_chunk{cs}_ninf{ni}_{drift}.npy
 #     cv_komor_ba_chunk{cs}_ninf{ni}_{drift}.npy
 #     cv_komor_f1_chunk{cs}_ninf{ni}_{drift}.npy
 #     cv_komor_kappa_chunk{cs}_ninf{ni}_{drift}.npy
 #
 #   Prequential protocol (shape: n_replications x n_windows x n_clfs):
-#     preq_abfs_ba_chunk{cs}_ninf{ni}_{drift}.npy
-#     preq_abfs_f1_chunk{cs}_ninf{ni}_{drift}.npy
-#     preq_abfs_kappa_chunk{cs}_ninf{ni}_{drift}.npy
+#     preq_ABFS_raw_ba_chunk{cs}_ninf{ni}_{drift}.npy
+#     preq_ABFS_raw_f1_chunk{cs}_ninf{ni}_{drift}.npy
+#     preq_ABFS_raw_kappa_chunk{cs}_ninf{ni}_{drift}.npy
+#     preq_ABFS_temporal_ba_chunk{cs}_ninf{ni}_{drift}.npy
+#     preq_ABFS_temporal_f1_chunk{cs}_ninf{ni}_{drift}.npy
+#     preq_ABFS_temporal_kappa_chunk{cs}_ninf{ni}_{drift}.npy
 #     preq_komor_ba_chunk{cs}_ninf{ni}_{drift}.npy
 #     preq_komor_f1_chunk{cs}_ninf{ni}_{drift}.npy
 #     preq_komor_kappa_chunk{cs}_ninf{ni}_{drift}.npy
 #
-#   Total: 16 configs x 2 drift types x 6 files per protocol x 2 protocols 
-#                               = 384 .npy files
+#   Total: 16 configs x 2 drift types x 9 files per protocol (3 metrics * 3 features) x 2 protocols 
+#                               = 576 .npy files
 # ==============================================================================
 
 
@@ -84,7 +90,7 @@ sys.path.append('../..') # project root
  
 from strlearn.streams import StreamGenerator
 from abfs.abfs_implementation import ABFS_match
-from metafeatures.mf_extraction import extract_metafeatures_raw
+from metafeatures.mf_extraction import (extract_metafeatures_raw, extract_metafeatures_raw_temporal)
 from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 from pymfe.mfe import MFE
@@ -168,10 +174,10 @@ def make_tag(chunk_size, n_informative, drift_type):
  
  
 def already_done(tag):
-    """Return True if all 12 result files for this cell exist."""
-    prefixes = ['cv_abfs_ba', 'cv_abfs_f1', 'cv_abfs_kappa', 'cv_komor_ba',    'cv_komor_f1',    'cv_komor_kappa',
-        'preq_abfs_ba', 'preq_abfs_f1', 'preq_abfs_kappa',
-        'preq_komor_ba', 'preq_komor_f1', 'preq_komor_kappa']
+    """Return True if all 18 result files for this cell exist."""
+    prefixes = ['cv_ABFS_raw_ba', 'cv_ABFS_raw_f1', 'cv_ABFS_raw_kappa', 'cv_ABFS_temporal_ba', 'cv_ABFS_temporal_f1', 'cv_ABFS_temporal_kappa',
+        'cv_komor_ba', 'cv_komor_f1', 'cv_komor_kappa', 'preq_ABFS_raw_ba', 'preq_ABFS_raw_f1', 'preq_ABFS_raw_kappa',
+        'preq_ABFS_temporal_ba', 'preq_ABFS_temporal_f1', 'preq_ABFS_temporal_kappa', 'preq_komor_ba', 'preq_komor_f1', 'preq_komor_kappa']
     return all(os.path.exists(os.path.join(RESULTS_DIR, f'{p}_{tag}.npy')) for p in prefixes)
  
  
@@ -189,12 +195,13 @@ def save(array, prefix, tag):
  
 def extract_abfs_metafeatures(random_state, drift_type, n_drifts, concept_sigmoid_spacing, chunk_size, n_informative):
     """
-    Run ABFS on one stream and return raw score meta-features (v2.0).
+    Run ABFS on one stream and return v2.0 and v2.1 meta-features.
  
     Returns
     -------
-    X : np.ndarray, shape (N_CHUNKS - WARMUP_WINDOWS, N_FEATURES)
-    y : np.ndarray, shape (N_CHUNKS - WARMUP_WINDOWS,)
+    X_raw : np.ndarray, shape (N_CHUNKS - WARMUP_WINDOWS, N_FEATURES)
+    X_temporal : np.ndarray, shape (N_CHUNKS - WARMUP_WINDOWS, N_FEATURES + 2)
+    y : np.ndarray, shape (N_CHUNKS - WARMUP_WINDOWS)
     """
     config = dict(
         n_drifts = n_drifts,
@@ -210,7 +217,7 @@ def extract_abfs_metafeatures(random_state, drift_type, n_drifts, concept_sigmoi
  
     stream = StreamGenerator(**config)
  
-    # pass 1: run ABFS to trigger concept_selector population
+    # pass 1: concept labels
     abfs = ABFS_match(
         n_features           = N_FEATURES,
         categorical_features = [],
@@ -233,7 +240,8 @@ def extract_abfs_metafeatures(random_state, drift_type, n_drifts, concept_sigmoi
         class_window_size    = chunk_size,
     )
  
-    meta_features  = []
+    mf_raw      = []
+    mf_temporal = []
     concept_labels = []
     wt_prev        = None
     window_counter = 0
@@ -247,17 +255,21 @@ def extract_abfs_metafeatures(random_state, drift_type, n_drifts, concept_sigmoi
         abfs.pop_drift_count()
  
         if window_counter >= WARMUP_WINDOWS:
-            meta_features.append(extract_metafeatures_raw(wt))
+            mf_raw.append(extract_metafeatures_raw(wt))
+            mf_temporal.append(extract_metafeatures_raw_temporal(wt, wt_prev))
             concept_labels.append(concept_labels_all[window_counter])
  
         wt_prev = wt
         window_counter += 1
- 
-    X = np.array(meta_features, dtype=float)
+    
+    def clean(arr):
+        a = np.array(arr, dtype=float)
+        a[np.isnan(a)] = 1
+        a[np.isinf(a)] = 1
+        return a
+    
     y = np.array(concept_labels)
-    X[np.isnan(X)] = 1
-    X[np.isinf(X)] = 1
-    return X, y
+    return clean(mf_raw), clean(mf_temporal), y
 
 
 # ============================================================
@@ -379,29 +391,35 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             print(f"{'='*70}")
  
             if already_done(tag):
-                print("  All 12 result files exist — skipping.")
+                print("  All 18 result files exist — skipping.")
                 continue
  
-            cv_abfs_ba     = []
-            cv_abfs_f1     = []
-            cv_abfs_kappa  = []
+            cv_raw_ba      = []
+            cv_raw_f1      = []
+            cv_raw_kappa      = []
+            cv_temp_ba     = []
+            cv_temp_f1     = []
+            cv_temp_kappa     = []
             cv_komor_ba    = []
-            cv_komor_f1    = []
-            cv_komor_kappa = []
+            cv_komor_f1    = [] 
+            cv_komor_kappa    = []
  
-            pr_abfs_ba     = []
-            pr_abfs_f1     = []
-            pr_abfs_kappa  = []
+            pr_raw_ba      = []
+            pr_raw_f1      = []
+            pr_raw_kappa      = []
+            pr_temp_ba     = []
+            pr_temp_f1     = []
+            pr_temp_kappa     = []
             pr_komor_ba    = []
             pr_komor_f1    = []
-            pr_komor_kappa = []
+            pr_komor_kappa    = []
  
             for rep_id, rs in enumerate(RANDOM_STATES):
                 print(f"\n  Replication {rep_id+1}/{N_REPLICATIONS} "
                       f"(seed={rs})...")
  
                 # --- feature extraction ---
-                X_abfs,  y_abfs  = extract_abfs_metafeatures(
+                X_raw, X_temp, y_abfs = extract_abfs_metafeatures(
                     rs, drift_type, n_drifts, concept_sigmoid_spacing,
                     chunk_size, n_informative)
  
@@ -410,65 +428,62 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
                     chunk_size, n_informative)
  
                 # --- shuffled CV ---
-                np.random.seed(1233)
-                _, _, rba, _, _, rf1, _, _, rk = run_classifier_sweep(
-                    X_abfs, y_abfs, shuffle_seed=None)
-                cv_abfs_ba.append(rba)
-                cv_abfs_f1.append(rf1)
-                cv_abfs_kappa.append(rk)
- 
-                np.random.seed(1233)
-                mba_k, _, rba, _, _, rf1, _, _, rk = run_classifier_sweep(
-                    X_komor, y_komor, shuffle_seed=None)
-                cv_komor_ba.append(rba)
-                cv_komor_f1.append(rf1)
-                cv_komor_kappa.append(rk)
- 
-                mba_a = np.mean(cv_abfs_ba[-1], axis=0)
-                print(f"    [CV   ABFS ] " + "  ".join(
-                    f"{n}={mba_a[i]:.3f}"
-                    for i, (n, _) in enumerate(BASE_CLFS)))
-                print(f"    [CV   Komor] " + "  ".join(
-                    f"{n}={mba_k[i]:.3f}"
-                    for i, (n, _) in enumerate(BASE_CLFS)))
+                for X, ba_list, f1_list, k_list, label in [
+                    (X_raw,   cv_raw_ba,   cv_raw_f1,   cv_raw_kappa,   'CV  v2.0 '),
+                    (X_temp,  cv_temp_ba,  cv_temp_f1,  cv_temp_kappa,  'CV  v2.1 '),
+                    (X_komor, cv_komor_ba, cv_komor_f1, cv_komor_kappa, 'CV  Komor'),
+                ]:
+                    np.random.seed(1233)
+                    mba, _, rba, _, _, rf1, _, _, rk = run_classifier_sweep(
+                        X, y_abfs if label != 'CV  Komor' else y_komor,
+                        shuffle_seed=None)
+                    ba_list.append(rba)
+                    f1_list.append(rf1)
+                    k_list.append(rk)
+                    print(f"    [{label}] " + "  ".join(
+                        f"{n}={mba[i]:.3f}"
+                        for i, (n, _) in enumerate(BASE_CLFS)))
+                    
  
                 # --- prequential ---
-                _, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(
-                    X_abfs, y_abfs)
-                pr_abfs_ba.append(tba)
-                pr_abfs_f1.append(tf1)
-                pr_abfs_kappa.append(tk)
+                for X, ba_list, f1_list, k_list, label in [
+                    (X_raw,   pr_raw_ba,   pr_raw_f1,   pr_raw_kappa,   'Preq v2.0'),
+                    (X_temp,  pr_temp_ba,  pr_temp_f1,  pr_temp_kappa,  'Preq v2.1'),
+                    (X_komor, pr_komor_ba, pr_komor_f1, pr_komor_kappa, 'Preq Komor'),
+                ]:
+                    mba, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(
+                        X, y_abfs if label != 'Preq Komor' else y_komor)
+                    ba_list.append(tba)
+                    f1_list.append(tf1)
+                    k_list.append(tk)
+                    print(f"    [{label}] " + "  ".join(
+                        f"{n}={tba[-1, i]:.3f}"
+                        for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
  
-                mba_k2, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(
-                    X_komor, y_komor)
-                pr_komor_ba.append(tba)
-                pr_komor_f1.append(tf1)
-                pr_komor_kappa.append(tk)
- 
-                print(f"    [Preq ABFS ] " + "  ".join(
-                    f"{n}={pr_abfs_ba[-1][-1, i]:.3f}"
-                    for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
-                print(f"    [Preq Komor] " + "  ".join(
-                    f"{n}={mba_k2[i]:.3f}"
-                    for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
- 
-            # --- save all 12 files for this cell ---
+
+            # --- save all 18 files for this cell ---
             # CV shape:         (n_replications, n_folds,   n_clfs)
             # Prequential shape: (n_replications, n_windows, n_clfs)
-            save(np.array(cv_abfs_ba),     'cv_abfs_ba',     tag)
-            save(np.array(cv_abfs_f1),     'cv_abfs_f1',     tag)
-            save(np.array(cv_abfs_kappa),  'cv_abfs_kappa',  tag)
-            save(np.array(cv_komor_ba),    'cv_komor_ba',    tag)
-            save(np.array(cv_komor_f1),    'cv_komor_f1',    tag)
-            save(np.array(cv_komor_kappa), 'cv_komor_kappa', tag)
+            save(np.array(cv_raw_ba),   'cv_ABFS_raw_ba',       tag)
+            save(np.array(cv_raw_f1),   'cv_ABFS_raw_f1',       tag)
+            save(np.array(cv_raw_kappa),'cv_ABFS_raw_kappa',    tag)
+            save(np.array(cv_temp_ba),  'cv_ABFS_temporal_ba',  tag)
+            save(np.array(cv_temp_f1),  'cv_ABFS_temporal_f1',  tag)
+            save(np.array(cv_temp_kappa),'cv_ABFS_temporal_kappa',tag)
+            save(np.array(cv_komor_ba), 'cv_komor_ba',          tag)
+            save(np.array(cv_komor_f1), 'cv_komor_f1',          tag)
+            save(np.array(cv_komor_kappa),'cv_komor_kappa',     tag)
  
-            save(np.array(pr_abfs_ba),     'preq_abfs_ba',     tag)
-            save(np.array(pr_abfs_f1),     'preq_abfs_f1',     tag)
-            save(np.array(pr_abfs_kappa),  'preq_abfs_kappa',  tag)
-            save(np.array(pr_komor_ba),    'preq_komor_ba',    tag)
-            save(np.array(pr_komor_f1),    'preq_komor_f1',    tag)
-            save(np.array(pr_komor_kappa), 'preq_komor_kappa', tag)
+            save(np.array(pr_raw_ba),   'preq_ABFS_raw_ba',       tag)
+            save(np.array(pr_raw_f1),   'preq_ABFS_raw_f1',       tag)
+            save(np.array(pr_raw_kappa),'preq_ABFS_raw_kappa',    tag)
+            save(np.array(pr_temp_ba),  'preq_ABFS_temporal_ba',  tag)
+            save(np.array(pr_temp_f1),  'preq_ABFS_temporal_f1',  tag)
+            save(np.array(pr_temp_kappa),'preq_ABFS_temporal_kappa',tag)
+            save(np.array(pr_komor_ba), 'preq_komor_ba',          tag)
+            save(np.array(pr_komor_f1), 'preq_komor_f1',          tag)
+            save(np.array(pr_komor_kappa),'preq_komor_kappa',     tag)
  
-            print(f"\n  Saved 12 files (*_{tag}.npy) -> {RESULTS_DIR}")
+            print(f"\nSaved 18 files (*_{tag}.npy) -> {RESULTS_DIR}")
  
 print("\nExperiment 2 complete.")
