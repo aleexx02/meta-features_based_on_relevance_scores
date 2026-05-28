@@ -174,3 +174,82 @@ def plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_media
     plt.savefig(path, dpi=150, bbox_inches='tight')
     plt.show()
     print(f"\nComparison heatmap saved to {path}")
+
+
+
+
+
+
+def plot_heatmap_balanced_accuracy_comparison_exp2(
+    mean_ba_abfs, std_ba_abfs, median_ba_abfs,
+    mean_ba_komor, std_ba_komor, median_ba_komor,
+    BASE_CLFS, drift_type, n_concepts, tag, FIGURES_DIR):
+    """
+    Side-by-side balanced accuracy heatmap for Experiment 2.
+    One row per meta-feature set (left: Komorniczak statistical,
+    right: ABFS raw scores v2.0).
+
+    Parameters
+    ----------
+    mean_ba_abfs   : np.ndarray, shape (n_clfs,)
+    std_ba_abfs    : np.ndarray, shape (n_clfs,)
+    median_ba_abfs : np.ndarray, shape (n_clfs,)
+    mean_ba_komor  : np.ndarray, shape (n_clfs,)
+    std_ba_komor   : np.ndarray, shape (n_clfs,)
+    median_ba_komor: np.ndarray, shape (n_clfs,)
+    BASE_CLFS      : list of (name, clf)
+    drift_type     : str
+    n_concepts     : int
+    tag            : str  e.g. 'chunk200_ninf10_sudden'
+    FIGURES_DIR    : str
+    """
+    clf_names = [name for name, _ in BASE_CLFS]
+    n_clfs    = len(BASE_CLFS)
+
+    # shape (1, n_clfs) for imshow
+    komor_matrix        = mean_ba_komor[np.newaxis, :]
+    komor_std_matrix    = std_ba_komor[np.newaxis, :]
+    komor_median_matrix = median_ba_komor[np.newaxis, :]
+
+    abfs_matrix         = mean_ba_abfs[np.newaxis, :]
+    abfs_std_matrix     = std_ba_abfs[np.newaxis, :]
+    abfs_median_matrix  = median_ba_abfs[np.newaxis, :]
+
+    fig, axes = plt.subplots(1, 2, figsize=(22, 3),
+                             gridspec_kw={'width_ratios': [1, 1]})
+
+    for ax, matrix, std_mat, med_mat, title, row_label in [
+        (axes[0], komor_matrix, komor_std_matrix, komor_median_matrix,
+         'Komorniczak meta-features - balanced accuracy', 'Statistical'),
+        (axes[1], abfs_matrix,  abfs_std_matrix,  abfs_median_matrix,
+         'ABFS meta-features - balanced accuracy',       'Raw scores (v2.0)'),
+    ]:
+        im = ax.imshow(matrix, vmin=0.0, vmax=1.0,
+                       cmap='Blues', aspect='auto')
+        for j in range(n_clfs):
+            val    = matrix[0, j]
+            std    = std_mat[0, j]
+            median = med_mat[0, j]
+            txt_color = 'white' if val > 0.6 else 'black'
+            ax.text(j, 0,
+                    f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
+                    ha='center', va='center', fontsize=11,
+                    color=txt_color, linespacing=1.4)
+        ax.set_xticks(range(n_clfs))
+        ax.set_xticklabels(clf_names, fontsize=10)
+        ax.set_yticks([0])
+        ax.set_yticklabels([row_label], fontsize=10)
+        ax.set_title(title, fontsize=12)
+
+    fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
+    fig.suptitle(
+        f'Komorniczak vs ABFS — {drift_type} drift '
+        f'({n_concepts} concepts) — {tag}',
+        fontsize=13)
+    plt.tight_layout()
+
+    filename = f'heatmap_comparison_komorniczak_ABFS_{tag}.png'
+    path = os.path.join(FIGURES_DIR, filename)
+    plt.savefig(path, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"  Heatmap saved to {path}")
