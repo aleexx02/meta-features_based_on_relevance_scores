@@ -52,7 +52,7 @@
 #         - ni: n_informative (3, 5, 10, 15)
 #         - drift: 'sudden' or 'gradual'
 #
-#   CV protocol (shape: n_replications x n_folds x n_clfs):
+#   CV protocol (shape: n_replications x n_folds x n_clfs): raw results of all 5 replications
 #     cv_abfs_ba_chunk{cs}_ninf{ni}_{drift}.npy
 #     cv_abfs_f1_chunk{cs}_ninf{ni}_{drift}.npy
 #     cv_abfs_kappa_chunk{cs}_ninf{ni}_{drift}.npy
