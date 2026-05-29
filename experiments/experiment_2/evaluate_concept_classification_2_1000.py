@@ -488,17 +488,36 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
  
 
 
-            # ---- per-cell comparison heatmap ----
+            # ---- per-cell comparison heatmap (CV protocol) ----
             plot_heatmap_balanced_accuracy_comparison_exp2(
-                mean_ba_abfs   = np.mean(np.array(cv_abfs_ba),  axis=(0, 1)),
-                std_ba_abfs    = np.std(np.array(cv_abfs_ba),   axis=(0, 1)),
-                median_ba_abfs = np.median(np.array(cv_abfs_ba),axis=(0, 1)),
-                mean_ba_komor  = np.mean(np.array(cv_komor_ba),  axis=(0, 1)),
-                std_ba_komor   = np.std(np.array(cv_komor_ba),   axis=(0, 1)),
-                median_ba_komor= np.median(np.array(cv_komor_ba),axis=(0, 1)),
-                BASE_CLFS      = BASE_CLFS,
-                drift_type     = drift_type,
-                n_concepts     = n_concepts,
-                tag            = tag,
-                FIGURES_DIR    = FIGURES_DIR,
+                mean_ba_abfs    = np.mean(np.array(cv_abfs_ba),   axis=(0, 1)),
+                std_ba_abfs     = np.std(np.array(cv_abfs_ba),    axis=(0, 1)),
+                median_ba_abfs  = np.median(np.array(cv_abfs_ba), axis=(0, 1)),
+                mean_ba_komor   = np.mean(np.array(cv_komor_ba),   axis=(0, 1)),
+                std_ba_komor    = np.std(np.array(cv_komor_ba),    axis=(0, 1)),
+                median_ba_komor = np.median(np.array(cv_komor_ba), axis=(0, 1)),
+                BASE_CLFS       = BASE_CLFS,
+                drift_type      = drift_type,
+                n_concepts      = n_concepts,
+                tag             = f'cv_{tag}',
+                FIGURES_DIR     = FIGURES_DIR,
+            )
+
+            # ---- per-cell comparison heatmap (prequential protocol) ----
+            # use final window value per replication for prequential
+            pr_abfs_ba_arr  = np.array(pr_abfs_ba)   # (n_reps, n_windows, n_clfs)
+            pr_komor_ba_arr = np.array(pr_komor_ba)
+
+            plot_heatmap_balanced_accuracy_comparison_exp2(
+                mean_ba_abfs    = np.mean(pr_abfs_ba_arr[:, -1, :],   axis=0),
+                std_ba_abfs     = np.std(pr_abfs_ba_arr[:, -1, :],    axis=0),
+                median_ba_abfs  = np.median(pr_abfs_ba_arr[:, -1, :], axis=0),
+                mean_ba_komor   = np.mean(pr_komor_ba_arr[:, -1, :],   axis=0),
+                std_ba_komor    = np.std(pr_komor_ba_arr[:, -1, :],    axis=0),
+                median_ba_komor = np.median(pr_komor_ba_arr[:, -1, :], axis=0),
+                BASE_CLFS       = BASE_CLFS_PREQUENTIAL,
+                drift_type      = drift_type,
+                n_concepts      = n_concepts,
+                tag             = f'preq_{tag}',
+                FIGURES_DIR     = FIGURES_DIR,
             )
