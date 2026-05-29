@@ -31,13 +31,25 @@
 #
 #   Across the full 4x4 grid:
 #   6. Gap heatmap:
-#      - ABFS minus Komorniczak BA for best classifier per cell
-#      - Separate plots for CV and prequential protocols
+#      - ABFS minus Komorniczak balanced accuracy for the best-performing
+#        classifier per cell, shown as a 4x4 grid (chunk_size x n_informative)
+#      - Positive values: ABFS is better; negative values: Komorniczak is better
+#      - One heatmap per drift type x protocol = 4 heatmaps total:
+#          gap_heatmap_cv_sudden.png, gap_heatmap_cv_gradual.png
+#          gap_heatmap_preq_sudden.png, gap_heatmap_preq_gradual.png
 #
 #   7. Sensitivity curves:
-#      - BA vs chunk_size (fixing n_informative=10)
-#      - BA vs n_informative (fixing chunk_size=200)
-#      - One plot per classifier, ABFS vs Komorniczak
+#      - BA vs chunk_size (fixing n_informative=10, our baseline):
+#        shows how performance changes as chunk_size increases,
+#        one line per classifier, ABFS solid / Komorniczak dashed
+#      - BA vs n_informative (fixing chunk_size=200, our baseline):
+#        shows how performance changes as n_informative increases,
+#        same format as above
+#      - One plot per axis x drift type x protocol = 8 plots total:
+#          sensitivity_chunk_cv_sudden.png, sensitivity_chunk_cv_gradual.png
+#          sensitivity_chunk_preq_sudden.png, sensitivity_chunk_preq_gradual.png
+#          sensitivity_ninf_cv_sudden.png, sensitivity_ninf_cv_gradual.png
+#          sensitivity_ninf_preq_sudden.png, sensitivity_ninf_preq_gradual.png
 #
 # Inputs (from results/experiment_2/):
 #   cv_abfs_ba_chunk{cs}_ninf{ni}_{drift}.npy  shape: (n_reps, n_folds, n_clfs)
