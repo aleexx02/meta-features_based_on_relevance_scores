@@ -132,6 +132,8 @@ N_FEATURES = 20
 WARMUP_WINDOWS = 10
 SCORE_INTERVAL = 100
 N_REPLICATIONS = 5
+CHUNK_SIZE_DEFAULT = 200
+N_INFORMATIVE_DEFAULT = 10
  
 CHUNK_SIZES = [100, 200, 500, 1000]
 N_INFORMATIVES = [3, 5, 10, 15]
@@ -812,11 +814,11 @@ if RUN_GRID:
             
  
         # ---- 7. SENSITIVITY CURVES ----
-        ni_baseline_idx = N_INFORMATIVES.index(10) # n_informative=10 fixed for chunk_size curves
-        cs_baseline_idx = CHUNK_SIZES.index(200) # chunk_size=200 fixed for n_informative curves
+        ni_baseline_idx = N_INFORMATIVES.index(N_INFORMATIVE_DEFAULT) # n_informative=10 fixed for chunk_size curves
+        cs_baseline_idx = CHUNK_SIZES.index(CHUNK_SIZE_DEFAULT) # chunk_size=200 fixed for n_informative curves
         print(f"Baseline indices - n_informative: {ni_baseline_idx}, chunk_size: {cs_baseline_idx}")
 
-        
+
         for protocol_label, abfs_grid_clf, komor_grid_clf, clf_names_used in [
             ('CV',          grid_abfs_cv_clf,   grid_komor_cv_clf,   clf_names_cv),
             ('Prequential', grid_abfs_preq_clf, grid_komor_preq_clf, clf_names_preq),
@@ -838,7 +840,7 @@ if RUN_GRID:
             ax.set_xlabel('chunk_size', fontsize=11)
             ax.set_ylabel('Mean balanced accuracy', fontsize=10)
             ax.set_title(
-                f'BA vs chunk_size (n_informative=10) - {protocol_label}\n'
+                f'BA vs chunk_size (n_informative={N_INFORMATIVE_DEFAULT}) - {protocol_label}\n'
                 f'{drift_type} drift', fontsize=11)
             ax.legend(fontsize=8, ncol=2,
                       bbox_to_anchor=(1.01, 1), loc='upper left')
@@ -847,7 +849,7 @@ if RUN_GRID:
             fig.tight_layout()
             proto_short = protocol_label.lower().replace('quential', 'q')
             fname = os.path.join(FIGURES_DIR,
-                f'sensitivity_chunk_{proto_short}_{drift_type}.png')
+                f'sensitivity_chunk_{proto_short}_ninf_fixed_{N_INFORMATIVE_DEFAULT}_{drift_type}.png')
             if not os.path.exists(fname):
                 fig.savefig(fname, dpi=150)
                 print(f"Sensitivity (chunk) saved: {fname}")
@@ -872,7 +874,7 @@ if RUN_GRID:
             ax.set_xlabel('n_informative', fontsize=11)
             ax.set_ylabel('Mean balanced accuracy', fontsize=10)
             ax.set_title(
-                f'BA vs n_informative (chunk_size=200) - {protocol_label}\n'
+                f'BA vs n_informative (chunk_size={CHUNK_SIZE_DEFAULT}) - {protocol_label}\n'
                 f'{drift_type} drift', fontsize=11)
             ax.legend(fontsize=8, ncol=2,
                       bbox_to_anchor=(1.01, 1), loc='upper left')
@@ -880,7 +882,7 @@ if RUN_GRID:
             ax.set_ylim(0, 1)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR,
-                f'sensitivity_ninf_{proto_short}_{drift_type}.png')
+                f'sensitivity_ninf_{proto_short}_chunk_fixed_{CHUNK_SIZE_DEFAULT}_{drift_type}.png')
             if not os.path.exists(fname):
                 fig.savefig(fname, dpi=150)
                 print(f"Sensitivity (n_informative) saved: {fname}")
