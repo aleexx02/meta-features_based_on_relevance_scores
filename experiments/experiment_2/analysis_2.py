@@ -8,6 +8,8 @@
 # Loads pre-computed results (.npy files) from
 # results/experiment_2/ and produces:
 #
+# We compare the Komorniczak vs ABFS raw score meta-features (v2.0) across
+# the 4x4 grid of stream configurations (chunk_size x n_informative) and 2 drift types, for both CV and prequential protocols.
 #   Per grid cell (for each chunk_size x n_informative x drift_type):
 #   1. Sanity check plots (per replication) - but ONLY FIRST REPLICATION PER CONFIGURATION TO AVOID TOO MANY PLOTS:
 #      - Relevance scores over time
@@ -43,7 +45,7 @@
 #   7. Sensitivity curves:
 #      - BA vs chunk_size (fixing n_informative=10, our baseline):
 #        shows how performance changes as chunk_size increases,
-#        one line per classifier, ABFS solid / Komorniczak dashed
+#        one line per classifier
 #      - BA vs n_informative (fixing chunk_size=200, our baseline):
 #        shows how performance changes as n_informative increases,
 #        same format as above
@@ -810,10 +812,11 @@ if RUN_GRID:
             
  
         # ---- 7. SENSITIVITY CURVES ----
-        # Fix n_informative=10 (baseline), vary chunk_size
-        ni_baseline_idx = N_INFORMATIVES.index(10)
-        cs_baseline_idx = CHUNK_SIZES.index(200)
- 
+        ni_baseline_idx = N_INFORMATIVES.index(10) # n_informative=10 fixed for chunk_size curves
+        cs_baseline_idx = CHUNK_SIZES.index(200) # chunk_size=200 fixed for n_informative curves
+        print(f"Baseline indices - n_informative: {ni_baseline_idx}, chunk_size: {cs_baseline_idx}")
+
+        
         for protocol_label, abfs_grid_clf, komor_grid_clf, clf_names_used in [
             ('CV',          grid_abfs_cv_clf,   grid_komor_cv_clf,   clf_names_cv),
             ('Prequential', grid_abfs_preq_clf, grid_komor_preq_clf, clf_names_preq),
