@@ -16,11 +16,11 @@
 #      - 16 cells x 2 drift types x 2 feature sets = 64 figures per plot type
 
 #   2. Performance variance across replications (CV protocol): mean balanced accuracy per replication per classifier
-#      - performance_variance_across_replications_{abfs|komor}_{tag}.png
+#      - performance_variance_{abfs|komor}_{tag}.png
 #      - 16 cells x 2 drift types x 2 feature sets = 64 figures
 #
 #   3. Performance trajectory over time (prequential protocol): cumulative balanced accuracy per window per classifier
-#      - performance_trajectory_over_time_{abfs|komor}_{tag}.png
+#      - performance_over_time_{abfs|komor}_{tag}.png
 #      - 16 cells x 2 drift types x 2 feature sets = 64 figures
 #
 #   4. SHAP analysis:
@@ -29,6 +29,7 @@
 #   5. Additional metrics heatmaps (F1, Kappa):
 #      - Mean, std, median across replications
 #      - ABFS vs Komorniczak
+#      - 16 cells x 2 drift types x 2 protocols x 2 metrics = 128 figures
 #
 #   Across the full 4x4 grid:
 #   6. Gap heatmap:
@@ -455,7 +456,7 @@ if RUN_VARIANCE:
                                linewidth=1.0, label='random baseline')
                     ax.set_xlabel('Replication')
                     ax.set_ylabel('Mean balanced accuracy')
-                    ax.set_title(f'Performance variance - {label} - {tag}')
+                    ax.set_title(f'Performance variance across replications - {label} - {tag}')
                     ax.set_xticks(x + width * 2)
                     ax.set_xticklabels(
                         [f'Rep{i+1}\n(s={RANDOM_STATES[i]})'
@@ -465,7 +466,7 @@ if RUN_VARIANCE:
                     fig.tight_layout()
                     short = prefix.replace('cv_', '').replace('_ba', '')
                     fname = os.path.join(FIGURES_DIR,
-                        f'performance_variance_across_replications_{short}_{tag}.png')
+                        f'performance_variance_{short}_{tag}.png')
                     if not os.path.exists(fname):
                         fig.savefig(fname, dpi=150)
                         print(f"  Saved: {fname}")
@@ -518,7 +519,7 @@ if RUN_PERFORMANCE:
 
                     short = prefix.replace('preq_', '').replace('_ba', '')
                     fname = os.path.join(FIGURES_DIR,
-                        f'performance_trajectory_over_time_{short}_{tag}.png')
+                        f'performance_over_time_{short}_{tag}.png')
                     if os.path.exists(fname):
                         print(f"  Skipping (exists): {fname}")
                         continue
@@ -543,7 +544,7 @@ if RUN_PERFORMANCE:
                     ax.set_xlabel('Window')
                     ax.set_ylabel('Cumulative balanced accuracy')
                     ax.set_title(
-                        f'Performance trajectory - {label} - {tag}')
+                        f'Performance trajectory over time - {label} - {tag}')
                     ax.legend(fontsize=9, ncol=3)
                     ax.set_xlim(0, n_windows)
                     ax.set_ylim(0, 1)
