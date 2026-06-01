@@ -491,7 +491,7 @@ if RUN_PERFORMANCE:
                 # check if all trajectory figures for this cell exist before
                 shorts = ['abfs', 'komor']
                 fnames = [os.path.join(FIGURES_DIR,
-                    f'performance_trajectory_over_time_{s}_{tag}.png') for s in shorts]
+                    f'performance_over_time_{s}_{tag}.png') for s in shorts]
                 if all(os.path.exists(f) for f in fnames):
                     print(f"  Skipping trajectory (all exist): {tag}")
                     continue
