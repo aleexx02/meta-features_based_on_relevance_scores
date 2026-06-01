@@ -13,14 +13,15 @@
 #      - Relevance scores over time
 #      - Meta-features over windows
 #      - PCA projection of meta-feature vectors
+#      - 16 cells x 2 drift types x 2 feature sets = 64 figures per plot type
+
+#   2. Performance variance across replications (CV protocol): mean balanced accuracy per replication per classifier
+#      - performance_variance_across_replications_{abfs|komor}_{tag}.png
+#      - 16 cells x 2 drift types x 2 feature sets = 64 figures
 #
-#   2. Performance variance across replications (CV protocol):
-#      - Mean balanced accuracy per replication per classifier
-#
-#   3. Performance trajectory over time (prequential protocol):
-#      - Cumulative balanced accuracy per window per classifier
-#      - Mean +/- std band across replications
-#      - Concept boundaries marked as vertical lines
+#   3. Performance trajectory over time (prequential protocol): cumulative balanced accuracy per window per classifier
+#      - performance_trajectory_over_time_{abfs|komor}_{tag}.png
+#      - 16 cells x 2 drift types x 2 feature sets = 64 figures
 #
 #   4. SHAP analysis:
 #      - Mean absolute SHAP values per meta-feature (MLP)
@@ -410,7 +411,7 @@ if RUN_SANITY:
                         print(f"File already exists: {fname}")
                     plt.close()
  
-                print(f"  Sanity check plots saved for {tag}")
+                print(f"Sanity check plots saved for {tag}")
  
  
 # ============================================================
@@ -464,7 +465,7 @@ if RUN_VARIANCE:
                     fig.tight_layout()
                     short = prefix.replace('cv_', '').replace('_ba', '')
                     fname = os.path.join(FIGURES_DIR,
-                        f'variance_{short}_{tag}.png')
+                        f'performance_variance_across_replications_{short}_{tag}.png')
                     if not os.path.exists(fname):
                         fig.savefig(fname, dpi=150)
                         print(f"  Saved: {fname}")
@@ -485,7 +486,15 @@ if RUN_PERFORMANCE:
         for chunk_size in CHUNK_SIZES:
             for n_informative in N_INFORMATIVES:
                 tag = make_tag(chunk_size, n_informative, drift_type)
- 
+                
+                # check if all trajectory figures for this cell exist before
+                shorts = ['abfs', 'komor']
+                fnames = [os.path.join(FIGURES_DIR,
+                    f'performance_trajectory_over_time_{s}_{tag}.png') for s in shorts]
+                if all(os.path.exists(f) for f in fnames):
+                    print(f"  Skipping trajectory (all exist): {tag}")
+                    continue
+
                 boundaries_meta = get_stream_boundaries_meta(
                     drift_type, n_drifts, concept_sigmoid_spacing,
                     chunk_size, n_informative)
@@ -506,7 +515,14 @@ if RUN_PERFORMANCE:
                     # shape: (n_reps, n_windows, n_clfs)
                     n_windows = data.shape[1]
                     x_axis    = np.arange(n_windows)
- 
+
+                    short = prefix.replace('preq_', '').replace('_ba', '')
+                    fname = os.path.join(FIGURES_DIR,
+                        f'performance_trajectory_over_time_{short}_{tag}.png')
+                    if os.path.exists(fname):
+                        print(f"  Skipping (exists): {fname}")
+                        continue
+
                     fig, ax = plt.subplots(figsize=(14, 4))
                     for clf_id, name in enumerate(clf_names):
                         mean_traj = np.mean(data[:, :, clf_id], axis=0)
@@ -532,9 +548,6 @@ if RUN_PERFORMANCE:
                     ax.set_xlim(0, n_windows)
                     ax.set_ylim(0, 1)
                     fig.tight_layout()
-                    short = prefix.replace('preq_', '').replace('_ba', '')
-                    fname = os.path.join(FIGURES_DIR,
-                        f'trajectory_{short}_{tag}.png')
                     if not os.path.exists(fname):
                         fig.savefig(fname, dpi=150)
                         print(f"Trajectory plot saved: {fname}")
