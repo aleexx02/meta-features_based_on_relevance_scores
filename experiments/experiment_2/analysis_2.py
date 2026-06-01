@@ -9,7 +9,7 @@
 # results/experiment_2/ and produces:
 #
 #   Per grid cell (for each chunk_size x n_informative x drift_type):
-#   1. Sanity check plots (per replication):
+#   1. Sanity check plots (per replication) - but ONLY FIRST REPLICATION PER CONFIGURATION TO AVOID TOO MANY PLOTS:
 #      - Relevance scores over time
 #      - Meta-features over windows
 #      - PCA projection of meta-feature vectors
@@ -320,8 +320,9 @@ if RUN_SANITY:
             for n_informative in N_INFORMATIVES:
                 tag = make_tag(chunk_size, n_informative, drift_type)
                 print(f"\n{tag}")
- 
-                for rep_id, rs in enumerate(RANDOM_STATES):
+
+                # only run sanity check for the first replication (rep 0)
+                for rep_id, rs in enumerate(RANDOM_STATES[:1]): 
                     scores_over_time, concept_labels_all, boundaries, X, y = \
                         extract_stream_data(rs, drift_type, n_drifts,
                                             concept_sigmoid_spacing,
@@ -346,7 +347,11 @@ if RUN_SANITY:
                     fig.tight_layout()
                     fname = os.path.join(FIGURES_DIR,
                         f'relevance_scores_{tag}_rep{rep_id}.png')
-                    fig.savefig(fname, dpi=150)
+                    if not os.path.exists(fname):
+                        fig.savefig(fname, dpi=150)
+                        print(f"  Saved: {fname}")
+                    else:
+                        print(f"File already exists: {fname}")
                     plt.close()
  
                     # meta-features over windows
@@ -371,7 +376,11 @@ if RUN_SANITY:
                     fig.tight_layout()
                     fname = os.path.join(FIGURES_DIR,
                         f'metafeatures_{tag}_rep{rep_id}.png')
-                    fig.savefig(fname, dpi=150)
+                    if not os.path.exists(fname):
+                        fig.savefig(fname, dpi=150)
+                        print(f"  Saved: {fname}")
+                    else:
+                        print(f"File already exists: {fname}")
                     plt.close()
  
                     # PCA
@@ -394,7 +403,11 @@ if RUN_SANITY:
                     fig.tight_layout()
                     fname = os.path.join(FIGURES_DIR,
                         f'pca_{tag}_rep{rep_id}.png')
-                    fig.savefig(fname, dpi=150)
+                    if not os.path.exists(fname):
+                        fig.savefig(fname, dpi=150)
+                        print(f"  Saved: {fname}")
+                    else:
+                        print(f"File already exists: {fname}")
                     plt.close()
  
                 print(f"  Sanity check plots saved for {tag}")
@@ -452,9 +465,12 @@ if RUN_VARIANCE:
                     short = prefix.replace('cv_', '').replace('_ba', '')
                     fname = os.path.join(FIGURES_DIR,
                         f'variance_{short}_{tag}.png')
-                    fig.savefig(fname, dpi=150)
+                    if not os.path.exists(fname):
+                        fig.savefig(fname, dpi=150)
+                        print(f"  Saved: {fname}")
+                    else:
+                        print(f"File already exists: {fname}")
                     plt.close()
-                    print(f"  Variance plot saved: {fname}")
  
  
 # ============================================================
@@ -519,9 +535,12 @@ if RUN_PERFORMANCE:
                     short = prefix.replace('preq_', '').replace('_ba', '')
                     fname = os.path.join(FIGURES_DIR,
                         f'trajectory_{short}_{tag}.png')
-                    fig.savefig(fname, dpi=150)
+                    if not os.path.exists(fname):
+                        fig.savefig(fname, dpi=150)
+                        print(f"Trajectory plot saved: {fname}")
+                    else:
+                        print(f"File already exists: {fname}")
                     plt.close()
-                    print(f"  Trajectory plot saved: {fname}")
  
  
 # ============================================================
@@ -536,8 +555,13 @@ if RUN_SHAP:
         for chunk_size in CHUNK_SIZES:
             for n_informative in N_INFORMATIVES:
                 tag = make_tag(chunk_size, n_informative, drift_type)
+                # skip if SHAP plot already exists
+                fname = os.path.join(FIGURES_DIR, f'shap_{tag}.png')
+                if os.path.exists(fname):
+                    print(f"  Skipping SHAP (exists): {fname}")
+                    continue
                 print(f"\n  SHAP: {tag}")
- 
+
                 all_X, all_y = [], []
                 for rs in RANDOM_STATES:
                     _, _, _, X, y = extract_stream_data(
@@ -577,9 +601,12 @@ if RUN_SHAP:
                              f'(MLP, {N_REPLICATIONS} replications combined)')
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR, f'shap_{tag}.png')
-                fig.savefig(fname, dpi=150)
+                if not os.path.exists(fname):
+                    fig.savefig(fname, dpi=150)
+                    print(f"SHAP saved: {fname}")
+                else:
+                    print(f"File already exists: {fname}")
                 plt.close()
-                print(f"  SHAP saved: {fname}")
  
  
 # ============================================================
@@ -657,9 +684,12 @@ if RUN_METRICS:
                         fig.tight_layout()
                         fname = os.path.join(FIGURES_DIR,
                             f'heatmap_{metric}_{protocol}_{tag}.png')
-                        fig.savefig(fname, dpi=150)
+                        if not os.path.exists(fname):
+                            fig.savefig(fname, dpi=150)
+                            print(f"{metric_label} heatmap saved: {fname}")
+                        else:
+                            print(f"File already exists: {fname}")
                         plt.close()
-                        print(f"  {metric_label} heatmap saved: {fname}")
  
  
 # ============================================================
@@ -757,9 +787,13 @@ if RUN_GRID:
             proto_short = protocol_label.lower().replace('quential', 'q')
             fname = os.path.join(FIGURES_DIR,
                 f'gap_heatmap_{proto_short}_{drift_type}.png')
-            fig.savefig(fname, dpi=150)
+            if not os.path.exists(fname):
+                fig.savefig(fname, dpi=150)
+                print(f"Gap heatmap saved: {fname}")
+            else:
+                print(f"File already exists: {fname}")
             plt.close()
-            print(f"  Gap heatmap saved: {fname}")
+            
  
         # ---- 7. SENSITIVITY CURVES ----
         # Fix n_informative=10 (baseline), vary chunk_size
@@ -797,9 +831,12 @@ if RUN_GRID:
             proto_short = protocol_label.lower().replace('quential', 'q')
             fname = os.path.join(FIGURES_DIR,
                 f'sensitivity_chunk_{proto_short}_{drift_type}.png')
-            fig.savefig(fname, dpi=150)
+            if not os.path.exists(fname):
+                fig.savefig(fname, dpi=150)
+                print(f"Sensitivity (chunk) saved: {fname}")
+            else:
+                print(f"File already exists: {fname}")
             plt.close()
-            print(f"  Sensitivity (chunk) saved: {fname}")
  
             # --- BA vs n_informative (chunk_size=200 fixed) ---
             fig, ax = plt.subplots(figsize=(8, 4))
@@ -827,9 +864,12 @@ if RUN_GRID:
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR,
                 f'sensitivity_ninf_{proto_short}_{drift_type}.png')
-            fig.savefig(fname, dpi=150)
+            if not os.path.exists(fname):
+                fig.savefig(fname, dpi=150)
+                print(f"Sensitivity (n_informative) saved: {fname}")
+            else:
+                print(f"File already exists: {fname}")
             plt.close()
-            print(f"  Sensitivity (n_informative) saved: {fname}")
  
 print("\nAnalysis complete.")
  
