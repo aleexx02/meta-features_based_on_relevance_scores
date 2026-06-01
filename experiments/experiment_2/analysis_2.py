@@ -132,8 +132,8 @@ N_FEATURES = 20
 WARMUP_WINDOWS = 10
 SCORE_INTERVAL = 100
 N_REPLICATIONS = 5
-CHUNK_SIZE_DEFAULT = 200
-N_INFORMATIVE_DEFAULT = 15
+CHUNK_SIZE_DEFAULT = 200 # for sensitivity curve (fixing chunk_size)
+N_INFORMATIVE_DEFAULT = 10 # for sensitivity curve (fixing n_informative)
  
 CHUNK_SIZES = [100, 200, 500, 1000]
 N_INFORMATIVES = [3, 5, 10, 15]
@@ -849,7 +849,7 @@ if RUN_GRID:
             fig.tight_layout()
             proto_short = protocol_label.lower().replace('quential', 'q')
             fname = os.path.join(FIGURES_DIR,
-                f'sensitivity_chunk_{proto_short}_ninf_fixed_{N_INFORMATIVE_DEFAULT}_{drift_type}.png')
+                f'sensitivity_chunk_{proto_short}_ninf_{N_INFORMATIVE_DEFAULT}_{drift_type}.png')
             if not os.path.exists(fname):
                 fig.savefig(fname, dpi=150)
                 print(f"Sensitivity (chunk) saved: {fname}")
@@ -882,7 +882,7 @@ if RUN_GRID:
             ax.set_ylim(0, 1)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR,
-                f'sensitivity_ninf_{proto_short}_chunk_fixed_{CHUNK_SIZE_DEFAULT}_{drift_type}.png')
+                f'sensitivity_ninf_{proto_short}_chunk_{CHUNK_SIZE_DEFAULT}_{drift_type}.png')
             if not os.path.exists(fname):
                 fig.savefig(fname, dpi=150)
                 print(f"Sensitivity (n_informative) saved: {fname}")
