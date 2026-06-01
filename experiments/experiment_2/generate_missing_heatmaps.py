@@ -28,30 +28,15 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
  
 # all cells that have .npy files
 MISSING = [
-    ('chunk1000_ninf10_sudden',  'sudden',  21),
+    ('chunk500_ninf3_gradual',   'gradual', 25),
+    ('chunk500_ninf5_gradual',   'gradual', 25),
+    ('chunk500_ninf10_gradual',  'gradual', 25),
+    ('chunk500_ninf15_gradual',  'gradual', 25),
+    ('chunk1000_ninf3_gradual',  'gradual', 25),
+    ('chunk1000_ninf5_gradual',  'gradual', 25),
+    ('chunk1000_ninf10_gradual', 'gradual', 25),
+    ('chunk1000_ninf15_gradual', 'gradual', 25),
     ('chunk1000_ninf15_sudden',  'sudden',  21),
-    ('chunk1000_ninf3_sudden',   'sudden',  21),
-    ('chunk1000_ninf5_sudden',   'sudden',  21),
-    ('chunk100_ninf10_gradual',  'gradual', 25),
-    ('chunk100_ninf10_sudden',   'sudden',  21),
-    ('chunk100_ninf15_gradual',  'gradual', 25),
-    ('chunk100_ninf15_sudden',   'sudden',  21),
-    ('chunk100_ninf3_gradual',   'gradual', 25),
-    ('chunk100_ninf3_sudden',    'sudden',  21),
-    ('chunk100_ninf5_gradual',   'gradual', 25),
-    ('chunk100_ninf5_sudden',    'sudden',  21),
-    ('chunk200_ninf10_gradual',  'gradual', 25),
-    ('chunk200_ninf10_sudden',   'sudden',  21),
-    ('chunk200_ninf15_gradual',  'gradual', 25),
-    ('chunk200_ninf15_sudden',   'sudden',  21),
-    ('chunk200_ninf3_gradual',   'gradual', 25),
-    ('chunk200_ninf3_sudden',    'sudden',  21),
-    ('chunk200_ninf5_gradual',   'gradual', 25),
-    ('chunk200_ninf5_sudden',    'sudden',  21),
-    ('chunk500_ninf10_sudden',   'sudden',  21),
-    ('chunk500_ninf15_sudden',   'sudden',  21),
-    ('chunk500_ninf3_sudden',    'sudden',  21),
-    ('chunk500_ninf5_sudden',    'sudden',  21),
 ]
  
 for tag, drift_type, n_concepts in MISSING:

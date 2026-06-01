@@ -86,64 +86,61 @@ from plot_results import print_sanity_check_summary
 #  ARGUMENT PARSING
 # ============================================================
 parser = argparse.ArgumentParser(description='Analysis for Experiment 2.')
-parser.add_argument('--sanity',      action='store_true', help='Sanity check plots per cell')
-parser.add_argument('--variance',    action='store_true', help='Performance variance plots (CV)')
+parser.add_argument('--sanity', action='store_true', help='Sanity check plots per cell')
+parser.add_argument('--variance', action='store_true', help='Performance variance plots (CV)')
 parser.add_argument('--performance', action='store_true', help='Trajectory plots (prequential)')
-parser.add_argument('--shap',        action='store_true', help='SHAP analysis per cell')
-parser.add_argument('--metrics',     action='store_true', help='F1 and Kappa heatmaps per cell')
-parser.add_argument('--grid',        action='store_true', help='Gap heatmap + sensitivity curves')
+parser.add_argument('--shap', action='store_true', help='SHAP analysis per cell')
+parser.add_argument('--metrics', action='store_true', help='F1 and Kappa heatmaps per cell')
+parser.add_argument('--grid', action='store_true', help='Gap heatmap + sensitivity curves')
 args = parser.parse_args()
  
-RUN_SANITY      = args.sanity
-RUN_VARIANCE    = args.variance
+RUN_SANITY = args.sanity
+RUN_VARIANCE = args.variance
 RUN_PERFORMANCE = args.performance
-RUN_SHAP        = args.shap
-RUN_METRICS     = args.metrics
-RUN_GRID        = args.grid
+RUN_SHAP = args.shap
+RUN_METRICS = args.metrics
+RUN_GRID = args.grid
  
 print(f"\nRunning analysis for Experiment 2")
-print(f"Sanity check  : {RUN_SANITY}")
-print(f"Variance      : {RUN_VARIANCE}")
-print(f"Performance   : {RUN_PERFORMANCE}")
-print(f"SHAP          : {RUN_SHAP}")
-print(f"Metrics       : {RUN_METRICS}")
-print(f"Grid analyses : {RUN_GRID}")
+print(f"Sanity check: {RUN_SANITY}")
+print(f"Variance: {RUN_VARIANCE}")
+print(f"Performance: {RUN_PERFORMANCE}")
+print(f"SHAP: {RUN_SHAP}")
+print(f"Metrics: {RUN_METRICS}")
+print(f"Grid analyses: {RUN_GRID}")
  
  
 # ============================================================
 #  PATHS
 # ============================================================
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
-RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_2')
-FIGURES_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_2', 'figures', 'analysis')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_2')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_2', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
  
  
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-N_CHUNKS       = 5000
-N_FEATURES     = 20
+N_CHUNKS = 5000
+N_FEATURES = 20
 WARMUP_WINDOWS = 10
 SCORE_INTERVAL = 100
 N_REPLICATIONS = 5
  
-CHUNK_SIZES    = [100, 200, 500, 1000]
+CHUNK_SIZES = [100, 200, 500, 1000]
 N_INFORMATIVES = [3, 5, 10, 15]
  
 np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
  
-DRIFT_CONFIGS = [
-    ('sudden',  20, 9999, 21),
-    ('gradual',  6,    5, 25),
-]
+DRIFT_CONFIGS = [('sudden', 20, 9999, 21), ('gradual', 6, 5, 25)]
  
 MF_NAMES = [f'r_f{j+1}' for j in range(N_FEATURES)]  # 20 raw score features
  
-clf_names_cv   = [name for name, _ in BASE_CLFS]
+clf_names_cv = [name for name, _ in BASE_CLFS]
 clf_names_preq = [name for name, _ in BASE_CLFS_PREQUENTIAL]
  
 CLF_COLORS = {
