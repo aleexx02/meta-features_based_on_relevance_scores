@@ -13,28 +13,39 @@ meta-features_based_on_relevance_scores/
 │   ├── experiment_0/
 │   │   ├── comparison.py
 │   │   └── replication_check_1a.py
+│   │
 │   ├── experiment_1a/
 │   │   └── evaluate_concept_classification_1a.py
+│   │
 │   ├── experiment_1b/
 │   │   ├── evaluate_concept_classification_1b.py
 │   │   └── komor_concept_classification_1b.py
+│   │
 │   ├── experiment_1c/
 │   │   ├── analysis_1c.py
 │   │   ├── evaluate_concept_classification_1c.py
 │   │   └── komor_concept_classification_1c.py
+│   │
 │   ├── experiment_2/
-│   │   ├── # to be added
-│   │   └──
+│   │   ├── analysis_2.py
+│   │   └── evaluate_concept_classification_2.py
+│   │
+│   ├── experiment_3/
+│   │   ├── # add here
+│   │   └── evaluate_concept_classification_3.py
+│   │
 │   ├── analysis_1a_1b.py
 │   ├── classifier_sweep_komor.py
 │   └── classifier_sweep_prequential.py
 │
 ├── external/
 │   └── komorniczak/
+│       ├── results/
+│       ├── E1_extract_real.py
 │       ├── E1_extract_synthetic.py
+│       ├── E2_clf_real.py
 │       ├── E2_clf_synthetic.py
-│       ├── utils.py
-│       └── results/
+│       └── utils.py
 │
 ├── full_pipeline/
 │   └── pipeline.py
@@ -45,18 +56,26 @@ meta-features_based_on_relevance_scores/
 ├── results/
 │   ├── experiment_0/
 │   │   └── figures/
+│   │
 │   ├── experiment_1a/
 │   │   └── figures/
 │   │       └── analysis/
+│   │
 │   ├── experiment_1b/
 │   │   └── figures/
 │   │       └── analysis/
+│   │
 │   ├── experiment_1c/
 │   │    └── figures/
 │   │       └── analysis/
+│   │
 │   ├── experiment_2/
 │   │    └── figures/
 │   │       └── analysis/ 
+│   │
+│   ├── experiment_3/
+│   │    └── figures/
+│   │       └── analysis/
 │   │    ...
 │   │
 │   └── sanity_check/
@@ -127,3 +146,38 @@ meta-features_based_on_relevance_scores/
 
 12. **`experiments/analysis_1c.py --sanity --performance --shap --metrics`**
     Loads the pre-computed `.npy` results from `results/experiment_1c/` and produces: sanity check plots, performance trajectory plots (cumulative BA over time with concept boundaries), SHAP feature importance plots, and F1/Kappa heatmaps. All figures saved to `results/experiment_1c/figures/analysis/`.
+
+
+
+### Experiment 2: Stream Configuration Sensitivity
+
+13. **`experiments/experiment_2/evaluate_concept_classification_2.py`**
+   Loops over a $4 \times 4$ grid of stream configurations (chunk\_size ∈ {100, 200, 500, 1000} $\times$ n\_informative ∈ {3, 5, 10, 15}) and evaluates both ABFS raw score meta-features (v2.0) and Komorniczak statistical meta-features under two protocols (shuffled CV and prequential) for both sudden and gradual drift. Komorniczak features are re-extracted using pymfe on the same streams (cannot reuse pre-extracted files from Experiment 1 since chunk\_size and n\_informative vary). Produces 384 `.npy` result files in `results/experiment_2/` and 64 comparison heatmap figures (32 CV + 32 prequential) in `results/experiment_2/figures/`. 
+
+14. **`experiments/experiment_2/generate_missing_heatmaps.py`**
+   Generates CV and prequential comparison heatmaps for any grid cells that were computed before the heatmap call was added to the evaluate script. Loads existing `.npy` files and produces missing figures with skip logic. Run once after all evaluate scripts have completed.
+
+15. **`experiments/experiment_2/analysis_2.py --sanity --variance --performance --shap --metrics --grid`**
+   Loads all pre-computed `.npy` result files from `results/experiment_2/` and produces per-cell analyses (sanity check plots, performance variance plots, trajectory plots, SHAP importance plots, F1 and Kappa heatmaps) plus two grid-level analyses specific to Experiment 2: gap heatmaps (ABFS minus Komorniczak BA across the $4 \times 4$ grid) and sensitivity curves (BA vs chunk\_size and BA vs n\_informative). Each flag runs the corresponding analysis independently to allow partial reruns. All figures saved to `results/experiment_2/figures/analysis/`. Can be run with `--grid` only to regenerate gap heatmaps and sensitivity curves without rerunning per-cell analyses.
+
+
+### Experiment 3: Real-World Stream Evaluation (INSECTS)
+
+16. **`external/komorniczak/E1_extract_real.py`**
+    Extracts pymfe statistical meta-features from the three INSECTS streams
+    (abrupt, gradual, incremental) using Komorniczak's NPYParser and ground
+    truth drift annotations. Produces one .npy file per stream in
+    `results/experiment_3/komor/`.
+
+17. **`external/komorniczak/E2_clf_real.py`**
+    Runs classifier sweep (GNB, KNN, SVM, DT, MLP) on Komorniczak statistical
+    features for each INSECTS stream. Experiment 0 replication for real streams.
+    Compare against Komorniczak et al. Figure 14. Produces .npy result files
+    in `results/experiment_3/komor/`.
+
+18. **`experiments/experiment_3/evaluate_concept_classification_3.py`**
+    Extracts ABFS raw score meta-features (v2.0) from the same INSECTS streams
+    and evaluates under both shuffled CV (Experiment 1a protocol) and
+    prequential (Experiment 1c protocol). Produces .npy result files in
+    `results/experiment_3/` and comparison heatmap figures in
+    `results/experiment_3/figures/`.
