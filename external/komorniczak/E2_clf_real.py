@@ -3,6 +3,9 @@ E2 - classification for real-world streams
 """
 
 import numpy as np
+import os
+import warnings
+warnings.filterwarnings('ignore')
 from sklearn import clone
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.neural_network import MLPClassifier
@@ -12,6 +15,18 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from tqdm import tqdm
 from sklearn.metrics import balanced_accuracy_score
+
+
+
+# ============================================================
+#  PATHS
+# ============================================================
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
+ 
+RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results', 'real')
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
 
 np.random.seed(1233)
 

@@ -1,5 +1,5 @@
 # ============================================================
-# Experiment 0: Pipeline Verification - Step 2
+# Experiment 0: Pipeline Verification - Step 2 (SYNTHETIC STREAMS)
 #
 # Loads their pre-extracted statistical meta-features
 # (produced by E1_extract_synthetic.py) and evaluates them
@@ -55,7 +55,7 @@ from plot_results import print_summary_table_experiment1
 # ============================================================
 
 # absolute path to their results folder
-THEIR_RESULTS_PATH = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results')
+THEIR_RESULTS_PATH = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'synthetic')
 
 
 # all measure groups produced by E1_extract_synthetic.py

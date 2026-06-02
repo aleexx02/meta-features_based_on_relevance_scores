@@ -15,7 +15,7 @@ from sklearn.metrics import balanced_accuracy_score
 import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results')
+RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results', 'synthetic')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 

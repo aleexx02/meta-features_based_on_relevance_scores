@@ -96,16 +96,16 @@ meta-features_based_on_relevance_scores/
 ### Experiment 0: Pipeline Verification
 
 1. **`external/komorniczak/E1_extract_synthetic.py`**
-   Generates synthetic streams and extracts pymfe meta-features for each chunk across 9 measure groups (clustering, complexity, concept, general, info-theory, itemset, landmarking, model-based, statistical). Produces one `.npy` file per measure group in `external/komorniczak/results/`. This is the slowest step: run on a cluster if possible.
+   Generates synthetic streams and extracts pymfe meta-features for each chunk across 9 measure groups (clustering, complexity, concept, general, info-theory, itemset, landmarking, model-based, statistical). Produces one `.npy` file per measure group in `external/komorniczak/results/synthetic/`. This is the slowest step: run on a cluster if possible.
 
 2. **`external/komorniczak/E2_clf_synthetic.py`**
-   Loads the 9 `.npy` files and runs a classifier sweep (GNB, KNN, SVM, DT, MLP) on each measure group across all drift types and replications. Produces `external/komorniczak/results/clf.npy`. Compare the output against Figure 12 of Komorniczak to confirm their pipeline runs correctly on our machine.
+   Loads the 9 `.npy` files and runs a classifier sweep (GNB, KNN, SVM, DT, MLP) on each measure group across all drift types and replications. Produces `external/komorniczak/results/synthetic/clf.npy`. Compare the output against Figure 12 of Komorniczak to confirm their pipeline runs correctly on our machine.
 
 3. **`experiments/comparison.py`**
-   Loads `external/komorniczak/results/clf.npy` and compares the balanced accuracy values against Figure 12 of Komorniczak for sudden and gradual drift. Produces a side-by-side heatmap saved to `results/experiment_0/figures/`. If the difference is small, the pipeline is confirmed to run correctly on our machine.
+   Loads `external/komorniczak/results/synthetic/clf.npy` and compares the balanced accuracy values against Figure 12 of Komorniczak for sudden and gradual drift. Produces a side-by-side heatmap saved to `results/experiment_0/figures/`. If the difference is small, the pipeline is confirmed to run correctly on our machine.
 
 4. **`experiments/replication_check_1a.py`**
-   Loads the pre-extracted `.npy` files from `external/komorniczak/results/` and runs them through our evaluation protocol (`classifier_sweep_komor.py`). Produces comparison figures saved to `results/experiment_0/figures/` and `.npy` result files in `results/experiment_1a/`. If the results match E2 closely, our evaluation protocol is confirmed equivalent to theirs. The results of this script are used as the Komorniczak baseline in Experiment 1a.
+   Loads the pre-extracted `.npy` files from `external/komorniczak/results/synthetic/` and runs them through our evaluation protocol (`classifier_sweep_komor.py`). Produces comparison figures saved to `results/experiment_0/figures/` and `.npy` result files in `results/experiment_1a/`. If the results match E2 closely, our evaluation protocol is confirmed equivalent to theirs. The results of this script are used as the Komorniczak baseline in Experiment 1a.
 
 
 
@@ -164,20 +164,13 @@ meta-features_based_on_relevance_scores/
 ### Experiment 3: Real-World Stream Evaluation (INSECTS)
 
 16. **`external/komorniczak/E1_extract_real.py`**
-    Extracts pymfe statistical meta-features from the three INSECTS streams
-    (abrupt, gradual, incremental) using Komorniczak's NPYParser and ground
-    truth drift annotations. Produces one .npy file per stream in
-    `results/experiment_3/komor/`.
+    Extracts pymfe meta-features for each chunk across 9 measure groups (clustering, complexity, concept, general, info-theory, itemset, landmarking, model-based, statistical), from the three INSECTS streams (abrupt, gradual, incremental) using Komorniczak's NPYParser and ground truth drift annotations. Produces one `.npy` file per stream in `external/komorniczak/results/real/`
 
 17. **`external/komorniczak/E2_clf_real.py`**
-    Runs classifier sweep (GNB, KNN, SVM, DT, MLP) on Komorniczak statistical
-    features for each INSECTS stream. Experiment 0 replication for real streams.
-    Compare against Komorniczak et al. Figure 14. Produces .npy result files
-    in `results/experiment_3/komor/`.
+    Runs classifier sweep (GNB, KNN, SVM, DT, MLP) on each measure group for each INSECTS stream. Produces `external/komorniczak/results/real/clf.npy`. Experiment 0 replication for real streams.
+    Compare against Figure 14 of Komorniczak to confirm their pipeline runs correctly on our machine.
 
 18. **`experiments/experiment_3/evaluate_concept_classification_3.py`**
-    Extracts ABFS raw score meta-features (v2.0) from the same INSECTS streams
-    and evaluates under both shuffled CV (Experiment 1a protocol) and
-    prequential (Experiment 1c protocol). Produces .npy result files in
-    `results/experiment_3/` and comparison heatmap figures in
-    `results/experiment_3/figures/`.
+    Extracts our ABFS meta-feature vectors from the same INSECTS streams and evaluates under both shuffled CV (Experiment 1a protocol) using `classifier_sweep_komor.py` and
+    prequential (Experiment 1c protocol) using `classifier_sweep_prequential.py`. Produces `.npy` result files in `results/experiment_3/` and comparison heatmap figures in
+    `results/experiment_3/figures/` against the Komorniczak baseline. Any difference in balanced accuracy is due solely to the meta-features.

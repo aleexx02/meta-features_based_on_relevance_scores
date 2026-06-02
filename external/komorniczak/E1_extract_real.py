@@ -1,10 +1,27 @@
 """
 Experiment 1 -- collect streams and metafetaures -- real-world streams
 """
+import os
+import sys
 import numpy as np
 from pymfe.mfe import MFE
 from tqdm import tqdm
 import strlearn as sl
+
+
+# ============================================================
+#  PATHS
+# ============================================================
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
+ 
+KOMOR_DATA_DIR = os.path.expanduser('~/code_komor/data')
+INSECTS_STREAMS_DIR = os.path.join(KOMOR_DATA_DIR, 'real_streams_pr')
+INSECTS_GT_DIR = os.path.join(KOMOR_DATA_DIR, 'real_streams_gt')
+ 
+RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results', 'real')
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
 
 real_streams = [
     'real_streams/covtypeNorm-1-2vsAll-pruned.arff',

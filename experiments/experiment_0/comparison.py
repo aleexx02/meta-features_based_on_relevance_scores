@@ -1,6 +1,6 @@
 
 # ============================================================
-# Experiment 0: Pipeline Verification - Step 1
+# Experiment 0: Pipeline Verification - Step 1 (SYNTHETIC STREAMS)
 #
 # Compares E2 clf.npy results against Figure 12 of Komorniczak paper
 # Produces a side-by-side heatmap for sudden and gradual drift.
@@ -24,7 +24,7 @@ import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))  # go up two levels to project root
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results') # folder where the results from their code are stored (after running E2)
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'synthetic') # folder where the results from their code are stored (after running E2)
 SAVE_PATH = os.path.join(PROJECT_ROOT, 'results', 'experiment_0', 'figures') # folder where the comparison figure will be saved
 os.makedirs(SAVE_PATH, exist_ok=True)
 
