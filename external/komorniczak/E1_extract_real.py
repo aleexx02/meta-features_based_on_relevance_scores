@@ -19,17 +19,14 @@ KOMOR_DATA_DIR = os.path.expanduser('~/code_komor/data')
 INSECTS_STREAMS_DIR = os.path.join(KOMOR_DATA_DIR, 'real_streams_pr')
 INSECTS_GT_DIR = os.path.join(KOMOR_DATA_DIR, 'real_streams_gt')
  
-RESULTS_DIR = os.path.join(SCRIPT_DIR, 'results', 'real')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 real_streams = [
-    'real_streams/covtypeNorm-1-2vsAll-pruned.arff',
-    'real_streams/electricity.npy',
-    'real_streams/poker-lsn-1-2vsAll-pruned.arff',
-    'real_streams/INSECTS-abrupt_imbalanced_norm.arff',
-    'real_streams/INSECTS-gradual_imbalanced_norm.arff',
-    'real_streams/INSECTS-incremental_imbalanced_norm.arff'
+    'INSECTS-abrupt_imbalanced_norm',
+    'INSECTS-gradual_imbalanced_norm',
+    'INSECTS-incremental_imbalanced_norm',
     ]
 
 stream_static = { 'chunk_size': 300 }
@@ -50,15 +47,18 @@ pbar = tqdm(total=len(real_streams))
 for m_id, measure_key in enumerate(measures):
     print(measure_key)
     
-    for f_id, f in enumerate(real_streams):
-        fname=(f.split('/')[1]).split('.')[0]
+    for f_id, fname in enumerate(real_streams):
 
-        drfs = np.load('real_streams_gt/%s.npy' % fname)
+        drfs = np.load(os.path.join(INSECTS_GT_DIR, f'{fname}.npy'))
        
         concept=0
         out = []
         
-        stream = sl.streams.NPYParser('real_streams_pr/%s.npy' % fname, chunk_size=stream_static['chunk_size'], n_chunks=100000)
+        stream = sl.streams.NPYParser(
+            os.path.join(INSECTS_STREAMS_DIR, f'{fname}.npy'),
+            chunk_size=stream_static['chunk_size'],
+            n_chunks=100000
+        )
         
         for chunk in range(100000):
             # GET CONCEPT
@@ -82,4 +82,11 @@ for m_id, measure_key in enumerate(measures):
 
             out.append(ft)
                 
-        np.save('res/real_%i_%s.npy' % (f_id, measure_key), np.array(out))
+        out_path = os.path.join(RESULTS_DIR, f'komor_real_{fname}_{measure_key}.npy')
+        np.save(out_path, np.array(out))
+        print(f'  Saved: {out_path}  shape={np.array(out).shape}')
+ 
+        pbar.update(1)
+ 
+pbar.close()
+print("\nE1 extraction complete.")

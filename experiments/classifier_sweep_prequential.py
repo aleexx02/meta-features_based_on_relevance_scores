@@ -17,7 +17,6 @@
 # Classifiers:
 #   - GNB: River GaussianNB
 #   - KNN: River KNNClassifier
-#   - PAC: River PAClassifier (Passive-Aggressive, linear margin-based)
 #   - HT:  River HoeffdingTreeClassifier
 #   - MLP: sklearn MLPClassifier with partial_fit for incremental updates
 #          Note: River does not provide an MLPClassifier for classification.
@@ -46,7 +45,7 @@
 
 
 import numpy as np
-from river import naive_bayes, neighbors, linear_model, tree, metrics
+from river import naive_bayes, neighbors, tree, metrics
 from sklearn.neural_network import MLPClassifier
 
 
@@ -76,7 +75,6 @@ class SklearnMLPWrapper:
 BASE_CLFS_PREQUENTIAL = [
     ('GNB', lambda classes: naive_bayes.GaussianNB()),
     ('KNN', lambda classes: neighbors.KNNClassifier()),
-    ('PAC', lambda classes: linear_model.PAClassifier()),
     ('HT',  lambda classes: tree.HoeffdingTreeClassifier()),
     ('MLP', lambda classes: SklearnMLPWrapper(classes)),
 ]

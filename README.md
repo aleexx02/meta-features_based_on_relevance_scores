@@ -166,11 +166,6 @@ meta-features_based_on_relevance_scores/
 16. **`external/komorniczak/E1_extract_real.py`**
     Extracts pymfe meta-features for each chunk across 9 measure groups (clustering, complexity, concept, general, info-theory, itemset, landmarking, model-based, statistical), from the three INSECTS streams (abrupt, gradual, incremental) using Komorniczak's NPYParser and ground truth drift annotations. Produces one `.npy` file per stream in `external/komorniczak/results/real/`
 
-17. **`external/komorniczak/E2_clf_real.py`**
-    Runs classifier sweep (GNB, KNN, SVM, DT, MLP) on each measure group for each INSECTS stream. Produces `external/komorniczak/results/real/clf.npy`. Experiment 0 replication for real streams.
-    Compare against Figure 14 of Komorniczak to confirm their pipeline runs correctly on our machine.
-
-18. **`experiments/experiment_3/evaluate_concept_classification_3.py`**
-    Extracts our ABFS meta-feature vectors from the same INSECTS streams and evaluates under both shuffled CV (Experiment 1a protocol) using `classifier_sweep_komor.py` and
-    prequential (Experiment 1c protocol) using `classifier_sweep_prequential.py`. Produces `.npy` result files in `results/experiment_3/` and comparison heatmap figures in
+17. **`experiments/experiment_3/evaluate_concept_classification_3.py`**
+    Extracts our ABFS meta-feature vectors from the same INSECTS streams and evaluates under prequential protocol (Experiment 1c protocol) using `classifier_sweep_prequential.py`. Produces `.npy` result files in `results/experiment_3/` and comparison heatmap figures in
     `results/experiment_3/figures/` against the Komorniczak baseline. Any difference in balanced accuracy is due solely to the meta-features.
