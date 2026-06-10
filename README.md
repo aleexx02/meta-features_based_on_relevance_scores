@@ -31,8 +31,10 @@ meta-features_based_on_relevance_scores/
 │   │   └── evaluate_concept_classification_2.py
 │   │
 │   ├── experiment_3/
-│   │   ├── # add here
+│   │   ├── analysis_3.py
 │   │   └── evaluate_concept_classification_3.py
+│   │   
+│   │    # add more experiments here
 │   │
 │   ├── analysis_1a_1b.py
 │   ├── classifier_sweep_komor.py
@@ -41,6 +43,8 @@ meta-features_based_on_relevance_scores/
 ├── external/
 │   └── komorniczak/
 │       ├── results/
+│       │   ├── real/
+│       │   └── synthetic/
 │       ├── E1_extract_real.py
 │       ├── E1_extract_synthetic.py
 │       ├── E2_clf_synthetic.py
@@ -89,6 +93,22 @@ meta-features_based_on_relevance_scores/
 ├── requirements.txt
 └── sanity_check.py
 
+## ABFS Meta-Feature Versions
+
+| Version | Name | Dim | Description |
+|---|---|---|---|
+| v1.1 | aggstats | 8 | entropy, n_relevant, max_score, std_score, delta_mean, n_changed, drift_count, time_since_drift |
+| v2.0 | raw scores | n_features | Normalized relevance score vector — feature identity preserved |
+| v2.1 | raw + temporal | n_features + 2 | v2.0 + delta_mean + cosine_sim (window-to-window change) |
+
+---
+
+## Evaluation Protocol
+All experiments use **prequential (test-then-train)** evaluation.
+Batch CV (Experiments 1a/1b) is kept for historical comparison only.
+
+**Classifiers:** River GNB, KNN, HT + sklearn MLP with partial_fit.
+
 
 ## Execution Order
 
@@ -108,30 +128,26 @@ meta-features_based_on_relevance_scores/
 
 
 
-### Experiment 1a: Static Evaluation with Shuffled Cross-Validation
+### Experiments 1a & 1b: Batch CV (Historical)
 
-5. **`experiments/experiment_1a/evaluate_concept_classification_1a.py`**
-   Generates the same synthetic streams, runs ABFS to extract our meta-feature vectors, and evaluates them using `classifier_sweep_komor.py` with shuffling enabled. Produces `.npy` result files in `results/experiment_1a/` and a comparison heatmap against the Komorniczak baseline from step 4. Any difference in balanced accuracy is due solely to the meta-features.
+> **Note:** Shuffled (1a) and unshuffled (1b) CV for historical comparison only.
+> Key finding: shuffling makes no difference (<0.002 BA) — non-recurring concepts
+> have no temporal structure to leak across folds.
 
-6. **`experiments/analysis_1a_1b.py --exp 1a --sanity --variance --shap --metrics`**
-   Loads the pre-computed `.npy` results from `results/experiment_1a/` and produces: sanity check plots, performance variance plots, SHAP feature importance plots, and F1/Kappa heatmaps. All figures saved to `results/experiment_1a/figures/analysis/`.
+**5. `experiments/experiment_1a/evaluate_concept_classification_1a.py`**
+All 3 ABFS versions under shuffled CV. Heatmap: 9 Komorniczak groups × classifiers | 3 ABFS versions × classifiers.
 
+**6. `experiments/analysis_1a_1b.py --exp 1a --sanity --variance --shap --metrics`**
+Sanity, variance, SHAP, F1/Kappa. → `results/experiment_1a/figures/analysis/`
 
+**7. `experiments/experiment_1b/komor_concept_classification_1b.py`**
+Komorniczak under no-shuffle CV.
 
+**8. `experiments/experiment_1b/evaluate_concept_classification_1b.py`**
+Same as step 5 with shuffling disabled.
 
-### Experiment 1b: Static Evaluation without Shuffling
-
-7. **`experiments/experiment_1b/komor_concept_classification_1b.py`**
-   Evaluates Komorniczak meta-features under the no-shuffle protocol using `classifier_sweep_komor.py`. Produces `.npy` result files in `results/experiment_1b/`. Used as the Komorniczak baseline for Experiment 1b.
-
-
-8. **`experiments/experiment_1b/evaluate_concept_classification_1b.py`**
-   Same as step 5 but with shuffling disabled. Produces `.npy` result files in `results/experiment_1b/` and a comparison heatmap against the Komorniczak baseline from step 7.
-
-
-9. **`experiments/analysis_1a_1b.py --exp 1b --sanity --variance --shap --metrics`**
-   Same as step 6 but for Experiment 1b. All figures saved to `results/experiment_1b/figures/analysis/`.
-
+**9. `experiments/analysis_1a_1b.py --exp 1b --sanity --variance --shap --metrics`**
+Same as step 6 for Experiment 1b. → `results/experiment_1b/figures/analysis/`
 
 
 ### Experiment 1c: Prequential Evaluation
@@ -150,21 +166,65 @@ meta-features_based_on_relevance_scores/
 
 ### Experiment 2: Stream Configuration Sensitivity
 
-13. **`experiments/experiment_2/evaluate_concept_classification_2.py`**
-   Loops over a $4 \times 4$ grid of stream configurations (chunk\_size ∈ {100, 200, 500, 1000} $\times$ n\_informative ∈ {3, 5, 10, 15}) and evaluates both ABFS raw score meta-features (v2.0) and Komorniczak statistical meta-features under two protocols (shuffled CV and prequential) for both sudden and gradual drift. Komorniczak features are re-extracted using pymfe on the same streams (cannot reuse pre-extracted files from Experiment 1 since chunk\_size and n\_informative vary). Produces 384 `.npy` result files in `results/experiment_2/` and 64 comparison heatmap figures (32 CV + 32 prequential) in `results/experiment_2/figures/`. 
+chunk_size ∈ {100, 200, 500, 1000} × n_informative ∈ {3, 5, 10, 15}
+4×4 grid × 2 drift types × 5 replications. **Prequential only.**
 
-14. **`experiments/experiment_2/generate_missing_heatmaps.py`**
-   Generates CV and prequential comparison heatmaps for any grid cells that were computed before the heatmap call was added to the evaluate script. Loads existing `.npy` files and produces missing figures with skip logic. Run once after all evaluate scripts have completed.
+**13. `experiments/experiment_2/evaluate_concept_classification_2.py`**
+For each cell:
+- All 3 ABFS versions extracted in one pass
+- All 9 Komorniczak measure groups re-extracted via pymfe
+- Prequential evaluation, 5 replications
 
-15. **`experiments/experiment_2/analysis_2.py --sanity --variance --performance --shap --metrics --grid`**
-   Loads all pre-computed `.npy` result files from `results/experiment_2/` and produces per-cell analyses (sanity check plots, performance variance plots, trajectory plots, SHAP importance plots, F1 and Kappa heatmaps) plus two grid-level analyses specific to Experiment 2: gap heatmaps (ABFS minus Komorniczak BA across the $4 \times 4$ grid) and sensitivity curves (BA vs chunk\_size and BA vs n\_informative). Each flag runs the corresponding analysis independently to allow partial reruns. All figures saved to `results/experiment_2/figures/analysis/`. Can be run with `--grid` only to regenerate gap heatmaps and sensitivity curves without rerunning per-cell analyses.
+Output naming:
+```
+preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy   (n_reps, n_windows, n_clfs)
+preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
+```
+
+**14. `experiments/experiment_2/analysis_2.py --sanity --performance --shap --metrics --grid`**
+- `--sanity`      relevance scores, meta-features per window, PCA (rep 0 only)
+- `--performance` cumulative BA trajectory per cell
+- `--shap`        SHAP — all 4 classifiers (GNB, KNN, HT proxy, MLP), raw v2.0
+- `--metrics`     F1 and Kappa heatmaps (all 3 ABFS + 9 Komorniczak)
+- `--grid`        gap heatmaps + sensitivity curves across 4×4 grid
+
+→ `results/experiment_2/figures/analysis/`
+
 
 
 ### Experiment 3: Real-World Stream Evaluation (INSECTS)
 
-16. **`external/komorniczak/E1_extract_real.py`**
-    Extracts pymfe meta-features for each chunk across 9 measure groups (clustering, complexity, concept, general, info-theory, itemset, landmarking, model-based, statistical), from the three INSECTS streams (abrupt, gradual, incremental) using Komorniczak's NPYParser and ground truth drift annotations. Produces one `.npy` file per stream in `external/komorniczak/results/real/`
+Streams:
+- INSECTS-abrupt_imbalanced_norm      236 chunks, 33 features, 2 concepts
+- INSECTS-gradual_imbalanced_norm     236 chunks, 33 features, 6 concepts
+- INSECTS-incremental_imbalanced_norm 236 chunks, 33 features, 6 concepts
 
-17. **`experiments/experiment_3/evaluate_concept_classification_3.py`**
-    Extracts our ABFS meta-feature vectors from the same INSECTS streams and evaluates under prequential protocol (Experiment 1c protocol) using `classifier_sweep_prequential.py`. Produces `.npy` result files in `results/experiment_3/` and comparison heatmap figures in
-    `results/experiment_3/figures/` against the Komorniczak baseline. Any difference in balanced accuracy is due solely to the meta-features.
+**15. `external/komorniczak/E1_extract_real.py`** (or 9 parallel scripts per measure)
+Extracts pymfe features for all 9 measure groups × 3 streams = 27 .npy files.
+Output: `external/komorniczak/results/real/komor_real_{stream}_{measure}.npy`
+
+Submit to cluster:
+```bash
+mkdir -p external/komorniczak/logs
+oarsub -S external/komorniczak/E1_real_{measure}.sh   # one per measure
+ls external/komorniczak/results/real/ | wc -l         # verify: should be 27
+```
+
+**16. `experiments/experiment_3/evaluate_concept_classification_3.py`**
+All 3 ABFS versions + all 9 Komorniczak groups, prequential, single pass per stream.
+
+Output:
+```
+abfs_y_{stream}.npy                      (n_windows,)
+preq_abfs_{version}_ba_{stream}.npy      (n_windows, n_clfs)
+preq_komor_{measure}_ba_{stream}.npy     (n_windows, n_clfs)
+heatmap_combined_exp3_{stream}.png       left: 9 Komor groups | right: 3 ABFS versions
+```
+
+**17. `experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics`**
+- `--sanity`      relevance scores, meta-features per window, PCA per stream
+- `--performance` BA trajectories (3 ABFS stacked; 9 Komorniczak in 3×3 grid)
+- `--shap`        SHAP — all 4 classifiers, per stream per ABFS version
+- `--metrics`     F1 and Kappa heatmaps (final window value)
+
+→ `results/experiment_3/figures/analysis/`
