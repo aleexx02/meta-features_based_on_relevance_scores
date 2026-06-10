@@ -70,7 +70,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw_cosine)
 
 from classifier_sweep_komor import run_classifier_sweep, BASE_CLFS
-from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy_comparison
+from plot_results import print_summary_table_experiment1, plot_heatmap_balanced_accuracy_comparison_exp1
 
 
 # path to results folder
@@ -373,7 +373,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
 
     if os.path.exists(rc_path):
         rc_raw = np.load(rc_path) # shape: (n_measures, n_replications, n_folds, n_clfs)
-        plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS,
+        plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS,
         drift_type, n_concepts, FIGURES_DIR,exp_label='1a',filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
     else:
         print(f"\nWarning: {rc_path} not found - run replication_check.py first.")

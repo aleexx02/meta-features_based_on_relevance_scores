@@ -43,7 +43,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal)
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
-from plot_results import plot_heatmap_balanced_accuracy_comparison
+from plot_results import plot_heatmap_balanced_accuracy_comparison_exp1
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -257,7 +257,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
 
     if os.path.exists(rc_path):
         rc_raw = np.load(rc_path)  # shape: (n_measures, n_replications, n_windows, n_clfs)
-        plot_heatmap_balanced_accuracy_comparison(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,drift_type, n_concepts, FIGURES_DIR,
+        plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,drift_type, n_concepts, FIGURES_DIR,
             exp_label='1c',filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
     else:
         print(f"\nWarning: {rc_path} not found - run komor_concept_classification_1c.py first.")

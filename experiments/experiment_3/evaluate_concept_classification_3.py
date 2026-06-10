@@ -271,7 +271,7 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
     plt.tight_layout()
 
     out_path = os.path.join(FIGURES_DIR,
-                            f'heatmap_combined_exp3_{stream_name}.png')
+                            f'heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream_name}.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved combined heatmap: {out_path}")
