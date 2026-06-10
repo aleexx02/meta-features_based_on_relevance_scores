@@ -3,7 +3,7 @@
 ABFS-based stream meta-features for concept classification in non-stationary data streams.
 
 ## Project Structure
-
+```
 meta-features_based_on_relevance_scores/
 │
 ├── abfs/
@@ -92,6 +92,7 @@ meta-features_based_on_relevance_scores/
 ├── README.md
 ├── requirements.txt
 └── sanity_check.py
+```
 
 ## ABFS Meta-Feature Versions
 
