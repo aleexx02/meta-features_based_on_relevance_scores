@@ -258,7 +258,7 @@ def plot_combined_heatmap(tag, drift_type, n_concepts, pr_abfs_ba_arr):
     plt.tight_layout()
 
     out_path = os.path.join(FIGURES_DIR,
-                            f'heatmap_combined_preq_{tag}.png')
+                            f'heatmap_comparison_komorniczak_ABFS_preq_{tag}.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Heatmap saved: {out_path}")
