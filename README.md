@@ -43,7 +43,6 @@ meta-features_based_on_relevance_scores/
 │       ├── results/
 │       ├── E1_extract_real.py
 │       ├── E1_extract_synthetic.py
-│       ├── E2_clf_real.py
 │       ├── E2_clf_synthetic.py
 │       └── utils.py
 │
