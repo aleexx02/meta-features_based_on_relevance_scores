@@ -84,7 +84,7 @@ warnings.filterwarnings("ignore")
 # EXPERIMENT CONFIGURATION
 # ============================================================
 
-DATASET_NAME = "insects"  # one of: "elec2", "phishing", "http", "insects", "credit_card"
+DATASET_NAME = "credit_card"  # one of: "elec2", "phishing", "http", "insects", "credit_card"
 OUTPUT_DIR = "real_streams_data"
 MAX_ROWS = 50000
 CHUNK_SIZE = 300
