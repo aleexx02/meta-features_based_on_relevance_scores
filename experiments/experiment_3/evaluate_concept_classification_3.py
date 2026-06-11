@@ -12,9 +12,9 @@
 #   - v2.1 raw+temporal: v2.0 + delta_mean + cosine_sim (n_features+2-dim)
 #
 # Streams:
-#   - INSECTS-abrupt_imbalanced_norm    : 236 chunks, 33 features, 2 concepts
-#   - INSECTS-gradual_imbalanced_norm   : 236 chunks, 33 features, 6 concepts
-#   - INSECTS-incremental_imbalanced_norm: 236 chunks, 33 features, 6 concepts
+#   - INSECTS-abrupt_imbalanced_norm    : 236 chunks, 33 features
+#   - INSECTS-gradual_imbalanced_norm   : 236 chunks, 33 features
+#   - INSECTS-incremental_imbalanced_norm: 236 chunks, 33 features
 #
 # chunk_size = 300 (matches Komorniczak et al.)
 #
@@ -95,9 +95,8 @@ INSECTS_STREAMS = [
 ]
 
 N_CONCEPTS = {
-    'INSECTS-abrupt_imbalanced_norm':      2,
-    'INSECTS-gradual_imbalanced_norm':     6,
-    'INSECTS-incremental_imbalanced_norm': 6,
+    s: len(np.load(os.path.join(INSECTS_GT_DIR, f'{s}.npy'))) + 1
+    for s in INSECTS_STREAMS
 }
 
 MEASURES = [
