@@ -95,10 +95,12 @@ INSPECT_ONLY = False
 
 
 DATASET_REGISTRY = {
-    "elec2": datasets.Elec2(),
-    "covtype": datasets.Covtype(),
-    "phishing": datasets.Phishing(),
-    "http": datasets.HTTP(),
+
+"elec2": datasets.Elec2(),             # binary classification stream
+"phishing": datasets.Phishing(),       # binary classification
+"http": datasets.HTTP(),               # binary classification
+"insects": datasets.Insects(),         # multi-class drift stream
+"credit_card": datasets.CreditCard()  # anomaly/fraud detection
 }
 
 
