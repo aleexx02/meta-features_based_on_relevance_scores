@@ -24,6 +24,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 real_streams = [
+    'poker-lsn-1-2vsAll-pruned',
     'INSECTS-abrupt_imbalanced_norm',
     'INSECTS-gradual_imbalanced_norm',
     'INSECTS-incremental_imbalanced_norm',
