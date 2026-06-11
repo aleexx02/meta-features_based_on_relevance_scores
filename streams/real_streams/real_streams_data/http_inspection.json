@@ -1,0 +1,39 @@
+{
+  "dataset": "http",
+  "n_instances": 50000,
+  "n_features": 3,
+  "n_numeric_features": 3,
+  "n_categorical_features": 0,
+  "categorical_indices": [],
+  "class_distribution": {
+    "0": 50000
+  },
+  "imbalance_ratio": 1.0,
+  "n_missing_values_total": 0,
+  "missing_values_per_column": {
+    "duration": 0,
+    "src_bytes": 0,
+    "dst_bytes": 0,
+    "target": 0,
+    "t": 0,
+    "window_id": 0
+  },
+  "chunk_size": 300,
+  "n_chunks": 167,
+  "feature_names": [
+    "duration",
+    "src_bytes",
+    "dst_bytes"
+  ],
+  "n_proxy_concepts": 4,
+  "proxy_label_source": "baseline classifier performance profiles clustered with KMeans",
+  "baseline_classifiers": [
+    "GNB",
+    "KNN",
+    "HT"
+  ],
+  "proxy_label_distribution": {
+    "0": 1,
+    "1": 166
+  }
+}

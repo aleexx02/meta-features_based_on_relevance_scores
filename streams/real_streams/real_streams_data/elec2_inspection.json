@@ -1,0 +1,52 @@
+{
+  "dataset": "elec2",
+  "n_instances": 45312,
+  "n_features": 8,
+  "n_numeric_features": 8,
+  "n_categorical_features": 0,
+  "categorical_indices": [],
+  "class_distribution": {
+    "False": 26075,
+    "True": 19237
+  },
+  "imbalance_ratio": 1.3554608306908562,
+  "n_missing_values_total": 0,
+  "missing_values_per_column": {
+    "date": 0,
+    "day": 0,
+    "period": 0,
+    "nswprice": 0,
+    "nswdemand": 0,
+    "vicprice": 0,
+    "vicdemand": 0,
+    "transfer": 0,
+    "target": 0,
+    "t": 0,
+    "window_id": 0
+  },
+  "chunk_size": 300,
+  "n_chunks": 152,
+  "feature_names": [
+    "date",
+    "day",
+    "period",
+    "nswprice",
+    "nswdemand",
+    "vicprice",
+    "vicdemand",
+    "transfer"
+  ],
+  "n_proxy_concepts": 4,
+  "proxy_label_source": "baseline classifier performance profiles clustered with KMeans",
+  "baseline_classifiers": [
+    "GNB",
+    "KNN",
+    "HT"
+  ],
+  "proxy_label_distribution": {
+    "0": 38,
+    "1": 58,
+    "2": 18,
+    "3": 38
+  }
+}

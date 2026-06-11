@@ -1,0 +1,37 @@
+{
+  "dataset": "phishing",
+  "variant": "ordered",
+  "source": "river",
+  "n_instances": 1250,
+  "n_features": 9,
+  "feature_names": [
+    "empty_server_form_handler",
+    "popup_window",
+    "https",
+    "request_from_other_domain",
+    "anchor_from_other_domain",
+    "is_popular",
+    "long_url",
+    "age_of_domain",
+    "ip_in_url"
+  ],
+  "categorical_indices": [],
+  "chunk_size": 300,
+  "n_chunks": 5,
+  "max_rows": 50000,
+  "n_proxy_concepts": 4,
+  "proxy_label_source": "baseline classifier performance profiles clustered with KMeans",
+  "proxy_label_independent_of_meta_features": true,
+  "baseline_classifiers": [
+    "GNB",
+    "KNN",
+    "HT"
+  ],
+  "output_files": {
+    "ordered_npz": "real_streams_data/phishing_ordered.npz",
+    "ordered_meta": "real_streams_data/phishing_ordered_meta.json",
+    "inspection": "real_streams_data/phishing_inspection.json",
+    "baseline_profiles_npz": "real_streams_data/phishing_baseline_profiles.npz",
+    "proxy_labels_npy": "real_streams_data/phishing_proxy_labels.npy"
+  }
+}
