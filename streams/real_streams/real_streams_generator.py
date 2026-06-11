@@ -96,7 +96,6 @@ INSPECT_ONLY = False
 
 DATASET_REGISTRY = {
     "elec2": datasets.Elec2(),
-    "airlines": datasets.Airlines(),
     "covtype": datasets.Covtype(),
     "phishing": datasets.Phishing(),
     "http": datasets.HTTP(),
