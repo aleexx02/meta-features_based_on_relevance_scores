@@ -84,7 +84,7 @@ warnings.filterwarnings("ignore")
 # EXPERIMENT CONFIGURATION
 # ============================================================
 
-DATASET_NAME = "http"  # one of: "elec2", "phishing", "http", "insects", "credit_card"
+DATASET_NAME = "insects"  # one of: "elec2", "phishing", "http", "insects", "credit_card"
 OUTPUT_DIR = "real_streams_data"
 MAX_ROWS = 50000
 CHUNK_SIZE = 300
@@ -95,11 +95,10 @@ INSPECT_ONLY = False
 
 
 DATASET_REGISTRY = {
-
-"elec2": datasets.Elec2(),             # binary classification stream
-"phishing": datasets.Phishing(),       # binary classification
-"http": datasets.HTTP(),               # binary classification
-"insects": datasets.Insects(),         # multi-class drift stream
+"elec2": datasets.Elec2(), # binary classification stream
+"phishing": datasets.Phishing(), # binary classification
+"http": datasets.HTTP(), # binary classification
+"insects": datasets.Insects(),  # multi-class drift stream
 "credit_card": datasets.CreditCard()  # anomaly/fraud detection
 }
 
