@@ -137,11 +137,11 @@ PALETTE = [
     '#000075', '#800000',
 ]
 
-# SHAP: sklearn-compatible proxies for all 4 classifiers
+
 SHAP_CLFS = [
     ('GNB', GaussianNB()),
     ('KNN', KNeighborsClassifier()),
-    ('HT',  DecisionTreeClassifier(random_state=11313)),  # proxy for Hoeffding Tree
+    ('HT',  DecisionTreeClassifier(random_state=11313)),
     ('MLP', MLPClassifier(random_state=11313)),
 ]
 
@@ -237,7 +237,7 @@ if RUN_SANITY:
             extract_stream_features(stream_name, drift_chunks)
         unique_concepts = np.unique(y)
 
-        # relevance scores — one per stream
+        # relevance scores - one per stream
         fname = os.path.join(FIGURES_DIR, f'relevance_scores_{stream_name}.png')
         if not os.path.exists(fname):
             fig, ax = plt.subplots(figsize=(14, 4))
@@ -260,7 +260,7 @@ if RUN_SANITY:
         else:
             print(f"  Exists: {fname}")
 
-        # meta-features and PCA — one per version
+        # meta-features and PCA - one per version
         for version in ABFS_VERSIONS:
             X     = X_by_version[version]
             names = feat_names_for(version, n_features)
@@ -412,7 +412,7 @@ if RUN_PERFORMANCE:
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
-    print("2. SHAP ANALYSIS — all 4 classifiers")
+    print("2. SHAP ANALYSIS")
     print("="*60)
 
     for stream_name in REAL_STREAMS:
@@ -421,7 +421,7 @@ if RUN_SHAP:
 
         y = load('abfs_y', stream_name)
         if y is None:
-            print(f"  y labels not found — skipping."); continue
+            print(f"  y labels not found - skipping."); continue
 
         all_done = all(
             os.path.exists(os.path.join(
@@ -429,7 +429,7 @@ if RUN_SHAP:
             for v in ABFS_VERSIONS
         )
         if all_done:
-            print(f"  All SHAP figures exist — skipping."); continue
+            print(f"  All SHAP figures exist - skipping."); continue
 
         drift_chunks = load_gt(stream_name)
         _, X_by_version, _ = extract_stream_features(stream_name, drift_chunks)
