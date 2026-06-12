@@ -65,11 +65,11 @@ N_FEATURES     = 20
 WARMUP_WINDOWS = 10
 N_REPLICATIONS = 5
 
-CHUNK_SIZES    = [1000]
+CHUNK_SIZES    = [500]
 N_INFORMATIVES = [3, 5, 10, 15]
 
 DRIFT_CONFIGS = [
-    ('sudden',  20, 9999)  # 21 concepts
+    ('gradual',  6,    5)  # 25 concepts
 ]
 
 MEASURES = [

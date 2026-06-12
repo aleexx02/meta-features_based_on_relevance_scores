@@ -69,8 +69,7 @@ CHUNK_SIZES    = [500]
 N_INFORMATIVES = [3, 5, 10, 15]
 
 DRIFT_CONFIGS = [
-    ('sudden',  20, 9999),  # 21 concepts
-    ('gradual',  6,    5),  # 25 concepts
+    ('sudden',  20, 9999)  # 21 concepts
 ]
 
 MEASURES = [
