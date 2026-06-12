@@ -345,9 +345,11 @@ Output directory: `data/real_streams_data/elec2/`
 | shape | `(n_reps, n_windows, n_clfs)` with `n_reps=5` |
 
 Naming convention:
+
 preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy
 
 preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy
+
 where:
   * version : aggstats | raw | raw_temporal
   * measure : clustering | complexity | concept | general | info-theory |
@@ -363,9 +365,14 @@ where:
 | `measure` | `clustering` \| `complexity` \| `concept` \| `general` \| `info-theory` \| `itemset` \| `landmarking` \| `model-based` \| `statistical` |
 | shape | `(n_windows, n_clfs)` - no replications (single fixed stream) |
 
+Naming convention:
+
 preq_abfs_{version}_ba_{stream}.npy
+
 preq_komor_{measure}_ba_{stream}.npy
-  shape : (n_windows, n_clfs)  - no replications
+
+where:
+  * shape : (n_windows, n_clfs)  - no replications
 
 
 ---
