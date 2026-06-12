@@ -150,7 +150,7 @@ python streams/real_streams_generator.py
 
 ## Stream Scripts
 
-### `streams/real_streams.py`
+### `streams/real_streams.py` 
 Downloads and prepares annotated real-world streams. Stores stream `.npy`
 files in `data/real_streams/` and ground truth drift chunk indices in
 `data/real_streams_gt/`. Used by `evaluate_concept_classification_3.py`
