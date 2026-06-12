@@ -21,11 +21,11 @@
 #
 # Outputs saved to results/experiment_2/:
 #   preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
-#   preq_abfs_{version}_f1_...
-#   preq_abfs_{version}_kappa_...
-#   preq_komor_{measure}_ba_...
-#   preq_komor_{measure}_f1_...
-#   preq_komor_{measure}_kappa_...
+#   preq_abfs_{version}_f1_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
+#   preq_abfs_{version}_kappa_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
+#   preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
+#   preq_komor_{measure}_f1_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
+#   preq_komor_{measure}_kappa_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
 #
 #   Figures saved in results/experiment_2/figures/:
 #     heatmap_comparison_komorniczak_ABFS_preq_chunk{cs}_ninf{ni}_{drift}.png
