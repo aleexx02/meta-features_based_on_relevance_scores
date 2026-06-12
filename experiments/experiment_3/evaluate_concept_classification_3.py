@@ -1,10 +1,10 @@
 # evaluate_concept_classification_3.py
 # ==============================================================================
-# Experiment 3: Real-World Stream Evaluation (INSECTS)
+# Experiment 3: Real-World Stream Evaluation
 #
-# Evaluates ALL THREE ABFS meta-feature versions on three INSECTS
-# real-world data streams and compares against ALL 9 Komorniczak measure
-# groups (pre-extracted by E1_extract_real.py).
+# Evaluates ALL THREE ABFS meta-feature versions on four real-world
+# data streams and compares against ALL 9 Komorniczak measure groups
+# (pre-extracted by E1_extract_real.py).
 #
 # ABFS versions:
 #   - v1.1 aggstats    : 8-dim aggregate statistics
@@ -12,37 +12,37 @@
 #   - v2.1 raw+temporal: v2.0 + delta_mean + cosine_sim (n_features+2-dim)
 #
 # Streams:
-#   - INSECTS-abrupt_imbalanced_norm    : 236 chunks, 33 features
-#   - INSECTS-gradual_imbalanced_norm   : 236 chunks, 33 features
-#   - INSECTS-incremental_imbalanced_norm: 236 chunks, 33 features
+#   - INSECTS-abrupt_imbalanced_norm      : ~236 chunks, 33 features, 2 concepts
+#   - INSECTS-gradual_imbalanced_norm     : ~236 chunks, 33 features, 6 concepts
+#   - INSECTS-incremental_imbalanced_norm : ~236 chunks, 33 features, 6 concepts
+#   - poker-lsn-1-2vsAll-pruned           : ~1031 chunks, 10 features, 32 concepts
 #
-# chunk_size = 300 (matches Komorniczak et al.)
+# chunk_size = 300 for all streams.
 #
 # Key differences from synthetic experiments:
 #   - No warmup skip: all windows included in the meta-dataset.
 #   - Single stream per name (no random seed replications)
-#   - n_features = 33 (real stream dimensionality)
-#   - Concept labels from manually annotated ground truth drift indices
-#   - Prequential evaluation only (no batch CV)
+#   - N_FEATURES is stream-dependent (33 for INSECTS, 10 for poker-lsn)
+#   - Concept labels from ground truth drift annotations
+#   - Prequential evaluation only
 #   - All 9 Komorniczak measure groups evaluated
 #
 # Outputs saved to results/experiment_3/:
-#   abfs_y_{stream_name}.npy                         shape: (n_windows,)
-#   preq_abfs_{version}_ba_{stream_name}.npy         shape: (n_windows, n_clfs)
-#   preq_abfs_{version}_f1_{stream_name}.npy         shape: (n_windows, n_clfs)
-#   preq_abfs_{version}_kappa_{stream_name}.npy      shape: (n_windows, n_clfs)
-#   preq_komor_{measure}_ba_{stream_name}.npy        shape: (n_windows, n_clfs)
-#   preq_komor_{measure}_f1_{stream_name}.npy        shape: (n_windows, n_clfs)
-#   preq_komor_{measure}_kappa_{stream_name}.npy     shape: (n_windows, n_clfs)
+#   abfs_y_{stream}.npy                       shape: (n_windows,)
+#   preq_abfs_{version}_ba_{stream}.npy       shape: (n_windows, n_clfs)
+#   preq_abfs_{version}_f1_{stream}.npy       shape: (n_windows, n_clfs)
+#   preq_abfs_{version}_kappa_{stream}.npy    shape: (n_windows, n_clfs)
+#   preq_komor_{measure}_ba_{stream}.npy      shape: (n_windows, n_clfs)
+#   preq_komor_{measure}_f1_{stream}.npy      shape: (n_windows, n_clfs)
+#   preq_komor_{measure}_kappa_{stream}.npy   shape: (n_windows, n_clfs)
 #
 #   Figures saved to results/experiment_3/figures/:
-#     heatmap_combined_exp3_{stream_name}.png
-#       Left:  9 Komorniczak measure groups (rows) x classifiers (cols)
-#       Right: 3 ABFS versions (rows)             x classifiers (cols)
+#     heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream}.png
 #
 # Run from project root:
 #   python experiments/experiment_3/evaluate_concept_classification_3.py
 # ==============================================================================
+
 
 import numpy as np
 import os
@@ -69,7 +69,7 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 # ============================================================
 #  PATHS
 # ============================================================
-SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT  = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 
 REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams')
@@ -83,19 +83,26 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-CHUNK_SIZE     = 300
-N_FEATURES     = 33
+CHUNK_SIZE = 300
 WARMUP_WINDOWS = 0
 
-INSECTS_STREAMS = [
+REAL_STREAMS = [
     'INSECTS-abrupt_imbalanced_norm',
     'INSECTS-gradual_imbalanced_norm',
     'INSECTS-incremental_imbalanced_norm',
+    'poker-lsn-1-2vsAll-pruned',
 ]
 
+N_FEATURES = {
+    'INSECTS-abrupt_imbalanced_norm':       33,
+    'INSECTS-gradual_imbalanced_norm':      33,
+    'INSECTS-incremental_imbalanced_norm':  33,
+    'poker-lsn-1-2vsAll-pruned':            10,
+}
+
 N_CONCEPTS = {
-    s: len(np.load(os.path.join(INSECTS_GT_DIR, f'{s}.npy'))) + 1
-    for s in INSECTS_STREAMS
+    s: len(np.load(os.path.join(REAL_GT_DIR, f'{s}.npy'))) + 1
+    for s in REAL_STREAMS
 }
 
 MEASURES = [
@@ -125,7 +132,7 @@ EXPECTED_N_CLFS = len(BASE_CLFS_PREQUENTIAL)
 # ============================================================
 
 def load_gt(stream_name):
-    path = os.path.join(INSECTS_GT_DIR, f'{stream_name}.npy')
+    path = os.path.join(REAL_GT_DIR, f'{stream_name}.npy')
     return np.load(path)
 
 
@@ -291,7 +298,7 @@ def extract_abfs_metafeatures(stream_name, drift_chunks):
     X_raw_temporal: np.ndarray, shape (n_valid_chunks, N_FEATURES + 2)
     y             : np.ndarray, shape (n_valid_chunks,)
     """
-    stream_path = os.path.join(INSECTS_STREAM_DIR, f'{stream_name}.npy')
+    stream_path = os.path.join(REAL_STREAM_DIR, f'{stream_name}.npy')
     stream = sl.streams.NPYParser(stream_path,
                                   chunk_size=CHUNK_SIZE,
                                   n_chunks=100000)
@@ -365,7 +372,7 @@ def extract_abfs_metafeatures(stream_name, drift_chunks):
 #  MAIN SWEEP
 # ============================================================
 
-for stream_name in INSECTS_STREAMS:
+for stream_name in REAL_STREAMS:
     n_concepts = N_CONCEPTS[stream_name]
 
     print(f"\n{'='*70}")
