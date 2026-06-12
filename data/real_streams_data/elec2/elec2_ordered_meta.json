@@ -1,0 +1,35 @@
+{
+  "dataset": "elec2",
+  "source": "river",
+  "n_instances": 45312,
+  "n_features": 8,
+  "feature_names": [
+    "date",
+    "day",
+    "period",
+    "nswprice",
+    "nswdemand",
+    "vicprice",
+    "vicdemand",
+    "transfer"
+  ],
+  "categorical_indices": [],
+  "chunk_size": 300,
+  "n_chunks": 152,
+  "max_rows": null,
+  "n_proxy_concepts": 4,
+  "proxy_label_source": "baseline classifier (GNB, KNN, HT) performance profiles clustered with KMeans",
+  "proxy_label_independent_of_meta_features": true,
+  "baseline_classifiers": [
+    "GNB",
+    "KNN",
+    "HT"
+  ],
+  "output_files": {
+    "ordered_npz": "/home/ptr/meta-features_based_on_relevance_scores/streams/../data/real_streams_data/elec2/elec2_ordered.npz",
+    "ordered_meta": "/home/ptr/meta-features_based_on_relevance_scores/streams/../data/real_streams_data/elec2/elec2_ordered_meta.json",
+    "inspection": "/home/ptr/meta-features_based_on_relevance_scores/streams/../data/real_streams_data/elec2/elec2_inspection.json",
+    "baseline_profiles": "/home/ptr/meta-features_based_on_relevance_scores/streams/../data/real_streams_data/elec2/elec2_baseline_profiles.npz",
+    "proxy_labels": "/home/ptr/meta-features_based_on_relevance_scores/streams/../data/real_streams_data/elec2/elec2_proxy_labels.npy"
+  }
+}
