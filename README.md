@@ -346,9 +346,9 @@ Output directory: `data/real_streams_data/elec2/`
 
 Naming convention:
 
-preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy
+`preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy`
 
-preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy
+`preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy`
 
 where:
   * version : aggstats | raw | raw_temporal
@@ -367,9 +367,9 @@ where:
 
 Naming convention:
 
-preq_abfs_{version}_ba_{stream}.npy
+`preq_abfs_{version}_ba_{stream}.npy`
 
-preq_komor_{measure}_ba_{stream}.npy
+`preq_komor_{measure}_ba_{stream}.npy`
 
 where:
   * shape : (n_windows, n_clfs)  - no replications
