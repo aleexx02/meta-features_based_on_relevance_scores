@@ -79,14 +79,13 @@ print(f"Metrics (F1, Kappa)      : {RUN_METRICS}")
 # ============================================================
 #  PATHS
 # ============================================================
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 
-KOMOR_DATA_DIR     = os.path.expanduser('~/code_komor/data')
-INSECTS_STREAM_DIR = os.path.join(KOMOR_DATA_DIR, 'real_streams_pr')
-INSECTS_GT_DIR     = os.path.join(KOMOR_DATA_DIR, 'real_streams_gt')
-RESULTS_DIR        = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
-FIGURES_DIR        = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures', 'analysis')
+REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams')
+REAL_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams_gt')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 

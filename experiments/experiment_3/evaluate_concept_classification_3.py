@@ -72,12 +72,11 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 SCRIPT_DIR    = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT  = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 
-KOMOR_REPO         = os.path.expanduser('~/code_komor/data')
-INSECTS_STREAM_DIR = os.path.join(KOMOR_REPO, 'real_streams_pr')
-INSECTS_GT_DIR     = os.path.join(KOMOR_REPO, 'real_streams_gt')
+REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams')
+REAL_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams_gt')
 KOMOR_RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
-RESULTS_DIR        = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
-FIGURES_DIR        = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures')
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
