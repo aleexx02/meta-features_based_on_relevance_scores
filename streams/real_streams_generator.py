@@ -40,7 +40,6 @@ warnings.filterwarnings("ignore")
 # EXPERIMENT CONFIGURATION
 # ============================================================
 
-DATASET_NAME = "credit_card"  # one of: "elec2", "phishing", "http", "insects", "credit_card"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'real_streams_data')
 MAX_ROWS = None # load full dataset
 CHUNK_SIZE = 300
