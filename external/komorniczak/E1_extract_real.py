@@ -18,7 +18,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
 INSECTS_STREAMS_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams')
-INSECTS_GT_DIR      = os.path.join(PROJECT_ROOT, 'data', 'real_streams_gt')
+INSECTS_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams_gt')
  
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
 os.makedirs(RESULTS_DIR, exist_ok=True)

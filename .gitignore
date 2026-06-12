@@ -3,4 +3,4 @@
 *.stderr
 *.log
 *.npy
-experiments/experiment_1/streams/*.npz
+*.npz
