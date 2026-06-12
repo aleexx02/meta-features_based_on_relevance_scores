@@ -1,6 +1,6 @@
 # evaluate_concept_classification_3.py
 # ==============================================================================
-# Experiment 3: Real-World Stream Evaluation
+# Experiment 3 Approach 1: Annotated Real-World Stream Evaluation
 #
 # Evaluates ALL THREE ABFS meta-feature versions on four real-world
 # data streams and compares against ALL 9 Komorniczak measure groups
@@ -11,7 +11,7 @@
 #   - v2.0 raw scores  : n_features-dim normalized relevance vector
 #   - v2.1 raw+temporal: v2.0 + delta_mean + cosine_sim (n_features+2-dim)
 #
-# Streams:
+# Streams with ground truth drift annotations:
 #   - INSECTS-abrupt_imbalanced_norm      : ~236 chunks, 33 features, 2 concepts
 #   - INSECTS-gradual_imbalanced_norm     : ~236 chunks, 33 features, 6 concepts
 #   - INSECTS-incremental_imbalanced_norm : ~236 chunks, 33 features, 6 concepts
@@ -38,9 +38,6 @@
 #
 #   Figures saved to results/experiment_3/figures/:
 #     heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream}.png
-#
-# Run from project root:
-#   python experiments/experiment_3/evaluate_concept_classification_3.py
 # ==============================================================================
 
 
@@ -72,9 +69,9 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT  = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 
-REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams')
-REAL_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams_gt')
-KOMOR_RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
+REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
+REAL_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
+KOMOR_RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
 FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures')
 os.makedirs(RESULTS_DIR, exist_ok=True)

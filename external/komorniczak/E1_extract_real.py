@@ -17,8 +17,9 @@ import strlearn as sl
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
-INSECTS_STREAMS_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams')
-INSECTS_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real_streams_gt')
+
+REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
+REAL_GT_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
  
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -51,13 +52,13 @@ for m_id, measure_key in enumerate(measures):
     
     for f_id, fname in enumerate(real_streams):
 
-        drfs = np.load(os.path.join(INSECTS_GT_DIR, f'{fname}.npy'))
+        drfs = np.load(os.path.join(REAL_GT_DIR, f'{fname}.npy'))
        
         concept=0
         out = []
         
         stream = sl.streams.NPYParser(
-            os.path.join(INSECTS_STREAMS_DIR, f'{fname}.npy'),
+            os.path.join(REAL_STREAM_DIR, f'{fname}.npy'),
             chunk_size=stream_static['chunk_size'],
             n_chunks=100000
         )

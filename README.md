@@ -10,23 +10,29 @@ meta-features_based_on_relevance_scores/
 │   └── abfs_implementation.py
 │
 ├── data/   # local data files - not committed to git
-│   ├── real_streams/                        
-│   │   ├── INSECTS-abrupt_imbalanced_norm.npy
-│   │   ├── INSECTS-gradual_imbalanced_norm.npy
-│   │   ├── INSECTS-incremental_imbalanced_norm.npy
-│   │   └── poker-lsn-1-2vsAll-pruned.npy
-│   ├── real_streams_gt/
-│   │   ├── INSECTS-abrupt_imbalanced_norm.npy
-│   │   ├── INSECTS-gradual_imbalanced_norm.npy
-│   │   ├── INSECTS-incremental_imbalanced_norm.npy
-│   │   └── poker-lsn-1-2vsAll-pruned.npy
-│   └── real_streams_data/
-│       └── elec2/
-│           ├── elec2_ordered.npz
-│           ├── elec2_ordered_meta.json
-│           ├── elec2_inspection.json
-│           ├── elec2_baseline_profiles.npz
-│           └── elec2_proxy_labels.npy
+│   ├── real/
+│   │   ├──annotated_streams/                  
+│   │       ├── INSECTS-abrupt_imbalanced_norm.npy
+│   │       ├── INSECTS-gradual_imbalanced_norm.npy
+│   │       ├── INSECTS-incremental_imbalanced_norm.npy
+│   │       └── poker-lsn-1-2vsAll-pruned.npy
+│   │    ├── annotated_streams_gt/
+│   │       ├── INSECTS-abrupt_imbalanced_norm.npy
+│   │       ├── INSECTS-gradual_imbalanced_norm.npy
+│   │       ├── INSECTS-incremental_imbalanced_norm.npy
+│   │       └── poker-lsn-1-2vsAll-pruned.npy
+│   │   └── unannotated_streams/
+│   │       └── elec2/
+│   │           ├── elec2_ordered.npz
+│   │           ├── elec2_ordered_meta.json
+│   │           ├── elec2_inspection.json
+│   │           ├── elec2_baseline_profiles.npz
+│   │           └── elec2_proxy_labels.npy
+│   │ 
+│   ├── synthetic/
+│   
+│   # ADD HERE
+│   
 │
 ├── experiments/
 │   ├── experiment_0/
@@ -95,10 +101,9 @@ meta-features_based_on_relevance_scores/
 │       └── figures/
 │
 ├── streams/
-│   ├── real_streams.py
 │   ├── real_streams_generator.py
-│   ├── synthetic_streams.py
-│   └── generators.py
+│   ├── synthetic_streams_generator.py # ADD IMPLEMENTATION
+│   └── ...
 │
 ├── .gitignore
 ├── plot_results.py
@@ -112,19 +117,19 @@ meta-features_based_on_relevance_scores/
 ## Data Files
 
 All data files are gitignored and must be generated or downloaded locally.
-The `data/` folder has three subfolders:
+The `data/` folder has the following:
 
-**`data/real_streams/`** contains the actual stream instances for the four
-annotated real-world streams — INSECTS (three variants) and poker-lsn. Each
+**`data/real/annotated_streams/`** contains the actual stream instances for the four
+annotated real-world streams: INSECTS (three variants) and poker-lsn. Each
 file is a matrix of shape `(n_instances, n_features + 1)` where the last
 column is the class label.
 
-**`data/real_streams_gt/`** contains the ground truth drift annotations for
+**`data/real/annotated_streams_gt/`** contains the ground truth drift annotations for
 those same four streams. Each file is a small array of chunk indices marking
-where concept drift occurs — for example, `[125]` for the abrupt INSECTS
+where concept drift occurs, for example, `[125]` for the abrupt INSECTS
 stream means drift happens at chunk 125.
 
-**`data/real_streams_data/`** contains the outputs of the proxy label
+**`data/real/unannotated_streams/`** contains the outputs of the proxy label
 pipeline for streams that have no ground truth annotations. Currently only
 elec2 is included. Inside `elec2/` you have the ordered stream matrix, the
 chunk-level classifier performance profiles, the proxy concept labels, and
@@ -137,24 +142,27 @@ Ground truth annotations are available for INSECTS and poker-lsn because:
   instances by rank and suit — boundaries are known by construction.
 
 
-To populate `data/`:
+To populate `data/real/annotated_streams/` and `data/real/annotated_streams_gt/` copy the files from the Komorniczak repository:
 ```bash
 # annotated streams (Approach 1)
-python streams/real_streams.py --download
+mkdir -p data/real/annotated_streams data/real/annotated_streams_gt
+cp ~/code_komor/data/real_streams_pr/*.npy data/real/annotated_streams/
+cp ~/code_komor/data/real_streams_gt/*.npy data/real/annotated_streams_gt/
+```
 
+To populate `data/real/unannotated_streams/`:
+```bash
 # proxy label streams (Approach 2)
 python streams/real_streams_generator.py
 ```
 
+
+## ... ADD SYNTHETIC PART ...
+
+
 ---
 
 ## Stream Scripts
-
-### `streams/real_streams.py` 
-Downloads and prepares annotated real-world streams. Stores stream `.npy`
-files in `data/real_streams/` and ground truth drift chunk indices in
-`data/real_streams_gt/`. Used by `evaluate_concept_classification_3.py`
-and `analysis_3.py`.
 
 ### `streams/real_streams_generator.py`
 Generates proxy concept labels for streams without ground truth annotations.
@@ -164,13 +172,8 @@ proxy concept labels. Outputs go to `data/real_streams_data/{dataset}/`.
 Currently runs elec2 only.
 
 ### `streams/synthetic_streams.py`
-Shared utilities for synthetic stream generation used by Experiments 1 and 2.
-Provides concept label assignment (sudden and gradual drift), ABFS
-meta-feature extraction for all 3 versions in a single pass, and Komorniczak
-pymfe extraction for a single measure group.
+#### ... ADD SYNTHETIC PART ...
 
-### `streams/generators.py`
-Original synthetic stream helpers.
 
 
 ---
@@ -253,7 +256,7 @@ For each cell:
 - All 9 Komorniczak measure groups re-extracted via pymfe
 - Prequential evaluation, 5 replications
 
-Output naming:
+Output files:
 ```
 preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy   (n_reps, n_windows, n_clfs)
 preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
@@ -278,7 +281,7 @@ Two approaches depending on whether ground truth drift annotations are available
 #### Approach 1 - Annotated streams (ground truth labels)
 
 Annotated streams are streams for which ground truth drift boundaries are
-known. Concept labels are assigned directly from the drift annotations, so
+known. Concept labels are assigned directly from the ground truth drift annotations, so
 the concept classification task has a definitive correct answer and the
 comparison between ABFS and Komorniczak is directly interpretable.
 
@@ -286,21 +289,26 @@ Streams: INSECTS (3 variants) + poker-lsn. Concept labels from manually
 annotated drift boundaries. Comparison between ABFS and Komorniczak is
 directly interpretable.
 
-**15. `streams/real_streams.py --download`**
-Downloads all 4 streams into `data/real_streams/` and `data/real_streams_gt/`.
+**15. Copy stream files (see Data Files section above)**
 
 **16. `external/komorniczak/E1_extract_real.py`**
 (or 9 parallel scripts `E1_extract_real_{measure}.py`)
-Extracts pymfe features for all 9 Komorniczak measure groups × 4 streams.
-Output: `external/komorniczak/results/real/komor_real_{stream}_{measure}.npy`
+Extracts pymfe features for all 9 Komorniczak measure groups $\times$ 4 streams.
+
+Output files: `external/komorniczak/results/real/komor_real_{stream}_{measure}.npy`
 
 
 **17. `experiments/experiment_3/evaluate_concept_classification_3.py`**
 All 3 ABFS versions + all 9 Komorniczak groups, prequential, single pass.
 
-Output files: abfs_y_{stream}.npy  (n_windows,)
-preq_abfs_{version}_ba_{stream}.npy  (n_windows, n_clfs)
-preq_komor_{measure}_ba_{stream}.npy  (n_windows, n_clfs)
+Output files:
+
+`abfs_y_{stream}.npy`  (n_windows,)
+
+`preq_abfs_{version}_ba_{stream}.npy`  (n_windows, n_clfs)
+
+`preq_komor_{measure}_ba_{stream}.npy`  (n_windows, n_clfs)
+
 
 **18. `experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics`**
 - `--sanity`      relevance scores, meta-features (per version), PCA (per version)
@@ -314,7 +322,7 @@ Output directory: `results/experiment_3/figures/analysis/`
 
 Unannotated streams have no ground truth drift boundaries. Concept labels
 are derived from baseline classifier (GNB, KNN, HT) performance profiles
-clustered with KMeans — chunks where all three classifiers behave similarly
+clustered with KMeans: chunks where all three classifiers behave similarly
 are assigned the same proxy concept label. The comparison between ABFS and
 Komorniczak remains valid because both use the same proxy labels. Currently
 only elec2 is included.
@@ -328,6 +336,12 @@ proxy labels.
 Generates proxy labels for elec2.
 
 Output directory: `data/real_streams_data/elec2/`
+
+
+**20. `experiments/experiment_3/evaluate_concept_classification_3_proxy.py`**
+All 3 ABFS versions + all 9 Komorniczak groups, evaluated against proxy labels.
+
+#### ... IMPLEMENT THIS ...
 
 ---
 
@@ -357,12 +371,13 @@ where:
   * shape   : (n_reps, n_windows, n_clfs)  n_reps=5
 
 
-### Experiment 3
+### Experiment 3 - Annotated Streams
 
 | Field | Values |
 |---|---|
 | `version` | `aggstats` \| `raw` \| `raw_temporal` |
 | `measure` | `clustering` \| `complexity` \| `concept` \| `general` \| `info-theory` \| `itemset` \| `landmarking` \| `model-based` \| `statistical` |
+| `stream` | `INSECTS-abrupt_imbalanced_norm` \| `INSECTS-gradual_imbalanced_norm` \| `INSECTS-incremental_imbalanced_norm` \| `poker-lsn-1-2vsAll-pruned` |
 | shape | `(n_windows, n_clfs)` - no replications (single fixed stream) |
 
 Naming convention:
@@ -373,6 +388,11 @@ Naming convention:
 
 where:
   * shape : (n_windows, n_clfs)  - no replications
+
+
+### Experiment 3 - Unannotated Streams (proxy labels)
+
+#### ... ADD HERE ...
 
 
 ---
