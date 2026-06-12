@@ -344,12 +344,15 @@ Output directory: `data/real_streams_data/elec2/`
 | `drift` | `sudden` \| `gradual` |
 | shape | `(n_reps, n_windows, n_clfs)` with `n_reps=5` |
 
+Naming convention:
 preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy
+
 preq_komor_{measure}_ba_chunk{cs}_ninf{ni}_{drift}.npy
-  version : aggstats | raw | raw_temporal
-  measure : clustering | complexity | concept | general | info-theory |
+where:
+  * version : aggstats | raw | raw_temporal
+  * measure : clustering | complexity | concept | general | info-theory |
             itemset | landmarking | model-based | statistical
-  shape   : (n_reps, n_windows, n_clfs)  n_reps=5
+  * shape   : (n_reps, n_windows, n_clfs)  n_reps=5
 
 
 ### Experiment 3
