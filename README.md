@@ -210,11 +210,7 @@ Batch CV (Experiments 1a/1b) is kept for historical comparison only.
 
 
 
-### Experiments 1a & 1b: Batch CV (Historical)
-
-> **Note:** Shuffled (1a) and unshuffled (1b) CV for historical comparison only.
-> Key finding: shuffling makes no difference (<0.002 BA) — non-recurring concepts
-> have no temporal structure to leak across folds.
+### Experiments 1a & 1b: Batch CV
 
 **5. `experiments/experiment_1a/evaluate_concept_classification_1a.py`**
 All 3 ABFS versions under shuffled CV. Heatmap: 9 Komorniczak groups × classifiers | 3 ABFS versions × classifiers.
