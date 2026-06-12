@@ -105,7 +105,6 @@ meta-features_based_on_relevance_scores/
 ├── README.md
 ├── requirements.txt
 └── sanity_check.py
-
 ```
 
 ---
