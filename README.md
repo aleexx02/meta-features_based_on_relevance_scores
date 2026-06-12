@@ -171,7 +171,7 @@ chunk by chunk, and clusters the performance profiles with KMeans to assign
 proxy concept labels. Outputs go to `data/real_streams_data/{dataset}/`.
 Currently runs elec2 only.
 
-### `streams/synthetic_streams.py`
+### `streams/synthetic_streams_generator.py`
 #### ... ADD SYNTHETIC PART ...
 
 
