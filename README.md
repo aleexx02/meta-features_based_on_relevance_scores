@@ -30,7 +30,7 @@ meta-features_based_on_relevance_scores/
 │   │           └── elec2_proxy_labels.npy
 │   │ 
 │   ├── synthetic/
-│   
+│   ...
 │   # ADD HERE
 │   
 │
