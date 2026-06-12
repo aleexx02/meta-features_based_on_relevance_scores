@@ -12,7 +12,7 @@
 
 # Proxy labels are derived from baseline classifier performance profiles,
 
-# Output files saved to data/real_streams_data/{dataset}/:
+# Output files saved to data/real/unannotated_streams/{dataset}/:
 #   {dataset}_ordered.npz            X, y matrices
 #   {dataset}_ordered_meta.json      pipeline metadata / reproducibility
 #   {dataset}_inspection.json        dataset summary statistics
@@ -40,7 +40,7 @@ warnings.filterwarnings("ignore")
 # EXPERIMENT CONFIGURATION
 # ============================================================
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'real_streams_data')
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'real', 'unannotated_streams')
 MAX_ROWS = None # load full dataset
 CHUNK_SIZE = 300
 N_PROXY_CONCEPTS = 4
