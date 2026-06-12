@@ -277,6 +277,11 @@ Two approaches depending on whether ground truth drift annotations are available
 
 #### Approach 1 - Annotated streams (ground truth labels)
 
+Annotated streams are streams for which ground truth drift boundaries are
+known. Concept labels are assigned directly from the drift annotations, so
+the concept classification task has a definitive correct answer and the
+comparison between ABFS and Komorniczak is directly interpretable.
+
 Streams: INSECTS (3 variants) + poker-lsn. Concept labels from manually
 annotated drift boundaries. Comparison between ABFS and Komorniczak is
 directly interpretable.
@@ -307,13 +312,22 @@ Output directory: `results/experiment_3/figures/analysis/`
 
 #### Approach 2 - Unannotated streams (proxy labels)
 
+Unannotated streams have no ground truth drift boundaries. Concept labels
+are derived from baseline classifier (GNB, KNN, HT) performance profiles
+clustered with KMeans — chunks where all three classifiers behave similarly
+are assigned the same proxy concept label. The comparison between ABFS and
+Komorniczak remains valid because both use the same proxy labels. Currently
+only elec2 is included.
+
 Stream: elec2 (45,312 instances, 8 features, 152 chunks). Concept labels
 derived from baseline classifier performance profiles clustered with KMeans.
 Comparison between ABFS and Komorniczak remains valid — both use the same
 proxy labels.
 
 **19. `streams/real_streams_generator.py`**
-Generates proxy labels for elec2. Output: `data/real_streams_data/elec2/`
+Generates proxy labels for elec2.
+
+Output directory: `data/real_streams_data/elec2/`
 
 ---
 
