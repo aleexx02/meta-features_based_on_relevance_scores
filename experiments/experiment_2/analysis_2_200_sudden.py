@@ -111,8 +111,7 @@ RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
  
 DRIFT_CONFIGS = [
-    ('sudden',  20, 9999, 21),
-    ('gradual',  6,    5, 25),
+    ('sudden',  20, 9999, 21)
 ]
  
 MEASURES = [
