@@ -12,23 +12,26 @@ meta-features_based_on_relevance_scores/
 ├── data/   # local data files - not committed to git
 │   ├── real/
 │   │   ├──annotated_streams/                  
-│   │       ├── INSECTS-abrupt_imbalanced_norm.npy
-│   │       ├── INSECTS-gradual_imbalanced_norm.npy
-│   │       ├── INSECTS-incremental_imbalanced_norm.npy
-│   │       └── poker-lsn-1-2vsAll-pruned.npy
-│   │    ├── annotated_streams_gt/
-│   │       ├── INSECTS-abrupt_imbalanced_norm.npy
-│   │       ├── INSECTS-gradual_imbalanced_norm.npy
-│   │       ├── INSECTS-incremental_imbalanced_norm.npy
-│   │       └── poker-lsn-1-2vsAll-pruned.npy
+│   │   │   ├── INSECTS-abrupt_imbalanced.npy
+│   │   │   ├── INSECTS-gradual_imbalanced.npy
+│   │   │   ├── INSECTS-incremental_imbalanced.npy
+│   │   │   ├── INSECTS-abrupt_balanced.npy
+│   │   │   ├── INSECTS-gradual_balanced.npy
+│   │   │   ├── INSECTS-incremental_balanced.npy
+│   │   │   ├── electricity.npy
+│   │   │   └── covtype.npy
+│   │   │
+│   │   ├── annotated_streams_gt/
+│   │   │   └── {same filenames}.npy
+│   │   │
 │   │   └── unannotated_streams/
-│   │       └── elec2/
-│   │           ├── elec2_ordered.npz
-│   │           ├── elec2_ordered_meta.json
-│   │           ├── elec2_inspection.json
-│   │           ├── elec2_baseline_profiles.npz
-│   │           └── elec2_proxy_labels.npy
-│   │ 
+│   │   │    └── elec2/
+│   │   │       ├── elec2_ordered.npz
+│   │   │       ├── elec2_ordered_meta.json
+│   │   │       ├── elec2_inspection.json
+│   │   │       ├── elec2_baseline_profiles.npz
+│   │   │       └── elec2_proxy_labels.npy
+│   │   │
 │   ├── synthetic/
 │   ...
 │   # ADD HERE
@@ -57,6 +60,7 @@ meta-features_based_on_relevance_scores/
 │   │
 │   ├── experiment_3/
 │   │   ├── analysis_3.py
+│   │   ├── evaluate_concept_classification_3_proxy.py
 │   │   └── evaluate_concept_classification_3.py
 │   │
 │   ├── analysis_1a_1b.py
@@ -65,13 +69,12 @@ meta-features_based_on_relevance_scores/
 │
 ├── external/
 │   └── komorniczak/
-│       ├── results/
-│       │   ├── real/
-│       │   └── synthetic/
-│       ├── E1_extract_real.py
-│       ├── E1_extract_synthetic.py
-│       ├── E2_clf_synthetic.py
-│       └── utils.py
+│   │   ├── results/
+│   │   │   ├── real/
+│   │   │   └── synthetic/
+│   │   ├── E1_extract_synthetic.py
+│   │   ├── E2_clf_synthetic.py
+│   │   └── utils.py
 │
 ├── full_pipeline/
 │   └── pipeline.py
@@ -95,13 +98,16 @@ meta-features_based_on_relevance_scores/
 │   │   └── figures/
 │   │       └── analysis/
 │   ├── experiment_3/
-│   │   └── figures/
+│   │   ├── figures/
 │   │       └── analysis/
+│   │   └── proxy_results/
+│   │       └── figures/
+│   │           └── analysis/
 │   └── sanity_check/
 │       └── figures/
 │
 ├── streams/
-│   ├── real_streams_generator.py
+│   ├── generate_real_streams.py
 │   ├── synthetic_streams_generator.py # ADD IMPLEMENTATION
 │   └── ...
 │
