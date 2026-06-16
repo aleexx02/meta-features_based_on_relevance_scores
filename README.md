@@ -142,13 +142,15 @@ Ground truth annotations are available for INSECTS and poker-lsn because:
   instances by rank and suit — boundaries are known by construction.
 
 
-To populate `data/real/annotated_streams/` and `data/real/annotated_streams_gt/` copy the files from the Komorniczak repository:
+To populate `data/real/annotated_streams/` and `data/real/annotated_streams_gt/`, clone the Komorniczak et al. repository and copy the stream files:
 ```bash
 # annotated streams (Approach 1)
+git clone https://github.com/w4k2/meta-features_streams code_komor
 mkdir -p data/real/annotated_streams data/real/annotated_streams_gt
-cp ~/code_komor/data/real_streams_pr/*.npy data/real/annotated_streams/
-cp ~/code_komor/data/real_streams_gt/*.npy data/real/annotated_streams_gt/
+cp code_komor/data/real_streams_pr/*.npy data/real/annotated_streams/
+cp code_komor/data/real_streams_gt/*.npy data/real/annotated_streams_gt/
 ```
+
 
 To populate `data/real/unannotated_streams/`:
 ```bash
