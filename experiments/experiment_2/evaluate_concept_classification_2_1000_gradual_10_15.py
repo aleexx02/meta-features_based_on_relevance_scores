@@ -66,7 +66,7 @@ WARMUP_WINDOWS = 10
 N_REPLICATIONS = 5
 
 CHUNK_SIZES    = [1000]
-N_INFORMATIVES = [10, 15]
+N_INFORMATIVES = [15]
 
 DRIFT_CONFIGS = [
     ('gradual',  6,    5)  # 25 concepts
