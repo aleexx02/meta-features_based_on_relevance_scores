@@ -31,16 +31,13 @@
 # Komorniczak: all 9 pymfe measure groups extracted inline and cached.
 #
 # Outputs saved to results/experiment_3/:
-#   abfs_y_{stream}.npy                     (n_windows,)
 #   preq_abfs_{version}_ba_{stream}.npy     (n_windows, n_clfs)
 #   preq_abfs_{version}_f1_{stream}.npy     (n_windows, n_clfs)
 #   preq_abfs_{version}_kappa_{stream}.npy  (n_windows, n_clfs)
 #   preq_komor_{measure}_ba_{stream}.npy    (n_windows, n_clfs)
 #   preq_komor_{measure}_f1_{stream}.npy    (n_windows, n_clfs)
 #   preq_komor_{measure}_kappa_{stream}.npy (n_windows, n_clfs)
-#
-# Run from project root:
-#   python experiments/experiment_3/evaluate_concept_classification_3.py
+#   abfs_y_{stream}.npy                      (n_windows,)
 # ==============================================================================
 
 import numpy as np
