@@ -59,11 +59,11 @@
 #   preq_komor_{measure}_kappa_{stream}.npy
 #
 # Figures saved to results/experiment_4/figures/:
-#   heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream}.png
+#   heatmap_comparison_komorniczak_ABFS_preq_exp4_{stream}.png
 #     side-by-side: 9 Komorniczak groups vs 3 ABFS versions, final BA
 #
 # Run from project root:
-#   python experiments/experiment_3/evaluate_concept_classification_4.py
+#   python experiments/experiment_4/evaluate_concept_classification_4.py
 # ==============================================================================
  
 import numpy as np
@@ -205,7 +205,7 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
     """
     Side-by-side heatmap showing final balanced accuracy for all
     Komorniczak measure groups (left) and all ABFS versions (right).
-    Saved as: heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream}.png
+    Saved as: heatmap_comparison_komorniczak_ABFS_preq_exp4_{stream}.png
     """
     clf_names = [n for n, _ in BASE_CLFS_PREQUENTIAL]
     n_clfs    = len(clf_names)
@@ -268,7 +268,7 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
     plt.tight_layout()
     out_path = os.path.join(
         FIGURES_DIR,
-        f'heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream_name}.png')
+        f'heatmap_comparison_komorniczak_ABFS_preq_exp4_{stream_name}.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved heatmap: {out_path}")
@@ -410,7 +410,7 @@ for stream_name in SEMI_SYN_STREAMS:
         print(f"  raw_temporal : {X_rt.shape}")
         print_label_dist('ABFS', y_abfs)
  
-        # save concept labels — used by analysis_3.py for SHAP and PCA
+        # save concept labels — used by analysis_4.py for SHAP and PCA
         save(y_abfs, 'concept_labels', stream_name)
  
         X_by_version = {'aggstats': X_agg, 'raw': X_raw, 'raw_temporal': X_rt}
