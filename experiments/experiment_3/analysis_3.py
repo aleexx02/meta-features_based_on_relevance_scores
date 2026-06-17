@@ -120,7 +120,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
 REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
 REAL_GT_DIR     = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
-REAL_ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'analysis')
+REAL_ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_analysis')
 RESULTS_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
 FIGURES_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)

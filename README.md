@@ -30,14 +30,18 @@ meta-features_based_on_relevance_scores/
 │   │   │   ├── INSECTS-abrupt_imbalanced.npy
 │   │   │   ├── INSECTS-incgradual_balanced.npy
 │   │   │   └── INSECTS-incgradual_imbalanced.npy
-│   │   └── annotated_streams_gt/     ← ground truth drift chunk indices
-│   │       └── {same filenames}.npy
+│   │   ├── annotated_streams_gt/
+│   │   │   └── {same filenames}.npy
+│   │   └── analysis/
+│   │       └── {stream analysis files}.npy
 │   ├── semi_synthetic/
 │   │   ├── streams/
 │   │   │   ├── electricity.npy
 │   │   │   └── covtype.npy
-│   │   └── streams_gt/
-│   │       └── {same filenames}.npy
+│   │   ├── streams_gt/
+│   │   │    └── {same filenames}.npy
+│   │   └── analysis/
+│   │       └── {stream analysis files}.npy
 │   └── synthetic/
 │       ...
 │       # ADD HERE
@@ -414,17 +418,25 @@ Figures produced (selective — not all 32 cells):
   chunk_size where ABFS gains the most over Komorniczak, and where it
   loses the most
 
-→ `results/experiment_2/figures/analysis/`
+Output files stored in: `results/experiment_2/figures/analysis/`
 
 ---
 
-### Experiment 3: Real-World Stream Evaluation (Genuinely Annotated)
+### Experiment 3: Real-World Stream Evaluation (Annotated)
 
 **Purpose:** Experiments 1-2 are entirely synthetic — informative, but
 they don't tell us whether ABFS works on real feature distributions.
 Here I test the same question (does ABFS discriminate concepts better
 than Komorniczak?) on real INSECTS data, the only real-world stream
 family with a documented, citable drift ground truth. This tests whether the patterns observed under controlled synthetic conditions (Experiments 1–2) transfer to real-world feature distributions and imperfect concept definitions.
+
+Streams:
+- INSECTS-abrupt_balanced  
+- INSECTS-abrupt_imbalanced  
+- INSECTS-incgradual_balanced  
+- INSECTS-incgradual_imbalanced  
+
+These include **annotated drift points (ground truth)**.
 
 **15.** `streams/generate_real_streams.py`
 Download USP DS Repository ZIP first, then run once. Produces the 4
@@ -437,10 +449,10 @@ Komorniczak results to `external/komorniczak/results/real/`.
 
 Output per stream:
 ```
-concept_labels_{stream}.npy             (n_windows,)  ← ground truth concept label
-preq_abfs_{version}_ba_{stream}.npy      (n_windows, n_clfs)
-preq_komor_{measure}_ba_{stream}.npy     (n_windows, n_clfs)
-heatmap_comparison_..._{stream}.png      ← Komorniczak vs ABFS heatmap
+concept_labels_{stream}.npy    (n_windows,): ground truth concept label
+preq_abfs_{version}_ba_{stream}.npy   (n_windows, n_clfs)
+preq_komor_{measure}_ba_{stream}.npy   (n_windows, n_clfs)
+heatmap_comparison_..._{stream}.png   Komorniczak vs ABFS heatmap
 ```
 
 **17.** `experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics`
@@ -453,7 +465,7 @@ Figures produced per stream:
 - SHAP: 2×2 subplot (GNB, KNN, HT, MLP) per ABFS version (3 plots)
 - Metrics: F1 heatmap, Kappa heatmap
 
-→ `results/experiment_3/figures/analysis/`
+Output files stored in: `results/experiment_3/figures/analysis/`
 
 ---
 
@@ -466,6 +478,14 @@ neither has a published natural drift locationdrift is injected in a controlled 
 truth is fully known and the comparison stays fair. This widens the
 real-data evidence beyond INSECTS without fabricating a claim about
 natural drift we can't verify.
+
+Streams:
+- electricity  
+- covtype  
+
+These datasets are augmented with:
+- injected drift boundaries  
+- controlled class/concept changes  
 
 **18.** `streams/generate_semi_synthetic_streams.py`
 Produces electricity and covtype streams with artificially injected
@@ -488,7 +508,7 @@ heatmap_comparison_..._{stream}.png      ← Komorniczak vs ABFS heatmap
 
 Same figure set as Experiment 3, applied to electricity and covtype.
 
-→ `results/experiment_4/figures/analysis/`
+Output files stored in: `results/experiment_4/figures/analysis/`
 
 ---
 
