@@ -30,13 +30,8 @@
 #   distributions, as opposed to the fully synthetic feature
 #   distributions used in Experiments 1 and 2.
 #
-# covtype uses all 7 original classes (no subsetting).
-#
 # Source: USP DS Repository (Souza et al., 2020), "Old datasets" folder
 # https://sites.google.com/view/uspdsrepository
-#
-# Run from project root:
-#   python streams/generate_semi_synthetic_streams.py
 #
 # Output format:
 #   data/semi_synthetic/streams/{stream}.npy

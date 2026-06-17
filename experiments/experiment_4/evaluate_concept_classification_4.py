@@ -305,8 +305,6 @@ def extract_abfs_metafeatures(stream_name, drift_chunks):
             X_chunk, y_chunk = stream.get_chunk()
         except Exception:
             break
-        if len(np.unique(y_chunk)) < 2:
-            continue
         for i in range(len(X_chunk)):
             abfs.update(X_chunk[i], y_chunk[i])
         wt          = abfs.relevance_scores()
@@ -356,8 +354,6 @@ def extract_komor_metafeatures(stream_name, measure, drift_chunks):
             X_chunk, y_chunk = stream.get_chunk()
         except Exception:
             break
-        if len(np.unique(y_chunk)) < 2:
-            continue
         try:
             mfe.fit(X_chunk, y_chunk)
             _, ft = mfe.extract(suppress_warnings=True)
