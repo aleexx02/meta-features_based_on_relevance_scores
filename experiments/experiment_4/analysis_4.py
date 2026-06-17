@@ -8,7 +8,7 @@
 # neither dataset has a published natural drift ground truth).
 #
 # I load the pre-computed prequential results from
-# results/experiment_3/ and generate the following figures
+# results/experiment_4/ and generate the following figures
 # per stream:
 #
 # --sanity
@@ -48,10 +48,10 @@
 # Usage:
 #   python experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics
 #
-# Inputs (from results/experiment_3/):
-#   concept_labels_{stream}.npy                  concept label per window
-#   preq_abfs_{version}_ba_{stream}.npy  cumulative BA trajectory
-#   preq_komor_{measure}_ba_{stream}.npy same for each Komorniczak group
+# Inputs (from results/experiment_4/):
+#   concept_labels_{stream}.npy -> concept label per window
+#   preq_abfs_{version}_ba_{stream}.npy -> cumulative BA trajectory
+#   preq_komor_{measure}_ba_{stream}.npy -> same for each Komorniczak group
 #   (same pattern for f1, kappa)
 # ============================================================
  
@@ -91,18 +91,22 @@ parser.add_argument('--sanity',      action='store_true')
 parser.add_argument('--performance', action='store_true')
 parser.add_argument('--shap',        action='store_true')
 parser.add_argument('--metrics',     action='store_true')
+parser.add_argument('--stream_analysis', action='store_true')
+
 args = parser.parse_args()
  
 RUN_SANITY      = args.sanity
 RUN_PERFORMANCE = args.performance
 RUN_SHAP        = args.shap
 RUN_METRICS     = args.metrics
+RUN_STREAM_ANALYSIS = args.stream_analysis
  
-print(f"\nRunning analysis for Experiment 3")
+print(f"\nRunning analysis for Experiment 4 (semi-synthetic streams):")
 print(f"Sanity      : {RUN_SANITY}")
 print(f"Performance : {RUN_PERFORMANCE}")
 print(f"SHAP        : {RUN_SHAP}")
 print(f"Metrics     : {RUN_METRICS}")
+print(f"Stream analysis : {RUN_STREAM_ANALYSIS}")
  
  
 # ============================================================
@@ -113,6 +117,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
 SEMI_SYN_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
 SEMI_SYN_GT_DIR     = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
+SEMI_SYN_ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'analysis')
 RESULTS_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
 FIGURES_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_4', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -121,7 +126,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-# chunk_size = 200, same as evaluate_concept_classification_3.py
+# chunk_size = 200, same as evaluate_concept_classification_4.py
 CHUNK_SIZE = 200
  
 SEMI_SYN_STREAMS = [
@@ -182,7 +187,7 @@ SHAP_CLFS = [
 # ============================================================
  
 def load(prefix, stream_name, optional=False):
-    """Load a result .npy file from results/experiment_3/."""
+    """Load a result .npy file from results/experiment_4/."""
     path = os.path.join(RESULTS_DIR, f'{prefix}_{stream_name}.npy')
     if not os.path.exists(path):
         if not optional:
@@ -211,7 +216,7 @@ def re_extract_stream(stream_name, drift_chunks):
     Re-run ABFS on the stream to get relevance scores and all 3 meta-feature
     versions for sanity and SHAP plots. This avoids having to store large
     intermediate arrays to disk — only the prequential results are saved by
-    evaluate_concept_classification_3.py.
+    evaluate_concept_classification_4.py.
     """
     n_features  = N_FEATURES[stream_name]
     stream_path = os.path.join(SEMI_SYN_STREAM_DIR, f'{stream_name}.npy')
@@ -468,7 +473,7 @@ if RUN_SHAP:
  
         # concept_labels_{stream}.npy contains the ground truth concept label
         # per window, derived from the known drift boundaries (not from ABFS).
-        # It was saved by evaluate_concept_classification_3.py.
+        # It was saved by evaluate_concept_classification_4.py.
         y = load('concept_labels', stream_name)
         if y is None:
             print(f"  concept labels not found — skipping."); continue
@@ -604,5 +609,123 @@ if RUN_METRICS:
             plt.tight_layout()
             plt.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
+
+# ============================================================
+# STREAM ANALYSIS PLOTS
+# ============================================================
+if RUN_STREAM_ANALYSIS:
+    print("\n" + "="*60)
+    print("STREAM ANALYSIS PLOTS")
+    print("="*60)
+
+    for stream_name in SEMI_SYN_STREAMS:
+        print(f"\n  {stream_name}")
+
+        drift_chunks = load_gt(stream_name)
+        boundaries   = list(drift_chunks)
+
+        # ---- load analysis data ----
+        try:
+            drift_intensity = np.load(os.path.join(
+                SEMI_SYN_ANALYSIS_DIR, f'{stream_name}_drift_intensity.npy'))
+
+            class_dist = np.load(os.path.join(
+                SEMI_SYN_ANALYSIS_DIR, f'{stream_name}_class_distribution.npy'))
+
+            entropy_vals = np.load(os.path.join(
+                SEMI_SYN_ANALYSIS_DIR, f'{stream_name}_label_entropy.npy'))
+            # ---- ABFS RELEVANCE DYNAMICS ----
+            scores_over_time, _, _ = re_extract_stream(stream_name, drift_chunks)
+
+            delta_relevance = np.linalg.norm(
+                scores_over_time[1:] - scores_over_time[:-1],
+                axis=1
+            )
+            delta_relevance = np.concatenate([[0], delta_relevance])
+
+            # normalize
+            delta_relevance = delta_relevance / (np.max(delta_relevance) + 1e-10)
+
+        except Exception as e:
+            print(f"  Missing analysis files for {stream_name} — skipping.")
+            continue
+
+        n_chunks = len(drift_intensity)
+
+        # ========================================================
+        # Drift + entropy + ABFS dynamics
+        # ========================================================
+        fname = os.path.join(FIGURES_DIR,
+                            f'stream_drift_entropy_{stream_name}.png')
+        if not os.path.exists(fname):
+
+            # normalize drift
+            drift_intensity = drift_intensity / (np.max(drift_intensity) + 1e-10)
+
+            fig, ax1 = plt.subplots(figsize=(14, 4))
+
+            # ---- data drift ----
+            ax1.plot(drift_intensity, color='steelblue',
+                    label='Drift intensity', linewidth=1.5)
+
+            # ---- ABFS dynamics ----
+            ax1.plot(delta_relevance, color='purple',
+                    label='ABFS relevance change', linewidth=1.2, alpha=0.7)
+
+            ax1.set_ylabel('Normalized value')
+            ax1.set_xlabel('Window')
+
+            # ---- entropy ----
+            ax2 = ax1.twinx()
+            ax2.plot(entropy_vals, color='darkorange',
+                    label='Label entropy', alpha=0.7)
+            ax2.set_ylabel('Entropy', color='darkorange')
+
+            # ---- boundaries ----
+            for b in boundaries:
+                ax1.axvline(x=b, color='red', linestyle='--',
+                            linewidth=0.8, alpha=0.7)
+
+            # ---- legend ----
+            lines_1, labels_1 = ax1.get_legend_handles_labels()
+            lines_2, labels_2 = ax2.get_legend_handles_labels()
+            ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
+
+            ax1.set_title(f'Drift vs ABFS dynamics — {stream_name}')
+
+            fig.tight_layout()
+            fig.savefig(fname, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f"  Saved: {fname}")
+        else:
+            print(f"  Exists: {fname}")
+
+        # ========================================================
+        # Class distribution
+        # ========================================================
+        fname = os.path.join(FIGURES_DIR,
+                             f'class_distribution_{stream_name}.png')
+        if not os.path.exists(fname):
+            fig, ax = plt.subplots(figsize=(14, 4))
+
+            for c in range(class_dist.shape[1]):
+                ax.plot(class_dist[:, c],
+                        label=f'class {c}', linewidth=1.2)
+
+            for b in boundaries:
+                ax.axvline(x=b, color='grey', linestyle='--',
+                           linewidth=0.7, alpha=0.6)
+
+            ax.set_xlabel('Window')
+            ax.set_ylabel('Proportion')
+            ax.set_title(f'Class distribution over time — {stream_name}')
+            ax.legend(ncol=4, fontsize=8)
+
+            fig.tight_layout()
+            fig.savefig(fname, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f"  Saved: {fname}")
+        else:
+            print(f"  Exists: {fname}")
  
 print("\nAnalysis 4 complete.")

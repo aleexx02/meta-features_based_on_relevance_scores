@@ -2,6 +2,20 @@
 
 ABFS-based stream meta-features for concept classification in non-stationary data streams.
 
+---
+
+## What is being evaluated?
+
+Each experiment evaluates whether meta-features computed per stream window can discriminate the active concept.
+
+- Input: meta-feature vector per window
+- Target: concept label (definition depends on stream type)
+- Task: multi-class classification at the meta-level
+
+High performance implies that the meta-features encode concept identity effectively.
+
+
+
 ## Project Structure
 ```
 meta-features_based_on_relevance_scores/
@@ -145,55 +159,82 @@ below).
 
 ### Three tiers of evaluation
 
-The experiments use streams at three different levels of label reliability:
+The experiments operate on three types of streams, differing in how concept drift is defined and how reliable the ground truth is.
 
-**Tier 1 — Synthetic streams** (Experiments 1 and 2): concept labels are
-assigned by the stream generator's internal state. Full control over drift
-type, concept count, and stream parameters. No real-world validity.
+---
 
-**Tier 2 — Genuinely annotated real streams** (Experiment 3): real-world
-INSECTS data where the times of concept drift are documented directly in
-Table 2 of Souza et al. (2020), "Description of the Insect Stream
-Datasets." The table reports each change point as a raw instance number;
-I convert these to chunk indices by dividing by chunk_size=200. Only
-the rows with a discrete, citable change point are used:
+### Tier 1 — Synthetic streams (Experiments 1 and 2)
 
-| Stream | Change point(s), instances | Concepts |
-|---|---|---|
-| INSECTS-abrupt_balanced | 14352; 19500; 33240; 38682; 39510 | 6 |
-| INSECTS-abrupt_imbalanced | 83859; 128651; 182320; 242883; 268380 | 6 |
-| INSECTS-incgradual_balanced | 14028 | 2 |
-| INSECTS-incgradual_imbalanced | 58159 | 2 |
+Concepts and drift are fully controlled by the stream generator.
 
-The "Incremental (bal./imbal.)" rows from Table 2 are excluded — their
-change point is listed as "throughout all the stream," meaning drift is
-continuous rather than a discrete boundary, so the concept label formula
-(count of boundaries passed) does not apply to them.
+- Concept = underlying feature–label mapping
+- Drift = change in this mapping
 
-Important caveat: Table 2 only tells us WHERE a change point occurs, not
-WHAT the stream changes into. The concept label assigned to each window
-is purely positional — concept = number of change points passed so far.
-This means each segment between boundaries is treated as a distinct
-concept, even if two segments happen to be statistically similar to each
-other; no recurring-concept structure is assumed or detected. "Concept
-classification" here means "which segment of the stream does this window
-belong to," not "which semantically distinct regime is this."
+Two drift types:
+- Sudden: instantaneous change → clean segments
+- Gradual: sigmoid transition → mixed windows labeled by stage
 
-**Tier 3 — Semi-synthetic streams with injected drift** (Experiment 4):
-electricity and covtype have no published ground truth drift location —
-this is confirmed by multiple independent benchmark papers in the
-literature (e.g. Lukats et al., 2024, who explicitly separate datasets
-with known vs. unknown drift ground truth, placing electricity and
-covtype in the unknown group). Rather than guessing at undocumented
-drift points, I construct drift artificially: instances are sorted by
-class label into contiguous blocks, so each block boundary is a drift
-point by construction, and the concept at each window is simply the
-class label of the dominant instances in that block. This is the same
-technique used to build poker-lsn from the otherwise driftless poker
-hand dataset (Losing et al., 2016). Experiment 4 is kept separate from
-Experiment 3 because the nature of the drift evidence is fundamentally
-different — real vs. fabricated — and should not be presented as if it
-were the same kind of ground truth.
+Both **where drift occurs** and **what changes** are known exactly.
+
+Purpose: controlled evaluation of meta-feature discriminative power
+
+---
+
+### Tier 2 — Real annotated streams (Experiment 3)
+
+Real-world INSECTS data with documented drift locations (Souza et al., 2020).
+
+- Concept = positional segment between annotated drift points
+- Drift = boundary between segments
+
+Important:
+- Drift location is known.
+- Concept identity is unknown.  
+
+Concept labels are **purely positional**: concept = number of drift boundaries crossed. Concept segments are treated as distinct even if their underlying distributions are similar; no recurring concept structure is assumed or inferred.
+
+This means:
+- no assumption of recurring concepts
+- segments may be statistically similar but still treated as different concepts
+
+Purpose: test robustness on real data with imperfect ground truth
+
+---
+
+### Tier 3 — Semi-synthetic streams (Experiment 4)
+
+Real datasets (electricity, covtype) with **injected drift**.
+
+- Concept = class-dominated block (after sorting by class)
+- Drift = transition between class blocks
+
+This guarantees:
+- drift locations known. 
+- concept identity known.  
+- real feature distributions.  
+
+This does NOT claim natural drift — drift is constructed.
+
+Purpose: controlled concept identity on real feature distributions
+
+---
+
+### Summary
+
+| Tier | Drift location | Concept identity | Data type |
+|------|--------------|------------------|----------|
+| Synthetic | YES | YES | synthetic |
+| Real annotated | YES | NO (positional) | real |
+| Semi-synthetic | YES | YES (constructed) | real features |
+
+---
+
+These three tiers progressively test:
+
+1. Controlled conditions (synthetic)
+2. Real-world uncertainty (INSECTS)
+3. Controlled concepts on real distributions (semi-synthetic)
+
 
 ---
 
@@ -276,7 +317,6 @@ effect of stream type and meta-feature version from chunk size effects,
 which are characterised separately in Experiment 2.
 
 **Classifiers:** River GNB, KNN, HT + sklearn MLP.
-PAC excluded — degenerated to BA ≈ 0.095 across all experiments.
 
 ---
 
@@ -384,9 +424,7 @@ Figures produced (selective — not all 32 cells):
 they don't tell us whether ABFS works on real feature distributions.
 Here I test the same question (does ABFS discriminate concepts better
 than Komorniczak?) on real INSECTS data, the only real-world stream
-family with a documented, citable drift ground truth. This is the
-first test of whether the controlled findings from Experiment 2 hold
-up outside of synthetic data.
+family with a documented, citable drift ground truth. This tests whether the patterns observed under controlled synthetic conditions (Experiments 1–2) transfer to real-world feature distributions and imperfect concept definitions.
 
 **15.** `streams/generate_real_streams.py`
 Download USP DS Repository ZIP first, then run once. Produces the 4
@@ -423,12 +461,11 @@ Figures produced per stream:
 
 **Purpose:** Experiment 3 is limited to one stream family (INSECTS).
 To check whether the findings generalize to other kinds of real
-feature distributions, I use electricity and covtype — but since
-neither has a published natural drift location, I inject drift
-artificially (sorting by class into contiguous blocks) so the ground
+feature distributions, we use electricity and covtype, but since
+neither has a published natural drift locationdrift is injected in a controlled manner (sorting by class into contiguous blocks), so the ground
 truth is fully known and the comparison stays fair. This widens the
 real-data evidence beyond INSECTS without fabricating a claim about
-natural drift I can't verify.
+natural drift we can't verify.
 
 **18.** `streams/generate_semi_synthetic_streams.py`
 Produces electricity and covtype streams with artificially injected

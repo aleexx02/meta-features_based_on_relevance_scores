@@ -74,7 +74,7 @@ RUN_SHAP        = args.shap
 RUN_METRICS     = args.metrics
 RUN_GRID        = args.grid
  
-print(f"\nRunning analysis for Experiment 2")
+print(f"\nRunning analysis for Experiment 2 (synthetic stream configuration sensitivity):")
 print(f"Sanity:      {RUN_SANITY}")
 print(f"Performance: {RUN_PERFORMANCE}")
 print(f"SHAP:        {RUN_SHAP}")

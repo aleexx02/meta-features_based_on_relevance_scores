@@ -47,6 +47,7 @@
 import numpy as np
 import os
 import collections
+from scipy.stats import entropy
  
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -56,10 +57,12 @@ USP_OLD = os.path.expanduser(
  
 OUT_STREAMS = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
 OUT_GT      = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
- 
+ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'analysis')
+
 os.makedirs(OUT_STREAMS, exist_ok=True)
 os.makedirs(OUT_GT,      exist_ok=True)
- 
+os.makedirs(ANALYSIS_DIR, exist_ok=True)
+
 CHUNK_SIZE = 200  # consistent with the rest of the project
  
  
@@ -136,6 +139,72 @@ def build_sorted_drift_stream(X, y_raw):
                     if chunk_concepts[i] != chunk_concepts[i-1]]
  
     return X_sorted, y_concept, drift_chunks
+
+
+
+def run_stream_analysis(stream_name, X_stream, y_stream):
+    print(f"\n  [Stream analysis] {stream_name}")
+
+    chunk_size = CHUNK_SIZE
+    n_instances = X_stream.shape[0]
+    n_features  = X_stream.shape[1]
+    n_chunks    = n_instances // chunk_size
+    n_classes   = int(np.max(y_stream)) + 1
+
+    class_distribution = []
+    feature_means      = []
+    feature_stds       = []
+    drift_intensity    = []
+    label_entropy      = []
+
+    prev_mean = None
+
+    for chunk_idx in range(n_chunks):
+        start = chunk_idx * chunk_size
+        end   = start + chunk_size
+
+        X_chunk = X_stream[start:end]
+        y_chunk = y_stream[start:end]
+
+        counts = np.bincount(y_chunk, minlength=n_classes)
+        probs  = counts / np.sum(counts)
+        class_distribution.append(probs)
+
+        mean = np.mean(X_chunk, axis=0)
+        std  = np.std(X_chunk, axis=0)
+
+        feature_means.append(mean)
+        feature_stds.append(std)
+
+        if prev_mean is None:
+            drift_intensity.append(0.0)
+        else:
+            drift_intensity.append(np.linalg.norm(mean - prev_mean))
+
+        prev_mean = mean
+        label_entropy.append(entropy(probs + 1e-10))
+
+    class_distribution = np.array(class_distribution)
+    feature_means      = np.array(feature_means)
+    feature_stds       = np.array(feature_stds)
+    drift_intensity    = np.array(drift_intensity)
+    label_entropy      = np.array(label_entropy)
+
+    print(f"    avg drift: {np.mean(drift_intensity):.4f} | max drift: {np.max(drift_intensity):.4f}")
+    print(f"    avg entropy: {np.mean(label_entropy):.4f}")
+
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_class_distribution.npy'),
+            class_distribution)
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_feature_means.npy'),
+            feature_means)
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_feature_stds.npy'),
+            feature_stds)
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_drift_intensity.npy'),
+            drift_intensity)
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_label_entropy.npy'),
+            label_entropy)
+
+    print(f"Saved analysis at {ANALYSIS_DIR}")
  
  
 # ============================================================
@@ -161,6 +230,7 @@ if not already_done('electricity'):
  
     save_stream('electricity', X_sorted, y_concept, normalise=True)
     save_gt('electricity', drift_chunks)
+    run_stream_analysis('electricity', X_sorted, y_concept)
  
  
 # ============================================================
@@ -190,6 +260,8 @@ if not already_done('covtype'):
     # already normalised in the USP version
     save_stream('covtype', X_sorted, y_concept, normalise=False)
     save_gt('covtype', drift_chunks)
+    run_stream_analysis('covtype', X_sorted, y_concept)
+
  
  
 # ============================================================

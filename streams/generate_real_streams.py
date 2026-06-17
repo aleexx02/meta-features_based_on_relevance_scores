@@ -45,6 +45,7 @@
 import numpy as np
 import os
 import collections
+from scipy.stats import entropy
  
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -54,10 +55,12 @@ USP_INSECTS = os.path.expanduser(
  
 OUT_STREAMS = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
 OUT_GT      = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
- 
+ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_analysis')
+
 os.makedirs(OUT_STREAMS, exist_ok=True)
 os.makedirs(OUT_GT,      exist_ok=True)
- 
+os.makedirs(ANALYSIS_DIR, exist_ok=True)
+
 CHUNK_SIZE = 200
  
  
@@ -168,7 +171,101 @@ for stream_name, (csv_fname, change_points) in INSECTS_STREAMS.items():
     ])
  
     save_stream(stream_name, X, y_concept, normalise=True)
+    
     save_gt(stream_name, drift_chunks)
+    
+    # ============================================================
+    # STREAM ANALYSIS
+    # ============================================================
+
+    
+    print(f"\n  [Stream analysis] {stream_name}")
+
+    X_stream = X
+    y_stream = y_concept
+
+    chunk_size = CHUNK_SIZE
+    n_instances = X_stream.shape[0]
+    n_features  = X_stream.shape[1]
+    n_chunks    = n_instances // chunk_size
+    n_classes   = int(np.max(y_stream)) + 1
+
+    # Storage
+    class_distribution = []
+    feature_means      = []
+    feature_stds       = []
+    drift_intensity    = []
+    label_entropy      = []
+
+    prev_mean = None
+
+
+    # ------------------------------------------------------------
+    # Iterate over stream in chunks
+    # ------------------------------------------------------------
+    for chunk_idx in range(n_chunks):
+        start = chunk_idx * chunk_size
+        end   = start + chunk_size
+
+        X_chunk = X_stream[start:end]
+        y_chunk = y_stream[start:end]
+
+        # ---- class distribution ----
+        counts = np.bincount(y_chunk, minlength=n_classes)
+        probs  = counts / np.sum(counts)
+        class_distribution.append(probs)
+
+        # ---- feature statistics ----
+        mean = np.mean(X_chunk, axis=0)
+        std  = np.std(X_chunk, axis=0)
+
+        feature_means.append(mean)
+        feature_stds.append(std)
+
+        # ---- drift intensity (mean shift magnitude) ----
+        if prev_mean is None:
+            drift_intensity.append(0.0)
+        else:
+            drift_intensity.append(np.linalg.norm(mean - prev_mean))
+
+        prev_mean = mean
+
+        # ---- label entropy (class uncertainty) ----
+        label_entropy.append(entropy(probs + 1e-10))
+
+
+    # ------------------------------------------------------------
+    # Convert to arrays
+    # ------------------------------------------------------------
+    class_distribution = np.array(class_distribution)
+    feature_means      = np.array(feature_means)
+    feature_stds       = np.array(feature_stds)
+    drift_intensity    = np.array(drift_intensity)
+    label_entropy      = np.array(label_entropy)
+
+
+    # ------------------------------------------------------------
+    # Save results
+    # ------------------------------------------------------------
+    os.makedirs(ANALYSIS_DIR, exist_ok=True)
+
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_class_distribution.npy'),
+            class_distribution)
+
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_feature_means.npy'),
+            feature_means)
+
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_feature_stds.npy'),
+            feature_stds)
+
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_drift_intensity.npy'),
+            drift_intensity)
+
+    np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_label_entropy.npy'),
+            label_entropy)
+
+    print(f"[Stream analysis] Saved to {ANALYSIS_DIR}")
+    
  
  
 # ============================================================
@@ -199,3 +296,6 @@ for stream_name in INSECTS_STREAMS:
  
 print()
 print("ALL OK" if all_ok else "SOME FILES MISSING — check paths above")
+
+
+
