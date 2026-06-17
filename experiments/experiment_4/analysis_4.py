@@ -1,13 +1,11 @@
-# analysis_3.py
+# analysis_4.py
 # ============================================================
-# Analysis of Experiment 3 results.
+# Analysis of Experiment 4 results (semi-synthetic injected-drift streams).
 #
-# Streams analysed here (genuinely annotated only, Table 2, Souza
-# et al. 2020): INSECTS-abrupt_balanced, INSECTS-abrupt_imbalanced,
-# INSECTS-incgradual_balanced, INSECTS-incgradual_imbalanced.
-#
-# electricity and covtype (semi-synthetic, injected drift) are
-# analysed separately in analysis_4.py.
+# Streams analysed here: electricity and covtype, both with
+# artificially injected drift (see generate_semi_synthetic_streams.py
+# and evaluate_concept_classification_4.py for the full rationale —
+# neither dataset has a published natural drift ground truth).
 #
 # I load the pre-computed prequential results from
 # results/experiment_3/ and generate the following figures
@@ -48,7 +46,7 @@
 #     for Komorniczak (left) and ABFS (right).
 #
 # Usage:
-#   python experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics
+#   python experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics
 #
 # Inputs (from results/experiment_3/):
 #   concept_labels_{stream}.npy                  concept label per window
@@ -113,10 +111,10 @@ print(f"Metrics     : {RUN_METRICS}")
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
-REAL_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
-REAL_GT_DIR     = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
-RESULTS_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
-FIGURES_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures', 'analysis')
+SEMI_SYN_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
+SEMI_SYN_GT_DIR     = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
+RESULTS_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
+FIGURES_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_4', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
  
  
@@ -126,24 +124,19 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # chunk_size = 200, same as evaluate_concept_classification_3.py
 CHUNK_SIZE = 200
  
-REAL_STREAMS = [
-    # genuinely annotated (Table 2, Souza et al. 2020)
-    'INSECTS-abrupt_balanced',
-    'INSECTS-abrupt_imbalanced',
-    'INSECTS-incgradual_balanced',
-    'INSECTS-incgradual_imbalanced',
+SEMI_SYN_STREAMS = [
+    'electricity',
+    'covtype',
 ]
  
 N_FEATURES = {
-    'INSECTS-abrupt_balanced':         33,
-    'INSECTS-abrupt_imbalanced':       33,
-    'INSECTS-incgradual_balanced':     33,
-    'INSECTS-incgradual_imbalanced':   33,
+    'electricity': 8,
+    'covtype':     54,
 }
  
 N_CONCEPTS = {
-    s: len(np.load(os.path.join(REAL_GT_DIR, f'{s}.npy'))) + 1
-    for s in REAL_STREAMS
+    s: len(np.load(os.path.join(SEMI_SYN_GT_DIR, f'{s}.npy'))) + 1
+    for s in SEMI_SYN_STREAMS
 }
  
 MEASURES = [
@@ -200,7 +193,7 @@ def load(prefix, stream_name, optional=False):
  
 def load_gt(stream_name):
     """Load the drift chunk indices for this stream."""
-    return np.load(os.path.join(REAL_GT_DIR, f'{stream_name}.npy'))
+    return np.load(os.path.join(SEMI_SYN_GT_DIR, f'{stream_name}.npy'))
  
  
 def feat_names_for(version, n_features):
@@ -221,7 +214,7 @@ def re_extract_stream(stream_name, drift_chunks):
     evaluate_concept_classification_3.py.
     """
     n_features  = N_FEATURES[stream_name]
-    stream_path = os.path.join(REAL_STREAM_DIR, f'{stream_name}.npy')
+    stream_path = os.path.join(SEMI_SYN_STREAM_DIR, f'{stream_name}.npy')
     stream = sl.streams.NPYParser(stream_path,
                                   chunk_size=CHUNK_SIZE, n_chunks=100000)
     abfs = ABFS_match(n_features=n_features, categorical_features=[],
@@ -274,7 +267,7 @@ if RUN_SANITY:
     print("SANITY CHECK PLOTS")
     print("="*60)
  
-    for stream_name in REAL_STREAMS:
+    for stream_name in SEMI_SYN_STREAMS:
         n_features      = N_FEATURES[stream_name]
         n_concepts      = N_CONCEPTS[stream_name]
         random_baseline = 1.0 / n_concepts
@@ -379,7 +372,7 @@ if RUN_PERFORMANCE:
     print("PERFORMANCE TRAJECTORIES")
     print("="*60)
  
-    for stream_name in REAL_STREAMS:
+    for stream_name in SEMI_SYN_STREAMS:
         n_concepts      = N_CONCEPTS[stream_name]
         random_baseline = 1.0 / n_concepts
         drift_chunks    = load_gt(stream_name)
@@ -469,7 +462,7 @@ if RUN_SHAP:
     print("SHAP ANALYSIS")
     print("="*60)
  
-    for stream_name in REAL_STREAMS:
+    for stream_name in SEMI_SYN_STREAMS:
         n_features = N_FEATURES[stream_name]
         print(f"\n  {stream_name}")
  
@@ -544,7 +537,7 @@ if RUN_METRICS:
     print("METRICS HEATMAPS")
     print("="*60)
  
-    for stream_name in REAL_STREAMS:
+    for stream_name in SEMI_SYN_STREAMS:
         n_concepts = N_CONCEPTS[stream_name]
         print(f"\n  {stream_name}")
  
@@ -612,4 +605,4 @@ if RUN_METRICS:
             plt.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
  
-print("\nAnalysis 3 complete.")
+print("\nAnalysis 4 complete.")

@@ -1,6 +1,6 @@
-# evaluate_concept_classification_3.py
+# evaluate_concept_classification_4.py
 # ==============================================================================
-# Experiment 3: Real-World Annotated Stream Evaluation
+# Experiment 4: Semi-Synthetic Stream Evaluation (Injected Drift)
 #
 # I evaluate all three ABFS meta-feature versions and all 9 Komorniczak
 # measure groups on 8 real-world streams with known drift boundaries.
@@ -25,27 +25,31 @@
 #   (extracted later, in a separate loop) reuse the same label sequence so
 #   both approaches are evaluated against identical ground truth.
 #
-# Streams used (genuinely annotated only — Table 2, Souza et al. 2020,
-# instance-level change points converted to chunk indices at
-# chunk_size=200):
-#   INSECTS-abrupt_balanced          33 features,  6 concepts
-#   INSECTS-abrupt_imbalanced        33 features,  6 concepts
-#   INSECTS-incgradual_balanced      33 features,  2 concepts
-#   INSECTS-incgradual_imbalanced    33 features,  2 concepts
-# (the "Incremental" rows from Table 2 are excluded — drift is listed
-# as "throughout all the stream", i.e. continuous, not a discrete point)
+# Streams: electricity (8 features) and covtype (54 features, all 7
+# original classes).
 #
-# NOTE on what "concept" means here: Table 2 only tells us WHERE a
-# change point occurs, not WHAT changed. The concept label is purely
-# positional (count of change points passed), not a verified
-# semantically distinct regime — see generate_real_streams.py for
-# the full explanation.
+# Neither dataset has a published ground truth drift location anywhere
+# in the literature I could verify. Multiple independent benchmark
+# papers confirm this (e.g. Lukats et al. 2024 explicitly separate
+# real-world streams into "known drift ground truth" -- the INSECTS
+# family, see Experiment 3 -- vs. "unknown ground truth", placing
+# electricity and covtype in the unknown group).
 #
-# electricity and covtype (semi-synthetic, injected drift) are now a
-# SEPARATE experiment — see evaluate_concept_classification_4.py and
-# generate_semi_synthetic_streams.py.
+# Rather than guessing at undocumented drift, generate_semi_synthetic_
+# streams.py constructs drift artificially: instances are sorted by
+# class label into contiguous blocks, so each block boundary is a
+# drift point BY CONSTRUCTION, and the "concept" at each window is
+# just the class label of the dominant instances in that block. This
+# is the same idea used to build poker-lsn from the otherwise
+# driftless poker hand dataset (Losing et al., 2016).
 #
-# Outputs saved to results/experiment_3/:
+# This experiment tests whether ABFS and Komorniczak meta-features can
+# recover KNOWN, controlled drift injected into real feature
+# distributions -- a middle ground between the fully synthetic streams
+# of Experiments 1-2 and the genuinely annotated INSECTS streams of
+# Experiment 3.
+#
+# Outputs saved to results/experiment_4/:
 #   concept_labels_{stream}.npy             — ground truth concept label per window
 #   preq_abfs_{version}_ba_{stream}.npy     — cumulative BA trajectory
 #   preq_abfs_{version}_f1_{stream}.npy     — cumulative F1 trajectory
@@ -54,12 +58,12 @@
 #   preq_komor_{measure}_f1_{stream}.npy
 #   preq_komor_{measure}_kappa_{stream}.npy
 #
-# Figures saved to results/experiment_3/figures/:
+# Figures saved to results/experiment_4/figures/:
 #   heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream}.png
 #     side-by-side: 9 Komorniczak groups vs 3 ABFS versions, final BA
 #
 # Run from project root:
-#   python experiments/experiment_3/evaluate_concept_classification_3.py
+#   python experiments/experiment_3/evaluate_concept_classification_4.py
 # ==============================================================================
  
 import numpy as np
@@ -92,11 +96,11 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
-REAL_STREAM_DIR   = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
-REAL_GT_DIR       = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
+SEMI_SYN_STREAM_DIR   = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
+SEMI_SYN_GT_DIR       = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
 KOMOR_CACHE_DIR   = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
-RESULTS_DIR       = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
-FIGURES_DIR       = os.path.join(PROJECT_ROOT, 'results', 'experiment_3', 'figures')
+RESULTS_DIR       = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
+FIGURES_DIR       = os.path.join(PROJECT_ROOT, 'results', 'experiment_4', 'figures')
 os.makedirs(RESULTS_DIR,     exist_ok=True)
 os.makedirs(FIGURES_DIR,     exist_ok=True)
 os.makedirs(KOMOR_CACHE_DIR, exist_ok=True)
@@ -108,25 +112,20 @@ os.makedirs(KOMOR_CACHE_DIR, exist_ok=True)
 CHUNK_SIZE     = 200
 WARMUP_WINDOWS = 0
  
-REAL_STREAMS = [
-    # genuinely annotated (Table 2, Souza et al. 2020)
-    'INSECTS-abrupt_balanced',
-    'INSECTS-abrupt_imbalanced',
-    'INSECTS-incgradual_balanced',
-    'INSECTS-incgradual_imbalanced',
+SEMI_SYN_STREAMS = [
+    'electricity',
+    'covtype',
 ]
  
 N_FEATURES = {
-    'INSECTS-abrupt_balanced':         33,
-    'INSECTS-abrupt_imbalanced':       33,
-    'INSECTS-incgradual_balanced':     33,
-    'INSECTS-incgradual_imbalanced':   33,
+    'electricity': 8,
+    'covtype':     54,
 }
  
 # N_CONCEPTS computed dynamically from the ground truth files
 N_CONCEPTS = {
-    s: len(np.load(os.path.join(REAL_GT_DIR, f'{s}.npy'))) + 1
-    for s in REAL_STREAMS
+    s: len(np.load(os.path.join(SEMI_SYN_GT_DIR, f'{s}.npy'))) + 1
+    for s in SEMI_SYN_STREAMS
 }
  
 MEASURES = [
@@ -150,7 +149,7 @@ EXPECTED_N_CLFS = len(BASE_CLFS_PREQUENTIAL)
  
 def load_gt(stream_name):
     """Load the ground truth drift chunk indices for a stream."""
-    return np.load(os.path.join(REAL_GT_DIR, f'{stream_name}.npy'))
+    return np.load(os.path.join(SEMI_SYN_GT_DIR, f'{stream_name}.npy'))
  
  
 def already_done_abfs(stream_name, version):
@@ -288,7 +287,7 @@ def extract_abfs_metafeatures(stream_name, drift_chunks):
     Returns: X_aggstats, X_raw, X_raw_temporal, y_concept_labels
     """
     n_features  = N_FEATURES[stream_name]
-    stream_path = os.path.join(REAL_STREAM_DIR, f'{stream_name}.npy')
+    stream_path = os.path.join(SEMI_SYN_STREAM_DIR, f'{stream_name}.npy')
     stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
                                   n_chunks=100000)
     abfs = ABFS_match(n_features=n_features, categorical_features=[],
@@ -345,7 +344,7 @@ def extract_komor_metafeatures(stream_name, measure, drift_chunks):
     if os.path.exists(cache_path):
         return np.load(cache_path)
  
-    stream_path = os.path.join(REAL_STREAM_DIR, f'{stream_name}.npy')
+    stream_path = os.path.join(SEMI_SYN_STREAM_DIR, f'{stream_name}.npy')
     stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
                                   n_chunks=100000)
     mfe = MFE(groups=[measure], suppress_warnings=True)
@@ -379,7 +378,7 @@ def extract_komor_metafeatures(stream_name, measure, drift_chunks):
 #  MAIN SWEEP — loop over all streams
 # ============================================================
  
-for stream_name in REAL_STREAMS:
+for stream_name in SEMI_SYN_STREAMS:
     n_features = N_FEATURES[stream_name]
     n_concepts = N_CONCEPTS[stream_name]
  
@@ -471,4 +470,4 @@ for stream_name in REAL_STREAMS:
     # ---- combined heatmap ----
     plot_combined_heatmap(stream_name, n_concepts, tba_versions)
  
-print("\nExperiment 3 complete.")
+print("\nExperiment 4 complete.")
