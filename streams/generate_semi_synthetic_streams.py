@@ -42,6 +42,13 @@
 #   data/semi_synthetic/streams_gt/{stream}.npy
 #       shape: (n_drifts,)
 #       chunk indices where a block boundary (injected drift) occurs
+#
+#   data/semi_synthetic/analysis/{stream}_*.npy
+#       per-chunk diagnostics (class_distribution, feature_means,
+#       feature_stds, drift_intensity, label_entropy) — computed on
+#       the SAVED (post-normalisation, post-sort) array reloaded from
+#       disk, not the pre-normalisation in-memory array, so they
+#       describe exactly what the downstream pipeline sees.
 # ============================================================
  
 import numpy as np
@@ -55,14 +62,14 @@ PROJECT_ROOT = os.path.abspath(
 USP_OLD = os.path.expanduser(
     '~/usp_ds_repository/USP DS Repository/Old datasets')
  
-OUT_STREAMS = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
-OUT_GT      = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
+OUT_STREAMS  = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
+OUT_GT       = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
 ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'analysis')
-
-os.makedirs(OUT_STREAMS, exist_ok=True)
-os.makedirs(OUT_GT,      exist_ok=True)
+ 
+os.makedirs(OUT_STREAMS,  exist_ok=True)
+os.makedirs(OUT_GT,       exist_ok=True)
 os.makedirs(ANALYSIS_DIR, exist_ok=True)
-
+ 
 CHUNK_SIZE = 200  # consistent with the rest of the project
  
  
@@ -92,6 +99,15 @@ def already_done(stream_name):
         print(f"  EXISTS : {stream_name}.npy  shape={d.shape}")
         return True
     return False
+ 
+ 
+def analysis_already_done(stream_name):
+    suffixes = ['class_distribution', 'feature_means', 'feature_stds',
+                'drift_intensity', 'label_entropy']
+    return all(
+        os.path.exists(os.path.join(ANALYSIS_DIR, f'{stream_name}_{s}.npy'))
+        for s in suffixes
+    )
  
  
 def save_stream(stream_name, X, y, normalise=False):
@@ -139,60 +155,63 @@ def build_sorted_drift_stream(X, y_raw):
                     if chunk_concepts[i] != chunk_concepts[i-1]]
  
     return X_sorted, y_concept, drift_chunks
-
-
-
+ 
+ 
 def run_stream_analysis(stream_name, X_stream, y_stream):
+    """
+    Per-chunk diagnostics. X_stream/y_stream MUST be the already-saved
+    (post-normalisation) arrays — callers should reload from disk
+    rather than reuse pre-normalisation in-memory arrays, so these
+    diagnostics describe exactly what the rest of the pipeline sees.
+    """
     print(f"\n  [Stream analysis] {stream_name}")
-
-    chunk_size = CHUNK_SIZE
+ 
     n_instances = X_stream.shape[0]
-    n_features  = X_stream.shape[1]
-    n_chunks    = n_instances // chunk_size
+    n_chunks    = n_instances // CHUNK_SIZE
     n_classes   = int(np.max(y_stream)) + 1
-
+ 
     class_distribution = []
     feature_means      = []
     feature_stds       = []
     drift_intensity    = []
     label_entropy      = []
-
+ 
     prev_mean = None
-
+ 
     for chunk_idx in range(n_chunks):
-        start = chunk_idx * chunk_size
-        end   = start + chunk_size
-
+        start = chunk_idx * CHUNK_SIZE
+        end   = start + CHUNK_SIZE
+ 
         X_chunk = X_stream[start:end]
         y_chunk = y_stream[start:end]
-
+ 
         counts = np.bincount(y_chunk, minlength=n_classes)
         probs  = counts / np.sum(counts)
         class_distribution.append(probs)
-
+ 
         mean = np.mean(X_chunk, axis=0)
         std  = np.std(X_chunk, axis=0)
-
         feature_means.append(mean)
         feature_stds.append(std)
-
+ 
         if prev_mean is None:
             drift_intensity.append(0.0)
         else:
             drift_intensity.append(np.linalg.norm(mean - prev_mean))
-
         prev_mean = mean
+ 
         label_entropy.append(entropy(probs + 1e-10))
-
+ 
     class_distribution = np.array(class_distribution)
     feature_means      = np.array(feature_means)
     feature_stds       = np.array(feature_stds)
     drift_intensity    = np.array(drift_intensity)
-    label_entropy      = np.array(label_entropy)
-
-    print(f"    avg drift: {np.mean(drift_intensity):.4f} | max drift: {np.max(drift_intensity):.4f}")
+    label_entropy       = np.array(label_entropy)
+ 
+    print(f"    avg drift: {np.mean(drift_intensity):.4f}  "
+          f"max drift: {np.max(drift_intensity):.4f}")
     print(f"    avg entropy: {np.mean(label_entropy):.4f}")
-
+ 
     np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_class_distribution.npy'),
             class_distribution)
     np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_feature_means.npy'),
@@ -203,8 +222,49 @@ def run_stream_analysis(stream_name, X_stream, y_stream):
             drift_intensity)
     np.save(os.path.join(ANALYSIS_DIR, f'{stream_name}_label_entropy.npy'),
             label_entropy)
-
-    print(f"Saved analysis at {ANALYSIS_DIR}")
+ 
+    print(f"  [Stream analysis] Saved to {ANALYSIS_DIR}")
+ 
+ 
+def generate_and_analyse(stream_name, csv_path, parse_fn, normalise):
+    """
+    Shared driver for both streams below: generate (if not already
+    done), then run stream analysis on the array reloaded from disk
+    (not the pre-normalisation in-memory array), and skip analysis
+    independently if it already exists.
+    """
+    if not already_done(stream_name):
+        rows = parse_fn(csv_path)
+        data = np.array(rows, dtype=float)
+        X_raw, y_raw = data[:, :-1], data[:, -1].astype(int)
+ 
+        print(f"  Original class counts: "
+              f"{dict(collections.Counter(y_raw.tolist()))}")
+ 
+        X_sorted, y_concept, drift_chunks = build_sorted_drift_stream(
+            X_raw, y_raw)
+ 
+        save_stream(stream_name, X_sorted, y_concept, normalise=normalise)
+        save_gt(stream_name, drift_chunks)
+ 
+    if analysis_already_done(stream_name):
+        print(f"  [Stream analysis] {stream_name}: already exists — skipping.")
+        return
+ 
+    saved_path = os.path.join(OUT_STREAMS, f'{stream_name}.npy')
+    if not os.path.exists(saved_path):
+        print(f"  [Stream analysis] {stream_name}: stream npy missing — skipping.")
+        return
+ 
+    # Reload from disk: save_stream() normalises X internally without
+    # mutating the caller's variable, so re-reading guarantees the
+    # diagnostics describe exactly what's on disk (post-normalisation,
+    # post-sort), matching what the rest of the pipeline consumes.
+    saved    = np.load(saved_path)
+    X_stream = saved[:, :-1]
+    y_stream = saved[:, -1].astype(int)
+ 
+    run_stream_analysis(stream_name, X_stream, y_stream)
  
  
 # ============================================================
@@ -215,22 +275,23 @@ print("=" * 60)
 print("Electricity (semi-synthetic, injected drift)")
 print("=" * 60)
  
-if not already_done('electricity'):
-    csv_path = os.path.join(USP_OLD, 'Electricity.csv')
+ 
+def parse_electricity(csv_path):
     rows = []
     for line in load_csv(csv_path):
         parts    = line.split(',')
         features = [float(x) for x in parts[:-1]]
         label    = 0 if parts[-1].strip() == '-1' else 1
         rows.append(features + [label])
-    data  = np.array(rows, dtype=float)
-    X_raw, y_raw = data[:, :-1], data[:, -1].astype(int)
+    return rows
  
-    X_sorted, y_concept, drift_chunks = build_sorted_drift_stream(X_raw, y_raw)
  
-    save_stream('electricity', X_sorted, y_concept, normalise=True)
-    save_gt('electricity', drift_chunks)
-    run_stream_analysis('electricity', X_sorted, y_concept)
+generate_and_analyse(
+    'electricity',
+    os.path.join(USP_OLD, 'Electricity.csv'),
+    parse_electricity,
+    normalise=True,
+)
  
  
 # ============================================================
@@ -241,27 +302,23 @@ print("\n" + "=" * 60)
 print("Covtype (semi-synthetic, injected drift, all 7 classes)")
 print("=" * 60)
  
-if not already_done('covtype'):
-    csv_path = os.path.join(USP_OLD, 'ForestCoverType.csv')
+ 
+def parse_covtype(csv_path):
     rows = []
     for line in load_csv(csv_path):
         parts    = line.split(',')
         features = [float(x) for x in parts[:-1]]
         label    = int(parts[-1].strip()) - 1   # remap 1-7 -> 0-6
         rows.append(features + [label])
-    data  = np.array(rows, dtype=float)
-    X_raw, y_raw = data[:, :-1], data[:, -1].astype(int)
+    return rows
  
-    print(f"  Original class counts: "
-          f"{dict(collections.Counter(y_raw.tolist()))}")
  
-    X_sorted, y_concept, drift_chunks = build_sorted_drift_stream(X_raw, y_raw)
- 
-    # already normalised in the USP version
-    save_stream('covtype', X_sorted, y_concept, normalise=False)
-    save_gt('covtype', drift_chunks)
-    run_stream_analysis('covtype', X_sorted, y_concept)
-
+generate_and_analyse(
+    'covtype',
+    os.path.join(USP_OLD, 'ForestCoverType.csv'),
+    parse_covtype,
+    normalise=False,  # already normalised in the USP version
+)
  
  
 # ============================================================

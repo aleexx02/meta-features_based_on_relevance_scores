@@ -3,18 +3,21 @@
 # Experiment 4: Semi-Synthetic Stream Evaluation (Injected Drift)
 #
 # I evaluate all three ABFS meta-feature versions and all 9 Komorniczak
-# measure groups on 8 real-world streams with known drift boundaries.
-# Everything runs in a single script — ABFS and Komorniczak features are
-# extracted here, no separate preprocessing step needed. Komorniczak results
-# are cached to disk so re-running the script skips already-computed streams.
+# measure groups on 2 real-feature streams (electricity, covtype) with
+# artificially INJECTED drift boundaries — not known/documented drift,
+# constructed drift (see below). Everything runs in a single script —
+# ABFS and Komorniczak features are extracted here, no separate
+# preprocessing step needed. Komorniczak results are cached to disk so
+# re-running the script skips already-computed streams.
 #
 # Why chunk_size=200?
 #   Consistent with Experiments 1a-1c and the Experiment 2 baseline.
 #   Keeps results comparable across all experiments.
 #
 # Why no warmup?
-#   Some streams (gradual, incremental INSECTS) have their first drift at
-#   chunk 9. Skipping warmup windows would discard the first concept entirely.
+#   Consistent with Experiment 3 — skipping warmup windows would risk
+#   discarding part of the first concept on streams with an early
+#   block boundary.
 #
 # What is concept_labels_{stream}.npy?
 #   The ground truth concept label for each window — NOT produced by ABFS.
@@ -96,11 +99,11 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
  
-SEMI_SYN_STREAM_DIR   = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
-SEMI_SYN_GT_DIR       = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
-KOMOR_CACHE_DIR   = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'real')
-RESULTS_DIR       = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
-FIGURES_DIR       = os.path.join(PROJECT_ROOT, 'results', 'experiment_4', 'figures')
+SEMI_SYN_STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams')
+SEMI_SYN_GT_DIR     = os.path.join(PROJECT_ROOT, 'data', 'semi_synthetic', 'streams_gt')
+KOMOR_CACHE_DIR     = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'semi_synthetic')
+RESULTS_DIR         = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
+FIGURES_DIR         = os.path.join(PROJECT_ROOT, 'results', 'experiment_4', 'figures')
 os.makedirs(RESULTS_DIR,     exist_ok=True)
 os.makedirs(FIGURES_DIR,     exist_ok=True)
 os.makedirs(KOMOR_CACHE_DIR, exist_ok=True)
@@ -282,7 +285,8 @@ def extract_abfs_metafeatures(stream_name, drift_chunks):
     """
     Run ABFS on the stream and extract all three meta-feature versions
     in a single pass. The concept label for each window is computed as
-    the number of known drift boundaries that have been passed so far.
+    the number of known (constructed) drift boundaries that have been
+    passed so far.
  
     Returns: X_aggstats, X_raw, X_raw_temporal, y_concept_labels
     """

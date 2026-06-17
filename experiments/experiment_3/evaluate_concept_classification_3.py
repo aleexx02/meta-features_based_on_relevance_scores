@@ -1,12 +1,13 @@
-# evaluate_concept_classification_3.py
+#  evaluate_concept_classification_3.py
 # ==============================================================================
 # Experiment 3: Real-World Annotated Stream Evaluation
 #
 # I evaluate all three ABFS meta-feature versions and all 9 Komorniczak
-# measure groups on 8 real-world streams with known drift boundaries.
-# Everything runs in a single script — ABFS and Komorniczak features are
-# extracted here, no separate preprocessing step needed. Komorniczak results
-# are cached to disk so re-running the script skips already-computed streams.
+# measure groups on 4 real-world streams with known drift change-point
+# locations. Everything runs in a single script — ABFS and Komorniczak
+# features are extracted here, no separate preprocessing step needed.
+# Komorniczak results are cached to disk so re-running the script skips
+# already-computed streams.
 #
 # Why chunk_size=200?
 #   Consistent with Experiments 1a-1c and the Experiment 2 baseline.
@@ -16,14 +17,22 @@
 #   Some streams (gradual, incremental INSECTS) have their first drift at
 #   chunk 9. Skipping warmup windows would discard the first concept entirely.
 #
+# What does y_chunk (the stream's last column) actually contain?
+#   The SPECIES label, mapped through INSECTS_SPECIES_MAP in
+#   generate_real_streams.py — i.e. the real classification target ABFS
+#   and Komorniczak both operate on. This is deliberately NOT the
+#   concept/drift label; see generate_real_streams.py's header for why
+#   keeping them separate matters.
+#
 # What is concept_labels_{stream}.npy?
-#   The ground truth concept label for each window — NOT produced by ABFS.
-#   It's computed directly from the known drift chunk indices:
-#   concept = number of drift boundaries passed by this chunk. ABFS plays
-#   no role in this label; it's saved here only because this is where we
-#   loop over the stream chunk by chunk anyway, and Komorniczak features
-#   (extracted later, in a separate loop) reuse the same label sequence so
-#   both approaches are evaluated against identical ground truth.
+#   The ground truth concept label for each window — NOT produced by ABFS,
+#   and NOT read from the stream's last column. It's computed directly
+#   from the known drift chunk indices: concept = number of drift
+#   boundaries passed by this chunk. ABFS plays no role in this label;
+#   it's saved here only because this is where we loop over the stream
+#   chunk by chunk anyway, and Komorniczak features (extracted later, in
+#   a separate loop) reuse the same label sequence so both approaches are
+#   evaluated against identical ground truth.
 #
 # Streams used (genuinely annotated only — Table 2, Souza et al. 2020,
 # instance-level change points converted to chunk indices at
@@ -283,7 +292,9 @@ def extract_abfs_metafeatures(stream_name, drift_chunks):
     """
     Run ABFS on the stream and extract all three meta-feature versions
     in a single pass. The concept label for each window is computed as
-    the number of known drift boundaries that have been passed so far.
+    the number of known drift boundaries that have been passed so far
+    — NOT read from the stream's last column (which is the species
+    label that ABFS actually trains its relevance scores against).
  
     Returns: X_aggstats, X_raw, X_raw_temporal, y_concept_labels
     """
