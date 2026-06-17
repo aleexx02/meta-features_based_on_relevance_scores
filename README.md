@@ -32,7 +32,7 @@ meta-features_based_on_relevance_scores/
 │   │   │   └── INSECTS-incgradual_imbalanced.npy
 │   │   ├── annotated_streams_gt/
 │   │   │   └── {same filenames}.npy
-│   │   └── analysis/
+│   │   └── annotated_streams_analysis/
 │   │       └── {stream analysis files}.npy
 │   ├── semi_synthetic/
 │   │   ├── streams/
