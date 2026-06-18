@@ -51,7 +51,11 @@
 # distributions -- a middle ground between the fully synthetic streams
 # of Experiments 1-2 and the genuinely annotated INSECTS streams of
 # Experiment 3.
-#
+
+## Input files: Komorniczak's raw pymfe features, one file per stream x
+#               measure, extracted lazily on first use -> external/komorniczak/results/semi_synthetic/
+# Output: ABFS + Komorniczak classifier-sweep results and heatmaps -> results/experiment_4/
+
 # Outputs saved to results/experiment_4/:
 #   concept_labels_{stream}.npy             — ground truth concept label per window
 #   preq_abfs_{version}_ba_{stream}.npy     — cumulative BA trajectory

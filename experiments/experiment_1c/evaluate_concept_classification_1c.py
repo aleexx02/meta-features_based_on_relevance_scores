@@ -11,6 +11,10 @@
 # Metrics: cumulative balanced accuracy, macro F1, Cohen's Kappa
 # per window per classifier per replication.
 #
+# Output: ABFS classifier-sweep results (clf_ba/f1/kappa_*.npy) and
+# the comparison heatmap -> results/experiment_1c/. This script never
+# touches Komorniczak's features; that happens in komor_concept_classification_1c.py.
+
 # It generates 18 .npy files in results/experiment_1c (9 per drift type):
 #   clf_ba_aggstats_sudden.npy, clf_ba_aggstats_gradual.npy
 #   clf_ba_raw_sudden.npy, clf_ba_raw_gradual.npy

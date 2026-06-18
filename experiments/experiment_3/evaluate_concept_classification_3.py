@@ -54,6 +54,10 @@
 # SEPARATE experiment — see evaluate_concept_classification_4.py and
 # generate_semi_synthetic_streams.py.
 #
+# Input files: Komorniczak's raw pymfe features, one file per stream x
+#               measure, extracted lazily on first use -> external/komorniczak/results/real/
+# Output: ABFS + Komorniczak classifier-sweep results and heatmaps -> results/experiment_3/
+
 # Outputs saved to results/experiment_3/:
 #   concept_labels_{stream}.npy             — ground truth concept label per window
 #   preq_abfs_{version}_ba_{stream}.npy     — cumulative BA trajectory

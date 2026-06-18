@@ -28,6 +28,11 @@
 # COMPARISON: their meta-features (prequential) vs our meta-features (prequential)
 # COMPARE: meta-features (their statistical vs our ABFS-based)
 
+# Input: Komorniczak's raw pre-extracted meta-features, written once by
+#          E1_extract_synthetic.py (external/komorniczak/results/synthetic/),
+#          not regenerated here.
+# Output: classifier-sweep results (clf_komor_concept_classif_*.npy) -> results/experiment_1c/
+
 # It generates 6 .npy files in results/experiment_1c (3 per drift type):
 #   clf_komor_concept_classif_ba_sudden.npy
 #   clf_komor_concept_classif_f1_sudden.npy

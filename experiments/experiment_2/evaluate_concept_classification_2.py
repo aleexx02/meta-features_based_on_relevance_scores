@@ -19,6 +19,13 @@
 # Komorniczak baseline: all 9 measure groups re-extracted using pymfe
 # on the same streams.
 #
+# Output: both ABFS and Komorniczak classifier-sweep results
+# (preq_abfs_*, preq_komor_*) -> results/experiment_2/.
+# NOTE: unlike Experiments 3/4, Komorniczak's raw pymfe features are NOT
+# cached anywhere under external/komorniczak/, instead, extract_komor_metafeatures()
+# recomputes them from scratch on every run for any (chunk_size,
+# n_informative, drift, measure) cell not already in results/experiment_2/.
+
 # Outputs saved to results/experiment_2/:
 #   preq_abfs_{version}_ba_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
 #   preq_abfs_{version}_f1_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
