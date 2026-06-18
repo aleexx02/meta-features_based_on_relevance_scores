@@ -466,11 +466,28 @@ if RUN_SHAP:
     print("3. SHAP ANALYSIS")
     print("="*60)
 
-    from classifier_sweep_komor import BASE_CLFS as BASE_CLFS_SKLEARN
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.tree import DecisionTreeClassifier
     from sklearn.neural_network import MLPClassifier
+
+    # sklearn proxies for the River incremental classifiers — same
+    # mapping used in analysis_3.py / analysis_4.py, so SHAP is
+    # comparable across experiments.
+    SHAP_CLFS = [
+        ('GNB', GaussianNB()),
+        ('KNN', KNeighborsClassifier()),
+        ('HT',  DecisionTreeClassifier(random_state=11313)),
+        ('MLP', MLPClassifier(random_state=11313)),
+    ]
 
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
+            fname = os.path.join(FIGURES_DIR,
+                f'shap_all_clfs_{mf_type}_{drift_type}.png')
+            if os.path.exists(fname):
+                print(f"Exists: {fname}"); continue
+
             print(f"\nSHAP: {mf_label} - {drift_type} drift")
 
             all_X, all_y = [], []
@@ -485,36 +502,38 @@ if RUN_SHAP:
             X_all[np.isnan(X_all)] = 1
             X_all[np.isinf(X_all)] = 1
 
-            # train sklearn MLP for SHAP (River MLP not compatible with SHAP)
-            mlp = clone(dict(BASE_CLFS_SKLEARN)['MLP'])
-            mlp.fit(X_all, y_all)
+            fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+            axes_flat = axes.flatten()
 
-            explainer   = shap.KernelExplainer(
-                mlp.predict_proba, shap.sample(X_all, 100))
-            shap_values = explainer.shap_values(
-                shap.sample(X_all, 200), nsamples=100)
+            for clf_idx, (clf_name, clf_proto) in enumerate(SHAP_CLFS):
+                ax  = axes_flat[clf_idx]
+                clf = clone(clf_proto)
+                clf.fit(X_all, y_all)
 
-            shap_array = np.array(shap_values)
-            if shap_array.ndim == 3:
-                mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 2))
-            else:
-                mean_abs_shap = np.mean(np.abs(shap_array), axis=0)
+                explainer   = shap.KernelExplainer(
+                    clf.predict_proba, shap.sample(X_all, 100))
+                shap_values = explainer.shap_values(
+                    shap.sample(X_all, 200), nsamples=100)
 
-            sorted_idx = np.argsort(mean_abs_shap)[::-1]
-            fig, ax = plt.subplots(figsize=(10, 4))
-            ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx],
-                color='steelblue', alpha=0.8)
-            ax.set_xticks(range(len(mf_names)))
-            ax.set_xticklabels([mf_names[i] for i in sorted_idx],
-                rotation=45, ha='right', fontsize=9)
-            ax.set_ylabel('Mean absolute SHAP value')
-            ax.set_title(f'SHAP feature importance - {mf_label} - '
-                f'{drift_type} drift - experiment [1c]\n'
-                f'(sklearn MLP, averaged over {N_REPLICATIONS} replications)')
+                shap_array    = np.array(shap_values)
+                mean_abs_shap = (np.mean(np.abs(shap_array), axis=(0, 2))
+                                 if shap_array.ndim == 3
+                                 else np.mean(np.abs(shap_array), axis=0))
+
+                sorted_idx = np.argsort(mean_abs_shap)[::-1]
+                ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx],
+                       color='steelblue', alpha=0.8)
+                ax.set_xticks(range(len(mf_names)))
+                ax.set_xticklabels([mf_names[i] for i in sorted_idx],
+                                   rotation=45, ha='right', fontsize=7)
+                ax.set_ylabel('Mean |SHAP|', fontsize=9)
+                ax.set_title(clf_name, fontsize=11)
+
+            fig.suptitle(f'SHAP - {mf_label} - {drift_type} drift - '
+                         f'experiment [1c]\n(averaged over '
+                         f'{N_REPLICATIONS} replications)', fontsize=12)
             fig.tight_layout()
-            fname = os.path.join(FIGURES_DIR,
-                f'shap_{mf_type}_{drift_type}.png')
-            fig.savefig(fname, dpi=150)
+            fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close()
             print(f"SHAP plot saved: {fname}")
 
