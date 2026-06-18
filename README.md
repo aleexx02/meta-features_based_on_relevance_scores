@@ -34,17 +34,14 @@ meta-features_based_on_relevance_scores/
 │   │   │   └── {same filenames}.npy
 │   │   └── annotated_streams_analysis/
 │   │       └── {stream analysis files}.npy
-│   ├── semi_synthetic/
+│   └── synthetic/
 │   │   ├── streams/
-│   │   │   ├── electricity.npy
-│   │   │   └── covtype.npy
+│   │   │   ├── # ADD HERE
+│   │   │   └──
 │   │   ├── streams_gt/
-│   │   │    └── {same filenames}.npy
+│   │   │    └── ...
 │   │   └── analysis/
 │   │       └── {stream analysis files}.npy
-│   └── synthetic/
-│       ...
-│       # ADD HERE
 │
 ├── experiments/
 │   ├── experiment_0/
@@ -113,8 +110,7 @@ meta-features_based_on_relevance_scores/
 │
 ├── streams/
 │   ├── generate_real_streams.py
-│   ├── generate_semi_synthetic_streams.py
-│   ├── synthetic_streams_generator.py # ADD IMPLEMENTATION
+│   ├── generate_synthetic_streams.py
 │   └── generators.py
 │
 ├── .gitignore
@@ -146,18 +142,15 @@ unzip ~/usp_ds_repository.zip -d ~/usp_ds_repository/
 
 **Step 2 — Run the stream generation scripts:**
 ```bash
-python streams/generate_real_streams.py             # Experiment 3: INSECTS
-python streams/generate_semi_synthetic_streams.py    # Experiment 4: electricity, covtype
+python streams/generate_real_streams.py             # Experiment 3: INSECTS, ADD MORE
+python streams/generate_synthetic_streams.py    # Experiments ADD HERE: ...
 ```
 
-`generate_real_streams.py` converts the INSECTS CSV files into the
+`generate_real_streams.py` converts the INSECTS (... ADD MORE ...) CSV files into the
 `.npy` format required by the pipeline, using the genuinely documented
 drift change points from Table 2 of Souza et al. (2020).
 
-`generate_semi_synthetic_streams.py` builds electricity and covtype
-streams with artificially injected drift, since neither dataset has a
-published natural drift ground truth (see the Tier 3 explanation
-below).
+`generate_synthetic_streams.py` builds ...
 
 ---
 
@@ -167,7 +160,7 @@ The experiments operate on three types of streams, differing in how concept drif
 
 ---
 
-### Tier 1 — Synthetic streams (Experiments 1 and 2)
+### Tier 1 — Synthetic streams (Experiments 1 and 2 ...)
 
 Concepts and drift are fully controlled by the stream generator.
 
@@ -205,21 +198,6 @@ Purpose: test robustness on real data with imperfect ground truth
 
 ---
 
-### Tier 3 — Semi-synthetic streams (Experiment 4)
-
-Real datasets (electricity, covtype) with **injected drift**.
-
-- Concept = class-dominated block (after sorting by class)
-- Drift = transition between class blocks
-
-This guarantees:
-- drift locations known. 
-- concept identity known.  
-- real feature distributions.  
-
-This does NOT claim natural drift — drift is constructed.
-
-Purpose: controlled concept identity on real feature distributions
 
 ---
 
@@ -229,15 +207,13 @@ Purpose: controlled concept identity on real feature distributions
 |------|--------------|------------------|----------|
 | Synthetic | YES | YES | synthetic |
 | Real annotated | YES | NO (positional) | real |
-| Semi-synthetic | YES | YES (constructed) | real features |
 
 ---
 
-These three tiers progressively test:
+These two tiers progressively test:
 
 1. Controlled conditions (synthetic)
-2. Real-world uncertainty (INSECTS)
-3. Controlled concepts on real distributions (semi-synthetic)
+2. Real-world uncertainty (INSECTS...)
 
 
 ---
@@ -259,12 +235,7 @@ Drift chunk indices in `data/real/annotated_streams_gt/` are computed
 directly from Table 2 of Souza et al. (2020) by dividing the reported
 instance number by chunk_size=200.
 
-### `data/semi_synthetic/streams/` (Experiment 4)
-
-Kept in a separate top-level folder from `data/real/`, since these
-streams are not real annotated data — they are real feature
-distributions with artificially injected drift, which is a different
-kind of evidence and shouldn't sit alongside genuinely annotated data.
+### `data/synthetic/streams/` (Experiment ...)
 
 Format: `(n_instances, n_features + 1)`, last column = the original
 class label, re-indexed from 0 after sorting instances into
@@ -272,10 +243,10 @@ contiguous class blocks.
 
 | Stream | Features | Concepts | Source |
 |---|---|---|---|
-| electricity | 8 | 2 | injected (sorted by class) |
-| covtype | 54 | 7 | injected (sorted by class, all 7 original classes) |
+| XXX | ... | ... | ...  |
+| XXX | ... | ... | ...  |
 
-Drift chunk indices in `data/semi_synthetic/streams_gt/` are computed
+Drift chunk indices in `data/synthetic/streams_gt/` are computed
 at generation time from the sorted block boundaries — they are not
 estimates of any real, natural drift in the data; they exist because I
 constructed them.
@@ -290,13 +261,8 @@ Converts all annotated stream CSV files from the USP DS Repository into
 the ground truth drift chunk indices. Run once after downloading the
 USP ZIP.
 
-### `streams/synthetic_streams.py`
-Shared utilities for Experiments 1 and 2: concept label assignment
-(sudden and gradual drift), ABFS meta-feature extraction (all 3 versions
-in a single pass), Komorniczak pymfe extraction.
-
-### `streams/generators.py`
-Original synthetic stream helpers.
+### `streams/generate_synthetic_streams.py`
+... ADD HERE ...
 
 ---
 
@@ -376,6 +342,8 @@ Switch to prequential (test-then-train, one chunk at a time) to check
 whether ABFS's batch-CV performance holds up under realistic streaming
 conditions, and establish prequential as the protocol for everything
 after this point.
+
+If you didn't run experiment 0, run E1_extract_synthetic.py script.
 
 **10.** `experiments/experiment_1c/komor_concept_classification_1c.py`
 
@@ -469,46 +437,10 @@ Output files stored in: `results/experiment_3/figures/analysis/`
 
 ---
 
-### Experiment 4: Semi-Synthetic Stream Evaluation (Injected Drift)
+### Experiment 4: ...
 
-**Purpose:** Experiment 3 is limited to one stream family (INSECTS).
-To check whether the findings generalize to other kinds of real
-feature distributions, we use electricity and covtype, but since
-neither has a published natural drift locationdrift is injected in a controlled manner (sorting by class into contiguous blocks), so the ground
-truth is fully known and the comparison stays fair. This widens the
-real-data evidence beyond INSECTS without fabricating a claim about
-natural drift we can't verify.
+**Purpose:** ...
 
-Streams:
-- electricity  
-- covtype  
-
-These datasets are augmented with:
-- injected drift boundaries  
-- controlled class/concept changes  
-
-**18.** `streams/generate_semi_synthetic_streams.py`
-Produces electricity and covtype streams with artificially injected
-drift (instances sorted by class label into contiguous blocks).
-covtype uses all 7 original classes.
-
-**19.** `experiments/experiment_4/evaluate_concept_classification_4.py`
-Same machinery as Experiment 3 — extracts ABFS and Komorniczak
-features inline, evaluates prequentially.
-
-Output per stream:
-```
-concept_labels_{stream}.npy             (n_windows,)  ← injected concept label
-preq_abfs_{version}_ba_{stream}.npy      (n_windows, n_clfs)
-preq_komor_{measure}_ba_{stream}.npy     (n_windows, n_clfs)
-heatmap_comparison_..._{stream}.png      ← Komorniczak vs ABFS heatmap
-```
-
-**20.** `experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics`
-
-Same figure set as Experiment 3, applied to electricity and covtype.
-
-Output files stored in: `results/experiment_4/figures/analysis/`
 
 ---
 
