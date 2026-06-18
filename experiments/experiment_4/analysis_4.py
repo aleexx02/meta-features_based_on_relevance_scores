@@ -237,8 +237,8 @@ def re_extract_stream(stream_name, drift_chunks):
             X_chunk, y_chunk = stream.get_chunk()
         except Exception:
             break
-        if len(np.unique(y_chunk)) < 2:
-            continue
+        if len(X_chunk) == 0:
+            break
         for i in range(len(X_chunk)):
             abfs.update(X_chunk[i], y_chunk[i])
         wt          = abfs.relevance_scores()
