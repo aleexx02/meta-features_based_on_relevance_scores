@@ -20,7 +20,7 @@
 #      - One plot per meta-feature set per drift type
 #
 #   3. SHAP analysis:
-#      - Mean absolute SHAP values per meta-feature (MLP)
+#      - Mean absolute SHAP values per meta-feature (4 classifiers)
 #      - One plot per meta-feature set per drift type
 #        averaged over replications
 #
@@ -48,6 +48,13 @@
 #        drift type rather than a chunk_size x n_informative grid cell
 #        (Exp2) or a stream (Exp3), since 1c doesn't sweep those.
 #
+
+# SHAP classifiers (sklearn-compatible proxies):
+#   GNB -- GaussianNB
+#   KNN -- KNeighborsClassifier
+#   HT  -- DecisionTreeClassifier
+#   MLP -- MLPClassifier
+
 # Inputs (from results/experiment_1c/):
 #   clf_ba_*.npy, clf_f1_*.npy, clf_kappa_*.npy
 #   clf_komor_concept_classif_ba_*.npy, etc.
@@ -61,6 +68,9 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn import clone
 from scipy.stats import entropy
@@ -169,6 +179,14 @@ palette = [
     '#7b3f91', '#9a6324', '#e6ac00', '#800000', '#2ecc71',
     '#556b2f', '#d2691e', '#000075', '#5e5151', '#08332b',
     '#000000', '#a9a9a9', '#ff69b4', '#00ced1', '#ff8c00'
+]
+
+# SHAP: sklearn-compatible proxies for all 4 classifiers
+SHAP_CLFS = [
+    ('GNB', GaussianNB()),
+    ('KNN', KNeighborsClassifier()),
+    ('HT',  DecisionTreeClassifier(random_state=11313)),
+    ('MLP', MLPClassifier(random_state=11313)),
 ]
 
 
@@ -565,27 +583,12 @@ if RUN_PERFORMANCE:
 
 
 # ============================================================
-#  3. SHAP ANALYSIS
+#  3. SHAP -- all 4 classifiers, all 3 ABFS versions
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
     print("3. SHAP ANALYSIS")
     print("="*60)
-
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.neural_network import MLPClassifier
-
-    # sklearn proxies for the River incremental classifiers -- same
-    # mapping used in analysis_3.py / analysis_4.py, so SHAP is
-    # comparable across experiments.
-    SHAP_CLFS = [
-        ('GNB', GaussianNB()),
-        ('KNN', KNeighborsClassifier()),
-        ('HT',  DecisionTreeClassifier(random_state=11313)),
-        ('MLP', MLPClassifier(random_state=11313)),
-    ]
 
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
