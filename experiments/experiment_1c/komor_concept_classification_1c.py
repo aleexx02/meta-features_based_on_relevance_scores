@@ -51,7 +51,7 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c')
-THEIR_RESULTS_PATH = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results')
+THEIR_RESULTS_PATH = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'synthetic')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
