@@ -3,7 +3,7 @@
 # Analysis of Experiment 1c results (prequential evaluation).
 #
 # Usage:
-#   python analysis_1c.py --sanity --performance --shap --metrics
+#   python analysis_1c.py --sanity --performance --shap --metrics --stream_analysis
 #
 # Loads pre-computed results (.npy files) from
 # results/experiment_1c/ and produces:
@@ -29,6 +29,25 @@
 #      - Mean, std, median across replications
 #      - Includes Komorniczak baseline
 #
+#   5. Stream analysis plots (per replication x drift type):
+#      - Feature-mean drift intensity, ABFS relevance-score change,
+#        and label entropy overlaid on one plot
+#      - Class distribution of the underlying binary classification
+#        target over time
+#      Same diagnostics as Experiment 3's --stream_analysis, computed
+#      directly from a freshly-generated stream (rather than loaded
+#      from a saved npy) since this experiment's synthetic streams
+#      aren't persisted to disk the way the real streams are.
+#
+#   6. Gap heatmap (one per drift type):
+#      - gap_heatmap_preq_{drift_type}.png
+#      - Gap (ABFS raw v2.0 minus best-of-9 Komorniczak measure group)
+#        at the final window, mean across replications, one cell per
+#        classifier. Same "raw v2.0 vs Komorniczak best" comparison
+#        used in analysis_2.py / analysis_3.py; the unit here is
+#        drift type rather than a chunk_size x n_informative grid cell
+#        (Exp2) or a stream (Exp3), since 1c doesn't sweep those.
+#
 # Inputs (from results/experiment_1c/):
 #   clf_ba_*.npy, clf_f1_*.npy, clf_kappa_*.npy
 #   clf_komor_concept_classif_ba_*.npy, etc.
@@ -44,6 +63,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.neural_network import MLPClassifier
 from sklearn import clone
+from scipy.stats import entropy
 import shap
 import os
 import sys
@@ -70,18 +90,24 @@ parser.add_argument('--sanity',     action='store_true', help='Run sanity check 
 parser.add_argument('--performance', action='store_true', help='Run performance trajectory plots')
 parser.add_argument('--shap',       action='store_true', help='Run SHAP analysis')
 parser.add_argument('--metrics',    action='store_true', help='Run metrics heatmaps')
+parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
+parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
 args = parser.parse_args()
 
 RUN_SANITY_CHECK = args.sanity
 RUN_PERFORMANCE   = args.performance
 RUN_SHAP         = args.shap
 RUN_METRICS      = args.metrics
+RUN_STREAM_ANALYSIS = args.stream_analysis
+RUN_GAP          = args.gap
 
 print(f"\nRunning analysis for Experiment 1c")
-print(f"Sanity check : {RUN_SANITY_CHECK}")
-print(f"Performance   : {RUN_PERFORMANCE}")
-print(f"SHAP         : {RUN_SHAP}")
-print(f"Metrics      : {RUN_METRICS}")
+print(f"Sanity check    : {RUN_SANITY_CHECK}")
+print(f"Performance     : {RUN_PERFORMANCE}")
+print(f"SHAP            : {RUN_SHAP}")
+print(f"Metrics         : {RUN_METRICS}")
+print(f"Stream analysis : {RUN_STREAM_ANALYSIS}")
+print(f"Gap             : {RUN_GAP}")
 
 # ============================================================
 #  PATHS
@@ -297,6 +323,86 @@ def get_stream_boundaries(drift_type, n_drifts, concept_sigmoid_spacing):
     return boundaries_meta
 
 
+def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing):
+    """
+    One pass over the stream computing PER-CHUNK diagnostics: class
+    distribution (of the underlying binary classification target that
+    StreamGenerator produces -- NOT the concept label), feature-mean
+    drift intensity, label entropy, and ABFS relevance-score change
+    (delta_relevance) -- all on the same per-chunk index, with no
+    WARMUP_WINDOWS shift (unlike extract_stream_data's meta-feature
+    pass), since this diagnostic covers the whole stream from chunk 0
+    rather than feeding the concept classifiers.
+
+    Mirrors generate_real_streams.py's run_stream_analysis(), adapted
+    for a freshly-generated (not saved-to-disk) synthetic stream.
+    Concept boundaries reuse this file's own local
+    assign_labels_gradual / bincount-majority-vote logic (the same
+    pattern used by extract_stream_data and get_stream_boundaries
+    above), since this file doesn't share a consolidated
+    concept-labelling helper with Experiment 2.
+    """
+    config = {
+        'n_drifts': n_drifts,
+        'n_chunks': N_CHUNKS,
+        'chunk_size': CHUNK_SIZE,
+        'n_features': N_FEATURES,
+        'n_informative': N_FEATURES,
+        'n_redundant': 0,
+        'n_repeated': 0,
+        'concept_sigmoid_spacing': concept_sigmoid_spacing,
+        'random_state': rs
+    }
+    stream = StreamGenerator(**config)
+    abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
+        accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
+
+    class_distribution, drift_intensity, label_entropy_vals = [], [], []
+    delta_relevance = []
+    prev_mean, wt_prev = None, None
+    # underlying StreamGenerator target is binary by default in this
+    # project's Exp1c config (no n_classes override is set anywhere
+    # above) -- not re-verified against the actual stream output here
+    n_classes = 2
+
+    stream.reset()
+    for X_chunk, y_chunk in stream:
+        counts = np.bincount(y_chunk, minlength=n_classes)
+        probs  = counts / np.sum(counts)
+        class_distribution.append(probs)
+
+        mean = np.mean(X_chunk, axis=0)
+        if prev_mean is None:
+            drift_intensity.append(0.0)
+        else:
+            drift_intensity.append(np.linalg.norm(mean - prev_mean))
+        prev_mean = mean
+        label_entropy_vals.append(entropy(probs + 1e-10))
+
+        for i in range(len(X_chunk)):
+            abfs.update(X_chunk[i], y_chunk[i])
+        wt = abfs.relevance_scores()
+        if wt_prev is None:
+            delta_relevance.append(0.0)
+        else:
+            delta_relevance.append(np.linalg.norm(wt - wt_prev))
+        wt_prev = wt
+
+    concept_selector_saved = stream.concept_selector.copy()
+    if drift_type == 'sudden':
+        concept_labels_all = np.array([
+            int(np.bincount(concept_selector_saved[
+                i*CHUNK_SIZE:(i+1)*CHUNK_SIZE]).argmax())
+            for i in range(N_CHUNKS)])
+    else:
+        concept_labels_all = assign_labels_gradual(stream, N_CHUNKS, CHUNK_SIZE)
+    boundaries = get_concept_boundaries(concept_labels_all, N_CHUNKS)
+
+    return (np.array(class_distribution), np.array(drift_intensity),
+            np.array(label_entropy_vals), np.array(delta_relevance),
+            boundaries)
+
+
 # ============================================================
 #  1. SANITY CHECK PLOTS
 # ============================================================
@@ -471,7 +577,7 @@ if RUN_SHAP:
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.neural_network import MLPClassifier
 
-    # sklearn proxies for the River incremental classifiers — same
+    # sklearn proxies for the River incremental classifiers -- same
     # mapping used in analysis_3.py / analysis_4.py, so SHAP is
     # comparable across experiments.
     SHAP_CLFS = [
@@ -616,7 +722,7 @@ if RUN_METRICS:
                     median = matrix_median[i, j]
                     txt_color = 'white' if val > 0.6 else 'black'
                     ax.text(j, i,
-                        f'{val:.3f}\n(±{std:.3f})\nmed:{median:.3f}',
+                        f'{val:.3f}\n(+/-{std:.3f})\nmed:{median:.3f}',
                         ha='center', va='center', fontsize=7,
                         color=txt_color, linespacing=1.4)
             ax.set_xticks(range(len(clf_names)))
@@ -632,3 +738,137 @@ if RUN_METRICS:
             fig.savefig(fname, dpi=150)
             plt.close()
             print(f"Heatmap saved at: '{fname}'")
+
+
+# ============================================================
+#  5. STREAM ANALYSIS PLOTS
+# ============================================================
+if RUN_STREAM_ANALYSIS:
+    print("\n" + "="*60)
+    print("5. STREAM ANALYSIS PLOTS")
+    print("="*60)
+
+    for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
+        for rep_id, rs in enumerate(RANDOM_STATES):
+            print(f"\nDrift: {drift_type} | Rep {rep_id+1}/{N_REPLICATIONS} (seed={rs})")
+
+            class_dist, drift_intensity, entropy_vals, delta_relevance, boundaries = \
+                extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing)
+
+            drift_intensity_n = drift_intensity / (np.max(drift_intensity) + 1e-10)
+            delta_relevance_n = delta_relevance / (np.max(delta_relevance) + 1e-10)
+
+            # ---- drift intensity vs ABFS relevance change vs entropy ----
+            fname = os.path.join(FIGURES_DIR,
+                f'stream_drift_entropy_{drift_type}_rep{rep_id}.png')
+            if not os.path.exists(fname):
+                fig, ax1 = plt.subplots(figsize=(14, 4))
+
+                ax1.plot(drift_intensity_n, color='steelblue',
+                        label='Drift intensity', linewidth=1.5)
+                ax1.plot(delta_relevance_n, color='purple',
+                        label='ABFS relevance change', linewidth=1.2, alpha=0.7)
+                ax1.set_ylabel('Normalized value')
+
+                ax2 = ax1.twinx()
+                ax2.plot(entropy_vals, color='darkorange',
+                        label='Label entropy', alpha=0.7)
+                ax2.set_ylabel('Entropy', color='darkorange')
+
+                for b in boundaries:
+                    ax1.axvline(x=b, color='red', linestyle='--',
+                                linewidth=0.8, alpha=0.7)
+
+                ax1.set_xlabel('Chunk')
+
+                lines_1, labels_1 = ax1.get_legend_handles_labels()
+                lines_2, labels_2 = ax2.get_legend_handles_labels()
+                ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
+
+                ax1.set_title(f'Drift vs ABFS dynamics - {drift_type} drift '
+                    f'(seed={rs}) - experiment [1c]')
+
+                fig.tight_layout()
+                fig.savefig(fname, dpi=150, bbox_inches='tight')
+                plt.close()
+                print(f"Stream drift/entropy plot saved at: '{fname}'")
+            else:
+                print(f"Exists: {fname}")
+
+            # ---- class distribution over time ----
+            fname = os.path.join(FIGURES_DIR,
+                f'class_distribution_{drift_type}_rep{rep_id}.png')
+            if not os.path.exists(fname):
+                fig, ax = plt.subplots(figsize=(14, 4))
+                for c in range(class_dist.shape[1]):
+                    ax.plot(class_dist[:, c], label=f'class {c}', linewidth=1.2)
+                for b in boundaries:
+                    ax.axvline(x=b, color='grey', linestyle='--',
+                               linewidth=0.7, alpha=0.6)
+                ax.set_xlabel('Chunk')
+                ax.set_ylabel('Proportion')
+                ax.set_title(f'Class distribution over time - {drift_type} drift '
+                    f'(seed={rs}) - experiment [1c]')
+                ax.legend(ncol=4, fontsize=8)
+                fig.tight_layout()
+                fig.savefig(fname, dpi=150, bbox_inches='tight')
+                plt.close()
+                print(f"Class distribution plot saved at: '{fname}'")
+            else:
+                print(f"Exists: {fname}")
+
+
+# ============================================================
+#  6. GAP HEATMAP -- ABFS raw v2.0 vs Komorniczak best-of-9,
+#  one file per drift type (no chunk_size/n_informative grid here
+#  the way Exp2 has, so drift type is the unit instead).
+# ============================================================
+if RUN_GAP:
+    print("\n" + "="*60)
+    print("6. GAP HEATMAP")
+    print("="*60)
+
+    for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
+        fname = os.path.join(FIGURES_DIR, f'gap_heatmap_preq_{drift_type}.png')
+        if os.path.exists(fname):
+            print(f"Exists: {fname}"); continue
+
+        abfs_path = os.path.join(RESULTS_DIR, f'clf_ba_raw_{drift_type}.npy')
+        if not os.path.exists(abfs_path):
+            print(f"Warning: {abfs_path} not found, skipping {drift_type}.")
+            continue
+        # shape: (n_replications, n_windows, n_clfs)
+        abfs_final = np.load(abfs_path)[:, -1, :]
+        abfs_mean  = np.mean(abfs_final, axis=0)  # (n_clfs,)
+
+        komor_path = os.path.join(RESULTS_DIR,
+            f'clf_komor_concept_classif_ba_{drift_type}.npy')
+        if not os.path.exists(komor_path):
+            print(f"Warning: {komor_path} not found, skipping {drift_type}.")
+            continue
+        # shape: (n_measures, n_replications, n_windows, n_clfs)
+        komor_final          = np.load(komor_path)[:, :, -1, :]
+        komor_mean_per_clf   = np.mean(komor_final, axis=1)  # (n_measures, n_clfs)
+        komor_best           = np.max(komor_mean_per_clf, axis=0)  # (n_clfs,)
+
+        gap_row = abfs_mean - komor_best  # (n_clfs,)
+        vmax    = np.max(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
+
+        fig, ax = plt.subplots(figsize=(max(4, len(clf_names) * 1.4), 2.4))
+        im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax,
+                       cmap='RdBu', aspect='auto')
+        for j in range(len(clf_names)):
+            val = gap_row[j]
+            txt_color = 'white' if abs(val) > vmax * 0.6 else 'black'
+            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center',
+                    fontsize=11, color=txt_color)
+        ax.set_xticks(range(len(clf_names))); ax.set_xticklabels(clf_names, fontsize=10)
+        ax.set_yticks([0]); ax.set_yticklabels([f'{drift_type} drift'], fontsize=10)
+        ax.set_xlabel('Classifier', fontsize=11)
+        ax.set_title(f'Gap (ABFS raw v2.0 minus Komorniczak best) -- '
+                     f'{drift_type} drift -- experiment [1c]', fontsize=11)
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.1, orientation='horizontal')
+        fig.tight_layout()
+        fig.savefig(fname, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"Gap heatmap saved at: '{fname}'")

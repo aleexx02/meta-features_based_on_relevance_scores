@@ -58,6 +58,15 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal,
 )
+from streams.generate_synthetic_streams import (
+    assign_labels_gradual,
+    get_exp2_concept_labels as get_concept_labels,
+    EXP2_N_CHUNKS       as N_CHUNKS,
+    EXP2_N_FEATURES     as N_FEATURES,
+    EXP2_CHUNK_SIZES    as CHUNK_SIZES,
+    EXP2_N_INFORMATIVES as N_INFORMATIVES,
+    EXP2_DRIFT_CONFIGS  as DRIFT_CONFIGS,
+)
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 from plot_results import plot_heatmap_balanced_accuracy_comparison
 from pymfe.mfe import MFE
@@ -67,18 +76,8 @@ from pymfe.mfe import MFE
 #  FIXED CONFIGURATION
 # ============================================================
 
-N_CHUNKS       = 5000
-N_FEATURES     = 20
 WARMUP_WINDOWS = 10
 N_REPLICATIONS = 5
-
-CHUNK_SIZES    = [100, 200, 500, 1000]
-N_INFORMATIVES = [3, 5, 10, 15]
-
-DRIFT_CONFIGS = [
-    ('sudden',  20, 9999),  # 21 concepts
-    ('gradual',  6,    5),  # 25 concepts
-]
 
 MEASURES = [
     'clustering',
@@ -119,49 +118,6 @@ N_CLFS = len(CLF_NAMES)
 # ============================================================
 #  HELPERS
 # ============================================================
-
-def assign_labels_gradual(stream, n_chunks, chunk_size):
-    e = stream._sigmoid(stream.concept_sigmoid_spacing, stream.n_drifts)[1][::chunk_size]
-    concept   = 0
-    decreasing = True
-    labels    = []
-    for chunk in range(n_chunks):
-        if decreasing:
-            if concept % 4 == 0:
-                if e[chunk] < 0.9:  concept += 1
-            if concept % 4 == 1:
-                if e[chunk] < 0.75: concept += 1
-            if concept % 4 == 2:
-                if e[chunk] < 0.25: concept += 1
-            if concept % 4 == 3:
-                if e[chunk] < 0.1:
-                    concept += 1
-                    decreasing = False
-        else:
-            if concept % 4 == 0:
-                if e[chunk] > 0.1:  concept += 1
-            if concept % 4 == 1:
-                if e[chunk] > 0.25: concept += 1
-            if concept % 4 == 2:
-                if e[chunk] > 0.75: concept += 1
-            if concept % 4 == 3:
-                if e[chunk] > 0.9:
-                    concept += 1
-                    decreasing = True
-        labels.append(concept)
-    return np.array(labels)
-
-
-def get_concept_labels(stream, drift_type, n_chunks, chunk_size):
-    if drift_type == 'sudden':
-        cs = stream.concept_selector.copy()
-        return np.array([
-            int(np.bincount(cs[i*chunk_size:(i+1)*chunk_size]).argmax())
-            for i in range(n_chunks)
-        ])
-    else:
-        return assign_labels_gradual(stream, n_chunks, chunk_size)
-
 
 def make_tag(chunk_size, n_informative, drift_type):
     return f"chunk{chunk_size}_ninf{n_informative}_{drift_type}"
@@ -360,8 +316,7 @@ def extract_komor_metafeatures(random_state, drift_type, n_drifts,
 #  MAIN SWEEP
 # ============================================================
  
-for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
-    n_concepts      = 25 if drift_type == 'gradual' else n_drifts + 1
+for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
     random_baseline = 1 / n_concepts
  
     print(f"\n{'#'*70}")
