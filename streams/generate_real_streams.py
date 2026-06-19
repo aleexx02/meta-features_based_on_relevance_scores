@@ -76,7 +76,7 @@
 #
 # NOTE on importing from this file: REAL_STREAMS and N_FEATURES below
 # are plain constants, safe to import (e.g. in
-# evaluate_concept_classification_3.py / analysis_3.py) without
+# evaluate_concept_classification_5.py / analysis_5.py) without
 # triggering stream generation -- all the actual I/O-heavy generation
 # logic is gated behind `if __name__ == "__main__":` further down, so
 # importing this module just gets you the two dicts/lists, nothing
@@ -93,8 +93,9 @@ from scipy.io import arff
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-USP_INSECTS = os.path.expanduser(
-    '~/usp_ds_repository/USP DS Repository/INSECTS')
+USP_INSECTS = os.path.expanduser('~/usp_ds_repository/USP DS Repository/INSECTS')
+
+SPAM_DIR = os.path.expanduser('~/spam_data')  # adjust to wherever you extracted the .arff file
 
 OUT_STREAMS  = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
 OUT_GT       = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
@@ -108,7 +109,7 @@ CHUNK_SIZE = 200
 
 
 # ============================================================
-#  SHARED CONSTANTS — imported by evaluate_concept_classification_3.py
+#  SHARED CONSTANTS — imported by evaluate_concept_classification_5.py
 #  and analysis_5.py, single source of truth for which real streams
 #  exist and how many features each has.
 # ============================================================
@@ -126,7 +127,18 @@ N_FEATURES = {
     'INSECTS-abrupt_imbalanced':       33,
     'INSECTS-incgradual_balanced':     33,
     'INSECTS-incgradual_imbalanced':   33,
-    'SPAM':                            500,  # confirm against parsed .arff shape -- sources disagree 499 vs 500
+    'SPAM':                            499,  # 499 binary word features + 1 class
+                                               # column (spam/legitimate) = 500
+                                               # total ARFF @attribute lines.
+                                               # Confirmed against the actual
+                                               # downloaded spam_data.arff: 500
+                                               # @attribute declarations, last
+                                               # one being the class label, 9323
+                                               # data rows. The "499 vs 500"
+                                               # disagreement across papers was
+                                               # just an inconsistent convention
+                                               # (with/without counting the class
+                                               # column), not a real discrepancy.
 }
 
 
@@ -151,7 +163,8 @@ def load_csv(path):
 def load_arff(path):
     """Best-effort Weka ARFF loader via scipy. Assumes the class
     attribute is the LAST one declared (standard Weka convention) --
-    not verified against the actual spam_corpus.arff file."""
+    confirmed correct for spam_data.arff (class column is last,
+    values are {spam, legitimate})."""
     data, meta = arff.loadarff(path)
     class_attr = meta.names()[-1]
     y_raw = data[class_attr]
@@ -375,10 +388,21 @@ if __name__ == "__main__":
     #  SPAM — Katakis, Tsoumakas, Vlahavas (2010), Knowledge and
     #  Information Systems, 22(3), 371-391.
     #  Source: http://mlkd.csd.auth.gr/concept_drift.html
-    #    http://lpis.csd.auth.gr/mlkd/spam_corpus.rar  (best-guess
-    #    match to the 9324-instance version -- the page also lists a
-    #    separate "Spam Data" file under Datasets 3; confirm instance
-    #    count after download before trusting this is the right one)
+    #    http://lpis.csd.auth.gr/mlkd/concept_drift/spam_data.rar
+    #    -> extracts to spam_data.arff
+    #
+    #  CONFIRMED (not a guess): this is the "Datasets 3 / Spam Data"
+    #  link on that page, not "Datasets 1 / Spam Assassin Corpus" --
+    #  the latter turned out to be a much larger (745MB), unprocessed
+    #  raw-vocabulary corpus (thousands of literal word attributes
+    #  like "0", "00", "000000"), clearly not the feature-selected
+    #  version the literature reports. spam_data.arff matches the
+    #  literature exactly: 9323 data rows (~9324) and 500 @attribute
+    #  lines = 499 binary word features + 1 class column
+    #  ({spam, legitimate}), declared last per standard Weka
+    #  convention. See N_FEATURES comment above for the 499-vs-500
+    #  resolution.
+    #
     #  Download + extract with unrar first, same as any other ARFF
     #  source.
     #
@@ -399,23 +423,21 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("SPAM (Katakis, Tsoumakas, Vlahavas, 2010)")
     print("=" * 60)
-
-    SPAM_DIR = os.path.expanduser('~/spam_data')  # adjust to wherever you extracted the .arff file
-
+    
+    stream_name = 'SPAM'
+    print(f"\n  {stream_name}")
+    
     # approximate drift instants per Katakis et al. (2010), as
     # reported in Yu et al. (2018) -- NOT instance-precise, see header
     # note above
     SPAM_APPROX_DRIFT_INSTANTS = [200, 1800, 2300, 6200, 8000]
-
-    stream_name = 'SPAM'
-    print(f"\n  {stream_name}")
-
+    
     if not already_done(stream_name):
-        arff_path = os.path.join(SPAM_DIR, 'spam_corpus.arff')
+        arff_path = os.path.join(SPAM_DIR, 'spam_data.arff')
         if not os.path.exists(arff_path):
             print(f"  MISSING: {arff_path}")
             print(f"  Download + extract from "
-                  f"http://lpis.csd.auth.gr/mlkd/spam_corpus.rar first.")
+                  f"http://lpis.csd.auth.gr/mlkd/concept_drift/spam_data.rar first.")
         else:
             X, y_raw = load_arff(arff_path)
             unique_labels = sorted(set(y_raw.tolist()))

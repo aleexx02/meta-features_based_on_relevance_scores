@@ -29,15 +29,16 @@ meta-features_based_on_relevance_scores/
 │   │   │   ├── INSECTS-abrupt_balanced.npy
 │   │   │   ├── INSECTS-abrupt_imbalanced.npy
 │   │   │   ├── INSECTS-incgradual_balanced.npy
-│   │   │   └── INSECTS-incgradual_imbalanced.npy
+│   │   │   ├── INSECTS-incgradual_imbalanced.npy
+│   │   │   └── SPAM.npy
 │   │   ├── annotated_streams_gt/
 │   │   │   └── {same filenames}.npy
 │   │   └── annotated_streams_analysis/
 │   │       └── {stream analysis files}.npy
 │   └── synthetic/
 │   │   ├── streams/
-│   │   │   ├── # ADD HERE
-│   │   │   └──
+│   │   │   ├── # Exp 3: SEA, STAGGER, LED streams
+│   │   │   └── # Exp 4: recurring streams
 │   │   ├── streams_gt/
 │   │   │    └── ...
 │   │   └── analysis/
@@ -47,24 +48,35 @@ meta-features_based_on_relevance_scores/
 │   ├── experiment_0/
 │   │   ├── comparison.py
 │   │   └── replication_check_1a.py
+│   │
 │   ├── experiment_1a/
 │   │   └── evaluate_concept_classification_1a.py
+│   │
 │   ├── experiment_1b/
 │   │   ├── evaluate_concept_classification_1b.py
 │   │   └── komor_concept_classification_1b.py
+│   │
 │   ├── experiment_1c/
 │   │   ├── analysis_1c.py
 │   │   ├── evaluate_concept_classification_1c.py
 │   │   └── komor_concept_classification_1c.py
+│   │
 │   ├── experiment_2/
 │   │   ├── analysis_2.py
 │   │   └── evaluate_concept_classification_2.py
-│   ├── experiment_3/
+│   │
+│   ├── experiment_3/ # NOT YET IMPLEMENTED
 │   │   ├── analysis_3.py
 │   │   └── evaluate_concept_classification_3.py
-│   ├── experiment_4/
+│   │
+│   ├── experiment_4/ # NOT YET IMPLEMENTED
 │   │   ├── analysis_4.py
 │   │   └── evaluate_concept_classification_4.py
+│   │
+│   ├── experiment_5/ # Real Streams: INSECTS + SPAM
+│   │   ├── analysis_5.py
+│   │   └── evaluate_concept_classification_5.py
+│   │
 │   ├── analysis_1a_1b.py
 │   ├── classifier_sweep_komor.py
 │   └── classifier_sweep_prequential.py
