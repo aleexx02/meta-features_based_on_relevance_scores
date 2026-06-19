@@ -348,7 +348,9 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
 
         for i in range(len(X_chunk)):
             abfs.update(X_chunk[i], y_chunk[i])
-        wt = abfs.relevance_scores()
+        # relevance_scores() returns a plain list, not an ndarray --
+        # convert before subtracting, or list - list raises TypeError
+        wt = np.array(abfs.relevance_scores())
         if wt_prev is None:
             delta_relevance.append(0.0)
         else:
