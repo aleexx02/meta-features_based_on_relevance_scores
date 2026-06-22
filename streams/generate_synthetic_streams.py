@@ -1,17 +1,70 @@
 # streams/generate_synthetic_streams.py
 
 # Synthetic stream generator script: produces synthetic streams used
-# across several different experiments -- recurring-concept streams,
-# StreamGenerator (strlearn) streams for Experiment 2, and river-based
-# SEA, STAGGER, and LED streams with drift.
-
+# across several different experiments.
+#
+#   Experiment 2 — strlearn StreamGenerator streams with VARYING
+#     chunk_size / n_informative (NOT pre-saved; regenerated on the fly
+#     by evaluate_concept_classification_2.py via the importable
+#     build_exp2_stream / get_exp2_concept_labels helpers below).
+#
+#   Experiment 3 — river SEA / STAGGER / LED streams, SEQUENTIAL
+#     concepts (each concept appears once in order; the only repeat is
+#     STAGGER's [0,1,2,0], see note there). Saved to disk.
+#
+#   Experiment 4 — RECURRING-concept streams, built from SEA and
+#     STAGGER (NOT make_classification, NOT strlearn). Concepts cycle
+#     TWICE so each one reappears later in the stream, which is the
+#     whole point: it lets us test whether ABFS recognises a
+#     previously-seen concept (same relevance signature on recurrence)
+#     rather than only detecting that *some* change happened. Saved to
+#     disk.
+#
+# ------------------------------------------------------------------
+#  TWO THINGS WORTH KNOWING UP FRONT (both verified empirically
+#  against the installed river / strlearn before being relied on):
+#
+#  1. river's STAGGER takes `classification_function`, NOT `variant`
+#     (only SEA takes `variant`). Passing variant= to STAGGER raises
+#     TypeError at generation time. The factories below use the right
+#     keyword per generator.
+#
+#  2. SEED PROPAGATION. The `seed` passed to the build_* functions
+#     now flows all the way into the river data generators (via the
+#     factory closures) and into every random choice (transition
+#     masks, recurring-order shuffles). This matters because the
+#     evaluate scripts for Experiments 3/4 regenerate each stream
+#     once per replication seed (like Experiments 1c/2 do with
+#     StreamGenerator's random_state) and stack the results into a
+#     (n_reps, n_windows, n_clfs) array. If seed did NOT propagate
+#     into generation (an earlier version of this file had make_gen
+#     lambdas hardcoding MASTER_SEED), every replication of a SUDDEN
+#     stream would be byte-identical and the across-rep variance /
+#     error bars would be a meaningless zero. Running the __main__
+#     block here saves ONE canonical realization at seed=MASTER_SEED;
+#     that realization is exactly replication 0 in the evaluate
+#     scripts (which put MASTER_SEED first in their seed list), so the
+#     on-disk streams stay consistent with rep 0 and with whatever
+#     the analysis scripts load.
+#
 # Saves to disk (data/synthetic/streams/, streams_gt/):
-#   - 4 recurring-concept variants
-#   - 6 river-based variants: SEA, STAGGER, LED, each sudden + gradual
+#   Experiment 3:  sea_{sudden,gradual}, stagger_{sudden,gradual},
+#                  led_{sudden,gradual}                       (6 streams)
+#   Experiment 4:  recurring_{sea,stagger}_{fixed,random}_{sudden,gradual}
+#                                                             (8 streams)
+#
+#   {name}.npy      -> (n_instances, n_features + 1), last column = the
+#                      generator's REAL class target (binary for
+#                      SEA/STAGGER, 10-class digit for LED). NOT the
+#                      concept label.
+#   streams_gt/{name}.npy -> (n_chunks,) concept_per_chunk: the
+#                      GENERATIVE concept id active in each chunk. For
+#                      recurring streams the same id reappears (that's
+#                      the recurrence); drift boundaries are recoverable
+#                      as np.diff(concept_per_chunk) != 0.
 
 import numpy as np
 import os
-from sklearn.datasets import make_classification
 from strlearn.streams import StreamGenerator
 from river.datasets import synth as river_synth
 
@@ -32,129 +85,46 @@ np.random.seed(MASTER_SEED)
 
 
 # ============================================================
-#  RECURRING CONCEPTS — independent make_classification pools
+#  RIVER GENERATOR FACTORIES  (seed-aware -- see header note 2)
+#  Each factory: (seed, concept_idx) -> a river dataset for that
+#  concept. The seed flows in here, so regenerating with a different
+#  seed produces genuinely different data (not just a different
+#  transition mask).
 # ============================================================
-N_FEATURES        = 10
-N_INFORMATIVE     = 10
-SEGMENT_CHUNKS    = 50
-N_SEGMENTS        = 100
-TRANSITION_CHUNKS = 10
-N_CONCEPTS        = 4
-POOL_SIZE         = 200_000
 
-CONCEPT_SEEDS = np.random.randint(100, 10000, N_CONCEPTS)
+def make_sea(seed, concept_idx):
+    # SEA: 3 numeric features (first 2 relevant), binary target,
+    # 4 thresholds selectable via `variant` (0-3).
+    return river_synth.SEA(seed=seed, variant=concept_idx)
 
+def make_stagger(seed, concept_idx):
+    # STAGGER: 3 categorical features (size/color/shape), binary
+    # target, 3 boolean rules via `classification_function` (0-2).
+    # NOTE: classification_function, NOT variant (that's the bug fix).
+    return river_synth.STAGGER(seed=seed, classification_function=concept_idx)
 
-def make_concept_generators():
-    """K independent, reusable concept sources. Recurring 'concept 2'
-    later in the stream means re-sampling more rows from this SAME
-    pool, never regenerating it."""
-    generators = []
-    for k in range(N_CONCEPTS):
-        X, y = make_classification(
-            n_samples=POOL_SIZE, n_features=N_FEATURES,
-            n_informative=N_INFORMATIVE, n_redundant=0, n_repeated=0,
-            n_classes=2, class_sep=1.0, random_state=int(CONCEPT_SEEDS[k]),
-        )
-        generators.append({'X': X, 'y': y, 'cursor': 0})
-    return generators
+def make_led(seed, concept_idx):
+    # LED: 24 features (7 real display segments + 17 irrelevant),
+    # 10-class target (the digit). LED has no built-in "variant"; its
+    # concepts here are distinct random LED instances differentiated by
+    # a per-concept seed offset, which is how the original version of
+    # this file did it too.
+    return river_synth.LED(seed=seed + concept_idx,
+                           noise_percentage=0.1, irrelevant_features=True)
 
+GENERATOR_FACTORY = {
+    'sea':     make_sea,
+    'stagger': make_stagger,
+    'led':     make_led,
+}
 
-def draw(generators, k, n):
-    """Draw n fresh instances from concept k's pool, advancing its
-    cursor with wraparound."""
-    g = generators[k]
-    N = len(g['y'])
-    idx = (np.arange(g['cursor'], g['cursor'] + n)) % N
-    g['cursor'] = (g['cursor'] + n) % N
-    return g['X'][idx], g['y'][idx]
+# Number of distinct concepts each generator offers, and feature count.
+GENERATOR_N_CONCEPTS = {'sea': 4, 'stagger': 3, 'led': 4}
+RIVER_N_FEATURES     = {'sea': 3, 'stagger': 3, 'led': 24}
 
-
-def build_schedule(recurrence, rng):
-    n_cycles   = N_SEGMENTS // N_CONCEPTS
-    base_order = list(range(N_CONCEPTS))
-    schedule   = []
-    for _ in range(n_cycles):
-        if recurrence == 'fixed':
-            schedule.extend(base_order)
-        elif recurrence == 'random':
-            order = base_order.copy()
-            rng.shuffle(order)
-            schedule.extend(order)
-        else:
-            raise ValueError(recurrence)
-    return schedule
-
-
-def build_stream(recurrence, transition, seed):
-    rng        = np.random.RandomState(seed)
-    generators = make_concept_generators()
-    schedule   = build_schedule(recurrence, rng)
-
-    X_all, y_all, concept_per_chunk = [], [], []
-
-    for seg_id, concept_id in enumerate(schedule):
-        next_concept_id = (schedule[seg_id + 1]
-                           if seg_id + 1 < len(schedule) else None)
-
-        for c in range(SEGMENT_CHUNKS):
-            in_transition = (
-                transition == 'gradual'
-                and next_concept_id is not None
-                and c >= SEGMENT_CHUNKS - TRANSITION_CHUNKS
-            )
-
-            if not in_transition:
-                Xc, yc = draw(generators, concept_id, CHUNK_SIZE)
-                concept_per_chunk.append(concept_id)
-            else:
-                steps    = c - (SEGMENT_CHUNKS - TRANSITION_CHUNKS)
-                progress = (steps + 0.5) / TRANSITION_CHUNKS
-                p_new    = 1.0 / (1.0 + np.exp(-12 * (progress - 0.5)))
-
-                mask_new = rng.random(CHUNK_SIZE) < p_new
-                n_old, n_new = int((~mask_new).sum()), int(mask_new.sum())
-                Xa, ya = draw(generators, concept_id,      n_old)
-                Xb, yb = draw(generators, next_concept_id, n_new)
-
-                Xc = np.empty((CHUNK_SIZE, N_FEATURES))
-                yc = np.empty(CHUNK_SIZE, dtype=int)
-                Xc[~mask_new], yc[~mask_new] = Xa, ya
-                Xc[mask_new],  yc[mask_new]  = Xb, yb
-                concept_per_chunk.append(
-                    concept_id if mask_new.mean() < 0.5 else next_concept_id)
-
-            X_all.append(Xc)
-            y_all.append(yc)
-
-    X_all = np.vstack(X_all)
-    y_all = np.concatenate(y_all)
-    data  = np.column_stack([X_all, y_all])
-    return data, np.array(concept_per_chunk)
-
-
-RECURRING_VARIANTS = [
-    ('fixed',  'sudden'),
-    ('fixed',  'gradual'),
-    ('random', 'sudden'),
-    ('random', 'gradual'),
-]
-
-
-# ============================================================
-#  SEA / STAGGER / LED — river-based generators with drift
-#  Recipe: 4 concepts, 3 drifts, abrupt at instances
-#  10000/20000/30000, gradual centered at 9500/20000/30500 with
-#  width 1000 -- translated to chunk_size=200 units.
-# ============================================================
-DRIFT_CHUNKS_ABRUPT     = [50, 100, 150]
-DRIFT_CHUNKS_GRADUAL    = [48, 100, 153]
-RIVER_TRANSITION_CHUNKS = 5
-RIVER_TOTAL_CHUNKS      = 200
-
-SEA_VARIANT_ORDER     = [0, 1, 2, 3]
-STAGGER_VARIANT_ORDER = [0, 1, 2, 0]
-LED_VARIANT_ORDER     = [0, 1, 2, 3]
+# Real class-target cardinality (the npy's last column), distinct from
+# the concept count above -- used by the characteristics tables / docs.
+RIVER_N_TARGET_CLASSES = {'sea': 2, 'stagger': 2, 'led': 10}
 
 
 class CategoricalEncoder:
@@ -183,19 +153,44 @@ def river_stream_to_arrays(dataset, n, encoder):
     return np.array(X, dtype=float), np.array(y, dtype=int)
 
 
-def build_river_drift_stream(make_gen, variant_order, drift_chunks, transition, seed):
+RIVER_TRANSITION_CHUNKS = 5
+RIVER_TOTAL_CHUNKS      = 200
+
+
+def build_river_drift_stream(gen_name, concept_order, drift_chunks,
+                             transition, seed):
+    """
+    Core builder shared by Experiments 3 and 4. Walks through
+    concept_order (a list of concept ids; REPEATS in this list are
+    exactly what makes a stream "recurring"), emitting CHUNK_SIZE
+    instances per chunk from the corresponding river generator, with
+    sudden or gradual (sigmoid-blended) transitions at the boundaries
+    given by drift_chunks.
+
+    concept_per_chunk records the GENERATIVE concept id per chunk, so a
+    concept that reappears later gets the SAME label again -- this is
+    what lets the downstream evaluation treat recurrence as recurrence
+    rather than as a brand-new concept.
+
+    seed flows into the generators (via GENERATOR_FACTORY) AND into the
+    transition-mask RNG, so different seeds give genuinely different
+    realizations (see header note 2).
+    """
+    factory  = GENERATOR_FACTORY[gen_name]
+    make_gen = lambda c: factory(seed, c)
+
     rng     = np.random.RandomState(seed)
     encoder = CategoricalEncoder()
     boundaries = [0] + list(drift_chunks) + [RIVER_TOTAL_CHUNKS]
 
     X_all, y_all, concept_per_chunk = [], [], []
 
-    for seg_id, variant in enumerate(variant_order):
+    for seg_id, concept in enumerate(concept_order):
         seg_start, seg_end = boundaries[seg_id], boundaries[seg_id + 1]
-        next_variant = (variant_order[seg_id + 1]
-                        if seg_id + 1 < len(variant_order) else None)
-        gen_current = make_gen(variant)
-        gen_next    = make_gen(next_variant) if next_variant is not None else None
+        next_concept = (concept_order[seg_id + 1]
+                        if seg_id + 1 < len(concept_order) else None)
+        gen_current = make_gen(concept)
+        gen_next    = make_gen(next_concept) if next_concept is not None else None
 
         for c in range(seg_start, seg_end):
             in_transition = (
@@ -205,7 +200,7 @@ def build_river_drift_stream(make_gen, variant_order, drift_chunks, transition, 
             )
             if not in_transition:
                 Xc, yc = river_stream_to_arrays(gen_current, CHUNK_SIZE, encoder)
-                concept_per_chunk.append(variant)
+                concept_per_chunk.append(concept)
             else:
                 steps    = c - (seg_end - RIVER_TRANSITION_CHUNKS)
                 progress = (steps + 0.5) / RIVER_TRANSITION_CHUNKS
@@ -221,7 +216,7 @@ def build_river_drift_stream(make_gen, variant_order, drift_chunks, transition, 
                 Xc[~mask_new], yc[~mask_new] = Xa, ya
                 Xc[mask_new],  yc[mask_new]  = Xb, yb
                 concept_per_chunk.append(
-                    variant if mask_new.mean() < 0.5 else next_variant)
+                    concept if mask_new.mean() < 0.5 else next_concept)
 
             X_all.append(Xc)
             y_all.append(yc)
@@ -231,22 +226,150 @@ def build_river_drift_stream(make_gen, variant_order, drift_chunks, transition, 
     return np.column_stack([X_all, y_all]), np.array(concept_per_chunk)
 
 
-RIVER_VARIANTS = [
-    ('sea',     'sudden',  lambda v: river_synth.SEA(seed=MASTER_SEED, variant=v),
-                SEA_VARIANT_ORDER, DRIFT_CHUNKS_ABRUPT),
-    ('sea',     'gradual', lambda v: river_synth.SEA(seed=MASTER_SEED, variant=v),
-                SEA_VARIANT_ORDER, DRIFT_CHUNKS_GRADUAL),
-    ('stagger', 'sudden',  lambda v: river_synth.STAGGER(seed=MASTER_SEED, variant=v),
-                STAGGER_VARIANT_ORDER, DRIFT_CHUNKS_ABRUPT),
-    ('stagger', 'gradual', lambda v: river_synth.STAGGER(seed=MASTER_SEED, variant=v),
-                STAGGER_VARIANT_ORDER, DRIFT_CHUNKS_GRADUAL),
-    ('led',     'sudden',  lambda v: river_synth.LED(seed=MASTER_SEED + v,
-                                noise_percentage=0.1, irrelevant_features=True),
-                LED_VARIANT_ORDER, DRIFT_CHUNKS_ABRUPT),
-    ('led',     'gradual', lambda v: river_synth.LED(seed=MASTER_SEED + v,
-                                noise_percentage=0.1, irrelevant_features=True),
-                LED_VARIANT_ORDER, DRIFT_CHUNKS_GRADUAL),
+def even_boundaries(n_segments, total_chunks=RIVER_TOTAL_CHUNKS):
+    """Inner drift-chunk boundaries that partition total_chunks into
+    n_segments as evenly as possible (segments differ by at most 1)."""
+    return [round(i * total_chunks / n_segments) for i in range(1, n_segments)]
+
+
+# ============================================================
+#  EXPERIMENT 3 — SEA / STAGGER / LED, SEQUENTIAL concepts
+#  4 segments, 3 drifts. Drift chunk positions match the original
+#  recipe (abrupt at 50/100/150; gradual nudged to 48/100/153 so the
+#  blend straddles the boundary). STAGGER's order is [0,1,2,0] -- it
+#  only has 3 classification functions, so the 4th segment reuses
+#  concept 0; that single repeat means STAGGER has 3 UNIQUE concepts
+#  here (random baseline 1/3), not 4. SEA and LED have 4 distinct
+#  concepts (baseline 1/4).
+# ============================================================
+DRIFT_CHUNKS_ABRUPT  = [50, 100, 150]
+DRIFT_CHUNKS_GRADUAL = [48, 100, 153]
+
+SEA_ORDER     = [0, 1, 2, 3]
+STAGGER_ORDER = [0, 1, 2, 0]
+LED_ORDER     = [0, 1, 2, 3]
+
+# (gen_name, concept_order)
+EXP3_GENERATORS = [
+    ('sea',     SEA_ORDER),
+    ('stagger', STAGGER_ORDER),
+    ('led',     LED_ORDER),
 ]
+
+
+def exp3_specs():
+    """Returns list of dicts fully describing each Experiment 3 stream,
+    including a seed->(data, concept_per_chunk) builder. Imported by
+    evaluate_concept_classification_3.py and analysis_3.py so the
+    stream set has a single source of truth."""
+    specs = []
+    for gen_name, order in EXP3_GENERATORS:
+        for transition, drifts in [('sudden',  DRIFT_CHUNKS_ABRUPT),
+                                   ('gradual', DRIFT_CHUNKS_GRADUAL)]:
+            name = f'{gen_name}_{transition}'
+            specs.append({
+                'name':         name,
+                'gen_name':     gen_name,
+                'order':        order,
+                'drift_chunks': drifts,
+                'transition':   transition,
+                'n_features':   RIVER_N_FEATURES[gen_name],
+                'n_concepts':   len(set(order)),
+                'builder': (lambda seed, g=gen_name, o=order, d=drifts, t=transition:
+                            build_river_drift_stream(g, o, d, t, seed)),
+            })
+    return specs
+
+
+# ============================================================
+#  EXPERIMENT 4 — RECURRING concepts via SEA and STAGGER
+#  Each generator's concepts cycle TWICE (so every concept reappears),
+#  crossed with fixed/random ordering and sudden/gradual transitions.
+#
+#    SEA     (4 concepts): 8 segments -> 7 drifts
+#    STAGGER (3 concepts): 6 segments -> 5 drifts
+#
+#  fixed  = the second cycle repeats the first cycle's order exactly
+#           (e.g. SEA 0,1,2,3,0,1,2,3) -- predictable recurrence.
+#  random = the second cycle is a reshuffle of the concept set, with
+#           an adjacency guard so the seam between cycles is still a
+#           real drift (the reshuffle can't start with the concept the
+#           first cycle ended on) -- unpredictable recurrence, a
+#           harder test. The shuffle is driven by the seed, so it
+#           ALSO varies across replications (not just the data).
+#
+#  Concept label = generative concept id, so a recurring concept gets
+#  the SAME label both times it appears (the entire point of Exp 4).
+# ============================================================
+EXP4_N_CYCLES   = 2
+EXP4_GENERATORS = ['sea', 'stagger']
+EXP4_RECURRENCES = ['fixed']   # 'random' available but dropped for now (simple fixed cycling only)
+EXP4_TRANSITIONS = ['sudden', 'gradual']
+
+
+def build_recurring_order(gen_name, recurrence, rng):
+    """Concept order with EXP4_N_CYCLES cycles. First cycle is always
+    the natural order; subsequent cycles repeat it (fixed) or reshuffle
+    it (random, with an adjacency guard at the cycle seam)."""
+    n    = GENERATOR_N_CONCEPTS[gen_name]
+    base = list(range(n))
+    order = list(base)
+    for _ in range(EXP4_N_CYCLES - 1):
+        if recurrence == 'fixed':
+            nxt = list(base)
+        elif recurrence == 'random':
+            nxt = base.copy()
+            rng.shuffle(nxt)
+            # guard: don't let the seam collapse (no drift) when the
+            # reshuffled cycle would start on the concept we just ended
+            while nxt[0] == order[-1] and n > 1:
+                rng.shuffle(nxt)
+        else:
+            raise ValueError(recurrence)
+        order.extend(nxt)
+    return order
+
+
+def build_exp4_stream(gen_name, recurrence, transition, seed):
+    """seed->(data, concept_per_chunk) for one Experiment 4 stream.
+    Uses a seed-derived RNG for the (random) recurrence order, then
+    delegates the actual instance generation to build_river_drift_stream
+    (which independently seeds its transition-mask RNG from the same
+    seed). Drift boundaries partition the 200 chunks evenly across the
+    segments."""
+    order_rng = np.random.RandomState(seed * 2 + 1)
+    order     = build_recurring_order(gen_name, recurrence, order_rng)
+    drifts    = even_boundaries(len(order))
+    return build_river_drift_stream(gen_name, order, drifts, transition, seed)
+
+
+def exp4_specs():
+    """Returns list of dicts fully describing each Experiment 4 stream,
+    including a seed->(data, concept_per_chunk) builder. Single source
+    of truth for evaluate_concept_classification_4.py / analysis_4.py.
+
+    n_concepts is the count of DISTINCT concepts (= the generator's
+    concept count: SEA 4, STAGGER 3); the streams are 'recurring'
+    because those concepts each appear in multiple segments, not
+    because there are extra concepts."""
+    specs = []
+    for gen_name in EXP4_GENERATORS:
+        for recurrence in EXP4_RECURRENCES:
+            for transition in EXP4_TRANSITIONS:
+                name = f'recurring_{gen_name}_{recurrence}_{transition}'
+                n_concepts = GENERATOR_N_CONCEPTS[gen_name]
+                specs.append({
+                    'name':       name,
+                    'gen_name':   gen_name,
+                    'recurrence': recurrence,
+                    'transition': transition,
+                    'n_features': RIVER_N_FEATURES[gen_name],
+                    'n_concepts': n_concepts,
+                    'n_cycles':   EXP4_N_CYCLES,
+                    'builder': (lambda seed, g=gen_name, r=recurrence, t=transition:
+                                build_exp4_stream(g, r, t, seed)),
+                })
+    return specs
 
 
 # ============================================================
@@ -256,7 +379,8 @@ RIVER_VARIANTS = [
 #  regenerating from a fixed seed is cheap -- the expensive part is
 #  the ABFS/Komorniczak feature EXTRACTION downstream, not generation.
 #  Imported by evaluate_concept_classification_2.py instead of
-#  duplicated there.
+#  duplicated there.  (Unchanged from the previous version of this
+#  file -- left exactly as-is so Experiment 2 keeps reproducing.)
 # ============================================================
 EXP2_N_CHUNKS       = 5000
 EXP2_N_FEATURES     = 20
@@ -328,59 +452,44 @@ def build_exp2_stream(random_state, drift_type, n_drifts,
 #  EXECUTION — only runs when this file is executed directly,
 #  never on import (evaluate_concept_classification_2.py imports
 #  assign_labels_gradual / get_exp2_concept_labels above and must
-#  NOT trigger generation as a side effect of that import)
+#  NOT trigger generation as a side effect of that import). Saves the
+#  canonical seed=MASTER_SEED realization, which equals replication 0
+#  in the Exp 3 / Exp 4 evaluate scripts.
 # ============================================================
 if __name__ == "__main__":
 
-    print("=" * 60)
-    print("Recurring-concept streams")
-    print("=" * 60)
-
-    for recurrence, transition in RECURRING_VARIANTS:
-        stream_name = f'recurring_{recurrence}_{transition}'
+    def save_if_absent(stream_name, builder):
         stream_path = os.path.join(STREAM_DIR, f'{stream_name}.npy')
         gt_path     = os.path.join(GT_DIR,     f'{stream_name}.npy')
-
         print(f"\n{stream_name}")
         if os.path.exists(stream_path) and os.path.exists(gt_path):
             print(f"  EXISTS — skipping.")
-            continue
-
-        data, concept_per_chunk = build_stream(recurrence, transition, MASTER_SEED)
+            return
+        data, concept_per_chunk = builder(MASTER_SEED)
         np.save(stream_path, data)
         np.save(gt_path, concept_per_chunk)
-        print(f"  SAVED  : {stream_name}.npy  shape={data.shape}")
+        n_boundaries = int(np.sum(np.diff(concept_per_chunk) != 0))
+        counts = dict(zip(*np.unique(concept_per_chunk, return_counts=True)))
+        print(f"  SAVED  : shape={data.shape}  n_chunks={len(concept_per_chunk)}  "
+              f"unique_concepts={sorted(counts)}  n_boundaries={n_boundaries}")
+
+    print("=" * 60)
+    print("Experiment 3: SEA / STAGGER / LED (sequential concepts)")
+    print("=" * 60)
+    for spec in exp3_specs():
+        save_if_absent(spec['name'], spec['builder'])
 
     print(f"\n{'='*60}")
-    print("River-based streams: SEA, STAGGER, LED")
+    print("Experiment 4: recurring concepts (SEA, STAGGER)")
     print(f"{'='*60}")
-
-    for name, transition, make_gen, variant_order, drift_chunks in RIVER_VARIANTS:
-        stream_name = f'{name}_{transition}'
-        stream_path = os.path.join(STREAM_DIR, f'{stream_name}.npy')
-        gt_path     = os.path.join(GT_DIR,     f'{stream_name}.npy')
-
-        print(f"\n{stream_name}")
-        if os.path.exists(stream_path) and os.path.exists(gt_path):
-            print(f"  EXISTS — skipping.")
-            continue
-
-        data, concept_per_chunk = build_river_drift_stream(
-            make_gen, variant_order, drift_chunks, transition, MASTER_SEED)
-        np.save(stream_path, data)
-        np.save(gt_path, concept_per_chunk)
-        print(f"  SAVED  : {stream_name}.npy  shape={data.shape}")
+    for spec in exp4_specs():
+        save_if_absent(spec['name'], spec['builder'])
 
     print(f"\n{'='*60}")
     print("VERIFICATION")
     print(f"{'='*60}")
-
-    ALL_SAVED_STREAMS = (
-        [f'recurring_{r}_{t}' for r, t in RECURRING_VARIANTS] +
-        [f'{n}_{t}' for n, t, *_ in RIVER_VARIANTS]
-    )
-
-    for stream_name in ALL_SAVED_STREAMS:
+    for spec in exp3_specs() + exp4_specs():
+        stream_name = spec['name']
         sp = os.path.join(STREAM_DIR, f'{stream_name}.npy')
         gp = os.path.join(GT_DIR,     f'{stream_name}.npy')
         if not (os.path.exists(sp) and os.path.exists(gp)):
@@ -392,6 +501,7 @@ if __name__ == "__main__":
         n_boundaries = int(np.sum(np.diff(cpc) != 0))
         print(f"  {stream_name}")
         print(f"      shape={data.shape}  n_chunks={len(cpc)}  "
-              f"per-concept chunk counts={counts}  n_boundaries={n_boundaries}")
+              f"n_concepts={len(counts)}  per-concept chunks={counts}  "
+              f"n_boundaries={n_boundaries}  baseline={1/len(counts):.3f}")
 
     print("\nALL DONE.")

@@ -117,6 +117,9 @@ meta-features_based_on_relevance_scores/
 │   └── experiment_4/
 │   │   ├── figures/
 │   │       └── analysis/
+│   └── experiment_5/
+│   │   ├── figures/
+│   │       └── analysis/
 │   └── sanity_check/
 │       └── figures/
 │
@@ -140,7 +143,7 @@ All data files are gitignored and must be generated locally.
 
 ### Setup
 
-**Step 1 — Download the USP DS Repository:**
+**Step 1a: Download the USP DS Repository**
 
 All stream files are sourced from the USP DS Repository
 (Souza et al., 2020): https://sites.google.com/view/uspdsrepository
@@ -152,36 +155,48 @@ gdown "1JERZnbGGToAEz_3LRV7n2Vz79LiDAEY-" -O ~/usp_ds_repository.zip
 unzip ~/usp_ds_repository.zip -d ~/usp_ds_repository/
 ```
 
-**Step 2 — Run the stream generation scripts:**
+**Step 1b: Download the SPAM dataset**
+Sourced from Katakis, Tsoumakas, Vlahavas (2010), Knowledge and Information Systems, 22(3), 371-391. Download page:
+http://mlkd.csd.auth.gr/concept_drift.html
+
+Click on the "Spam Data" link under Datasets 3.
+
 ```bash
-python streams/generate_real_streams.py             # Experiment 3: INSECTS, ADD MORE
-python streams/generate_synthetic_streams.py    # Experiments ADD HERE: ...
+mkdir -p ~/spam_data && cd ~/spam_data
+wget http://lpis.csd.auth.gr/mlkd/concept_drift/spam_data.rar
+unrar x spam_data.rar
 ```
 
-`generate_real_streams.py` converts the INSECTS (... ADD MORE ...) CSV files into the
-`.npy` format required by the pipeline, using the genuinely documented
-drift change points from Table 2 of Souza et al. (2020).
+**Step 2: Run the stream generation scripts**
+```bash
+# Experiment 5: INSECTS, SPAM
+python streams/generate_real_streams.py
+# Experiments for synthetic streams
+python streams/generate_synthetic_streams.py
+```
 
-`generate_synthetic_streams.py` builds ...
+`generate_real_streams.py` converts the INSECTS .csv files and the SPAM .arff file into the `.npy` format required by the pipeline, using the documented (INSECTS) or approximate (SPAM) drift change points.
+
+`generate_synthetic_streams.py` builds the sudden/gradual sigmoid-drift synthetic streams used by Experiments 1c and 2 (shared constants, concept-labelling helpers). The SEA/STAGGER/LED generators (Experiment 3) and the recurring-concept generator (Experiment 4).
 
 ---
 
-### Three tiers of evaluation
+### Two tiers of evaluation
 
-The experiments operate on three types of streams, differing in how concept drift is defined and how reliable the ground truth is.
+The experiments operate on two types of streams, differing in how concept drift is defined and how reliable the ground truth is.
 
 ---
 
-### Tier 1 — Synthetic streams (Experiments 1 and 2 ...)
+### Tier 1 - Synthetic streams (Experiments 1, 2, 3, 4)
 
 Concepts and drift are fully controlled by the stream generator.
 
-- Concept = underlying feature–label mapping
-- Drift = change in this mapping
+- Concept = underlying feature–label mapping.
+- Drift = change in this mapping.
 
 Two drift types:
-- Sudden: instantaneous change → clean segments
-- Gradual: sigmoid transition → mixed windows labeled by stage
+- Sudden: instantaneous change $\to$ clean segments.
+- Gradual: sigmoid transition $\to$ mixed windows labeled by stage.
 
 Both **where drift occurs** and **what changes** are known exactly.
 
