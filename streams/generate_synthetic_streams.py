@@ -145,11 +145,19 @@ class CategoricalEncoder:
         return float(self.maps[key][value])
 
 
-def river_stream_to_arrays(dataset, n, encoder):
+def river_stream_to_arrays(dataset, n, encoder, n_features):
     X, y = [], []
     for x, label in dataset.take(n):
         X.append([encoder.encode(k, v) for k, v in x.items()])
         y.append(int(label))
+
+    if n == 0:
+        # Ensure correct 2D shape when empty
+        return (
+            np.empty((0, n_features), dtype=float),
+            np.empty((0,), dtype=int)
+        )
+
     return np.array(X, dtype=float), np.array(y, dtype=int)
 
 
@@ -159,23 +167,7 @@ RIVER_TOTAL_CHUNKS      = 200
 
 def build_river_drift_stream(gen_name, concept_order, drift_chunks,
                              transition, seed):
-    """
-    Core builder shared by Experiments 3 and 4. Walks through
-    concept_order (a list of concept ids; REPEATS in this list are
-    exactly what makes a stream "recurring"), emitting CHUNK_SIZE
-    instances per chunk from the corresponding river generator, with
-    sudden or gradual (sigmoid-blended) transitions at the boundaries
-    given by drift_chunks.
 
-    concept_per_chunk records the GENERATIVE concept id per chunk, so a
-    concept that reappears later gets the SAME label again -- this is
-    what lets the downstream evaluation treat recurrence as recurrence
-    rather than as a brand-new concept.
-
-    seed flows into the generators (via GENERATOR_FACTORY) AND into the
-    transition-mask RNG, so different seeds give genuinely different
-    realizations (see header note 2).
-    """
     factory  = GENERATOR_FACTORY[gen_name]
     make_gen = lambda c: factory(seed, c)
 
@@ -183,14 +175,19 @@ def build_river_drift_stream(gen_name, concept_order, drift_chunks,
     encoder = CategoricalEncoder()
     boundaries = [0] + list(drift_chunks) + [RIVER_TOTAL_CHUNKS]
 
+    n_features = RIVER_N_FEATURES[gen_name]
+
     X_all, y_all, concept_per_chunk = [], [], []
 
     for seg_id, concept in enumerate(concept_order):
         seg_start, seg_end = boundaries[seg_id], boundaries[seg_id + 1]
-        next_concept = (concept_order[seg_id + 1]
-                        if seg_id + 1 < len(concept_order) else None)
+        next_concept = (
+            concept_order[seg_id + 1]
+            if seg_id + 1 < len(concept_order) else None
+        )
+
         gen_current = make_gen(concept)
-        gen_next    = make_gen(next_concept) if next_concept is not None else None
+        gen_next = make_gen(next_concept) if next_concept is not None else None
 
         for c in range(seg_start, seg_end):
             in_transition = (
@@ -198,31 +195,46 @@ def build_river_drift_stream(gen_name, concept_order, drift_chunks,
                 and gen_next is not None
                 and c >= seg_end - RIVER_TRANSITION_CHUNKS
             )
+
             if not in_transition:
-                Xc, yc = river_stream_to_arrays(gen_current, CHUNK_SIZE, encoder)
+                Xc, yc = river_stream_to_arrays(
+                    gen_current, CHUNK_SIZE, encoder, n_features
+                )
                 concept_per_chunk.append(concept)
+
             else:
-                steps    = c - (seg_end - RIVER_TRANSITION_CHUNKS)
+                steps = c - (seg_end - RIVER_TRANSITION_CHUNKS)
                 progress = (steps + 0.5) / RIVER_TRANSITION_CHUNKS
-                p_new    = 1.0 / (1.0 + np.exp(-12 * (progress - 0.5)))
+                p_new = 1.0 / (1.0 + np.exp(-12 * (progress - 0.5)))
 
                 mask_new = rng.random(CHUNK_SIZE) < p_new
-                n_old, n_new = int((~mask_new).sum()), int(mask_new.sum())
-                Xa, ya = river_stream_to_arrays(gen_current, n_old, encoder)
-                Xb, yb = river_stream_to_arrays(gen_next,    n_new, encoder)
+                n_old = int((~mask_new).sum())
+                n_new = int(mask_new.sum())
 
-                Xc = np.empty((CHUNK_SIZE, Xa.shape[1]))
+                Xa, ya = river_stream_to_arrays(
+                    gen_current, n_old, encoder, n_features
+                )
+                Xb, yb = river_stream_to_arrays(
+                    gen_next, n_new, encoder, n_features
+                )
+
+                Xc = np.empty((CHUNK_SIZE, n_features))
                 yc = np.empty(CHUNK_SIZE, dtype=int)
+
+                # assignments now always safe
                 Xc[~mask_new], yc[~mask_new] = Xa, ya
                 Xc[mask_new],  yc[mask_new]  = Xb, yb
+
                 concept_per_chunk.append(
-                    concept if mask_new.mean() < 0.5 else next_concept)
+                    concept if mask_new.mean() < 0.5 else next_concept
+                )
 
             X_all.append(Xc)
             y_all.append(yc)
 
     X_all = np.vstack(X_all)
     y_all = np.concatenate(y_all)
+
     return np.column_stack([X_all, y_all]), np.array(concept_per_chunk)
 
 
