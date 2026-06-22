@@ -14,6 +14,9 @@ Each experiment evaluates whether meta-features computed per stream window can d
 
 High performance implies that the meta-features encode concept identity effectively.
 
+How the concept label is defined differs by tier:
+* **Synthetic (Exp 1-4)**: the concept label is the generative concept id: exact and known, because we built the stream. For recurring streams (Exp 4) the same id reappears, which is the whole point.
+* **Real (Exp 5)**: the concept label is positional: concept = number of drift boundaries passed so far, because real data tells us where drift happens but not what each segment is.
 
 
 ## Project Structure
@@ -37,10 +40,19 @@ meta-features_based_on_relevance_scores/
 │   │       └── {stream analysis files}.npy
 │   └── synthetic/
 │   │   ├── streams/
-│   │   │   ├── # Exp 3: SEA, STAGGER, LED streams
+│   │   │   ├── sea_sudden.npy
+│   │   │   ├── sea_gradual.npy
+│   │   │   ├── stagger_sudden.npy
+│   │   │   ├── stagger_gradual.npy
+│   │   │   ├── led_sudden.npy
+│   │   │   ├── led_gradual.npy
+│   │   │   ├── recurring_sea_fixed_sudden.npy
+│   │   │   ├── recurring_sea_fixed_gradual.npy
+│   │   │   ├── recurring_stagger_fixed_sudden.npy
+│   │   │   ├── recurring_stagger_fixed_gradual.npy
 │   │   │   └── # Exp 4: recurring streams
 │   │   ├── streams_gt/
-│   │   │    └── ...
+│   │   │    └── {same filenames}.npy # concept_per_chunk
 │   │   └── analysis/
 │   │       └── {stream analysis files}.npy
 │
@@ -65,11 +77,11 @@ meta-features_based_on_relevance_scores/
 │   │   ├── analysis_2.py
 │   │   └── evaluate_concept_classification_2.py
 │   │
-│   ├── experiment_3/ # NOT YET IMPLEMENTED
+│   ├── experiment_3/ # SEA, STAGGER, LED (sequential)
 │   │   ├── analysis_3.py
 │   │   └── evaluate_concept_classification_3.py
 │   │
-│   ├── experiment_4/ # NOT YET IMPLEMENTED
+│   ├── experiment_4/ # recurring concepts (SEA, STAGGER)
 │   │   ├── analysis_4.py
 │   │   └── evaluate_concept_classification_4.py
 │   │
@@ -84,8 +96,10 @@ meta-features_based_on_relevance_scores/
 ├── external/
 │   └── komorniczak/
 │       ├── results/
-│       │   ├── real/
-│       │   └── synthetic/
+│       │   ├── real/ # Exp 5 pymfe cache
+│       │   └── synthetic/ # Exp 0 cache
+│       │   └── synthetic_sea_stagger_led/ # Exp 3 pymfe cache
+│       │   └── synthetic_recurring/ # Exp 4 pymfe cache
 │       ├── E1_extract_synthetic.py
 │       ├── E2_clf_synthetic.py
 │       └── utils.py
@@ -167,23 +181,29 @@ wget http://lpis.csd.auth.gr/mlkd/concept_drift/spam_data.rar
 unrar x spam_data.rar
 ```
 
-**Step 2: Run the stream generation scripts**
+**Step 2: Generate the streams**
 ```bash
 # Experiment 5: INSECTS, SPAM
 python streams/generate_real_streams.py
-# Experiments for synthetic streams
+# Experiments for synthetic streams (Experiments 1-4)
 python streams/generate_synthetic_streams.py
 ```
 
-`generate_real_streams.py` converts the INSECTS .csv files and the SPAM .arff file into the `.npy` format required by the pipeline, using the documented (INSECTS) or approximate (SPAM) drift change points.
+`generate_real_streams.py` converts the INSECTS .csv files and the SPAM .arff file into the `.npy` format required by the pipeline, using the documented (INSECTS) or approximate (SPAM) drift change points. Used for Experiment 5.
 
-`generate_synthetic_streams.py` builds the sudden/gradual sigmoid-drift synthetic streams used by Experiments 1c and 2 (shared constants, concept-labelling helpers). The SEA/STAGGER/LED generators (Experiment 3) and the recurring-concept generator (Experiment 4).
+`generate_synthetic_streams.py` builds the sudden/gradual sigmoid-drift synthetic streams used by Experiments 1c and 2 (shared constants, concept-labelling helpers). It also builds and saves the Experiment 3 (SEA/STAGGER/LED, 6 streams) and Experiment 4 (recurring SEA/STAGGER, 4 streams) .npy files plus their concept_per_chunk ground truth. It also contains helpers used by Experiment 2: `build_exp2_stream()` / `get_exp2_concept_labels()`, and the `exp3_specs()` / `exp4_specs()` stream definitions imported by the Experiment 3/4 evaluate and analysis scripts.
 
 ---
 
 ### Two tiers of evaluation
 
 The experiments operate on two types of streams, differing in how concept drift is defined and how reliable the ground truth is.
+
+
+| Tier | Drift location | Concept identity | Data type |
+|------|--------------|------------------|----------|
+| Synthetic | YES | YES | synthetic |
+| Real annotated | YES | NO (positional) | real |
 
 ---
 
@@ -196,7 +216,7 @@ Concepts and drift are fully controlled by the stream generator.
 
 Two drift types:
 - Sudden: instantaneous change $\to$ clean segments.
-- Gradual: sigmoid transition $\to$ mixed windows labeled by stage.
+- Gradual: sigmoid transition $\to$ mixed windows labeled by stage
 
 Both **where drift occurs** and **what changes** are known exactly.
 
@@ -206,50 +226,29 @@ Purpose: controlled evaluation of meta-feature discriminative power
 
 ### Tier 2 — Real annotated streams (Experiment 3)
 
-Real-world INSECTS data with documented drift locations (Souza et al., 2020).
+Real INSECTS and SPAM data. Concept = positional segment between annotated drift points; concept identity is unknown, so each segment is treated as distinct even if two are statistically similar. INSECTS drift points are instance-exact (Table 2, Souza et al. 2020); SPAM's are only approximate neighbourhoods (Katakis et al. 2010, via Yu et al. 2018), and one SPAM region contains
+undocumented internal drifts: read SPAM results with that weaker ground truth in mind.
 
 - Concept = positional segment between annotated drift points
 - Drift = boundary between segments
 
 Important:
 - Drift location is known.
-- Concept identity is unknown.  
-
-Concept labels are **purely positional**: concept = number of drift boundaries crossed. Concept segments are treated as distinct even if their underlying distributions are similar; no recurring concept structure is assumed or inferred.
-
-This means:
-- no assumption of recurring concepts
-- segments may be statistically similar but still treated as different concepts
-
-Purpose: test robustness on real data with imperfect ground truth
-
----
+- Concept identity is unknown.
 
 
 ---
 
-### Summary
+### Stream Configurations
 
-| Tier | Drift location | Concept identity | Data type |
-|------|--------------|------------------|----------|
-| Synthetic | YES | YES | synthetic |
-| Real annotated | YES | NO (positional) | real |
+Every `.npy` stream is `(n_instances, n_features + 1)` with the last column the target class (not the concept label). "Concepts" below is the number of distinct concept labels the meta-classifier discriminates;
+"baseline" is the random-guess accuracy `1 / n_concepts`.
 
 ---
 
-These two tiers progressively test:
+### `data/real/annotated_streams/` - Experiment 3 (SEA/STAGGER/LED)
 
-1. Controlled conditions (synthetic)
-2. Real-world uncertainty (INSECTS...)
-
-
----
-
-### `data/real/annotated_streams/` (Experiment 3)
-
-Format: `(n_instances, n_features + 1)`, last column = positional
-concept label (0-indexed) — see the caveat above about what this
-label does and does not mean.
+`river.datasets.synth`. 200 chunks $\times$ 200 = 40000 instances each. Sudden drifts at chunks [50, 100, 150]; gradual at [48, 100, 153] with a 5-chunk sigmoid transition. Sequential concepts.
 
 | Stream | Features | Chunks@200 | Concepts | Baseline | Source |
 |---|---|---|---|---|---|

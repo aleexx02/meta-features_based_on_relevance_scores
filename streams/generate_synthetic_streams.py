@@ -68,8 +68,8 @@ import os
 from strlearn.streams import StreamGenerator
 from river.datasets import synth as river_synth
 
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 STREAM_DIR = os.path.join(PROJECT_ROOT, 'data', 'synthetic', 'streams')
 GT_DIR     = os.path.join(PROJECT_ROOT, 'data', 'synthetic', 'streams_gt')
