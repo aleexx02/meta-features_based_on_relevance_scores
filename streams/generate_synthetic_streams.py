@@ -68,7 +68,6 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 # ============================================================
 MASTER_SEED      = 1233
 TOTAL_INSTANCES  = 500_000          # per Experiment 3/4 stream (per grid cell)
-CHUNK_SIZES      = [100, 200, 500, 1000]   # swept axis, both Exp 3 and Exp 4
 RIVER_TRANSITION_FRAC = 0.10        # gradual transition width as a fraction of
                                     # each segment (scales with segment length,
                                     # so it stays "10% of the segment" at every
@@ -207,6 +206,7 @@ EXP3_ORDERS = {
     'stagger': [0, 1, 2, 0],   # 3 unique concepts (0 recurs once), 3 drifts
     'led':     [0, 1, 2, 3],   # 4 concepts, 3 drifts
 }
+CHUNK_SIZES_EXP3 = [100, 200, 500]
 
 
 def build_exp3_stream(gen_name, transition, chunk_size, seed):
@@ -225,7 +225,7 @@ def exp3_specs():
     for gen_name in EXP3_GENERATORS:
         order = EXP3_ORDERS[gen_name]
         for transition in EXP3_TRANSITIONS:
-            for cs in CHUNK_SIZES:
+            for cs in CHUNK_SIZES_EXP3:
                 name = f'{gen_name}_chunk{cs}_{transition}'
                 specs.append({
                     'name':       name,
@@ -248,6 +248,7 @@ EXP4_GENERATORS  = ['sea', 'stagger']
 EXP4_TRANSITIONS = ['sudden', 'gradual']
 EXP4_N_DRIFTS    = [1, 3, 7, 15]   # concept switches over the stream;
                                    # n_segments = n_drifts + 1
+CHUNK_SIZES_EXP4 = [100, 200, 500]
 
 
 def cycling_order(gen_name, n_drifts):
@@ -279,7 +280,7 @@ def exp4_specs():
     for gen_name in EXP4_GENERATORS:
         n_gen = GENERATOR_N_CONCEPTS[gen_name]
         for transition in EXP4_TRANSITIONS:
-            for cs in CHUNK_SIZES:
+            for cs in CHUNK_SIZES_EXP4:
                 for nd in EXP4_N_DRIFTS:
                     name = f'{gen_name}_chunk{cs}_ndrift{nd}_{transition}'
                     order = cycling_order(gen_name, nd)
@@ -376,7 +377,7 @@ if __name__ == "__main__":
     print("=" * 64)
     print(f"Experiment 3 grid: {len(exp3_specs())} cells "
           f"(generators {EXP3_GENERATORS} x transitions {EXP3_TRANSITIONS} "
-          f"x chunk_sizes {CHUNK_SIZES})")
+          f"x chunk_sizes {CHUNK_SIZES_EXP3})")
     print(f"  {TOTAL_INSTANCES} instances per stream, sequential concepts.")
     print("=" * 64)
     # build one small smoke-test cell per generator at a tiny instance count
@@ -392,7 +393,7 @@ if __name__ == "__main__":
     print("\n" + "=" * 64)
     print(f"Experiment 4 grid: {len(exp4_specs())} cells "
           f"(generators {EXP4_GENERATORS} x transitions {EXP4_TRANSITIONS} "
-          f"x chunk_sizes {CHUNK_SIZES} x n_drifts {EXP4_N_DRIFTS})")
+          f"x chunk_sizes {CHUNK_SIZES_EXP4} x n_drifts {EXP4_N_DRIFTS})")
     print(f"  {TOTAL_INSTANCES} instances per stream, recurring (cycling) concepts.")
     print("=" * 64)
     for gen_name in EXP4_GENERATORS:
