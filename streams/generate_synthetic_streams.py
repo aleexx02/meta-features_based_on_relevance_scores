@@ -183,8 +183,44 @@ def build_river_grid_stream(gen_name, concept_order, transition, chunk_size,
                 Xb, yb = river_stream_to_arrays(gen_next,    n_new, encoder)
                 Xc = np.empty((chunk_size, Xa.shape[1] if n_old else Xb.shape[1]))
                 yc = np.empty(chunk_size, dtype=int)
-                Xc[~mask_new], yc[~mask_new] = Xa, ya
-                Xc[mask_new],  yc[mask_new]  = Xb, yb
+                # Assign OLD samples safely
+                if n_old > 0:
+                    if Xa.ndim == 1:
+                        Xa = Xa.reshape(-1, Xc.shape[1])
+                    if ya.ndim == 0:
+                        ya = np.array([ya])
+                    elif ya.ndim > 1:
+                        ya = ya.ravel()
+
+                    if Xa.shape[0] != n_old or ya.shape[0] != n_old:
+                        raise ValueError(
+                            f"[build_river_grid_stream OLD] mismatch:\n"
+                            f"mask_old selects {n_old} rows\n"
+                            f"Xa shape: {Xa.shape}, ya shape: {ya.shape}"
+                        )
+
+                    Xc[~mask_new] = Xa
+                    yc[~mask_new] = ya
+
+
+                # Assign NEW samples safely
+                if n_new > 0:
+                    if Xb.ndim == 1:
+                        Xb = Xb.reshape(-1, Xc.shape[1])
+                    if yb.ndim == 0:
+                        yb = np.array([yb])
+                    elif yb.ndim > 1:
+                        yb = yb.ravel()
+
+                    if Xb.shape[0] != n_new or yb.shape[0] != n_new:
+                        raise ValueError(
+                            f"[build_river_grid_stream NEW] mismatch:\n"
+                            f"mask_new selects {n_new} rows\n"
+                            f"Xb shape: {Xb.shape}, yb shape: {yb.shape}"
+                        )
+
+                    Xc[mask_new] = Xb
+                    yc[mask_new] = yb
                 concept_per_chunk.append(
                     concept if mask_new.mean() < 0.5 else next_concept)
 
