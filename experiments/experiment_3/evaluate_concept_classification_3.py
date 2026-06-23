@@ -1,46 +1,40 @@
 #  evaluate_concept_classification_3.py
 # ==============================================================================
-# Experiment 3: SEA / STAGGER / LED Stream Evaluation (sequential concepts)
+# Experiment 3: SEA / STAGGER / LED, chunk_size sweep (sequential concepts)
 #
-# Same core question as every experiment here (does ABFS discriminate
-# concepts better than Komorniczak?), now on three classic named
-# concept-drift generators from river.datasets.synth -- SEA, STAGGER,
-# LED -- with SEQUENTIAL concepts (each concept appears once in order;
-# the sole repeat is STAGGER's [0,1,2,0], since STAGGER only has 3
-# classification functions). Recurring concepts are Experiment 4's job.
+# Grid: generator {sea, stagger, led} x drift {sudden, gradual} x
+#       chunk_size {100, 200, 500, 1000}  ->  24 cells.
+# 500,000 instances per cell. Sequential concepts (each generator runs
+# its fixed order once: SEA [0,1,2,3], STAGGER [0,1,2,0], LED [0,1,2,3]).
 #
-# Streams come from streams.generate_synthetic_streams.exp3_specs(),
-# the single source of truth for the Exp 3 stream set (names, feature
-# counts, concept counts, and a seed->(data, concept_per_chunk)
-# builder per stream). 6 streams: {sea, stagger, led} x {sudden,
-# gradual}.
+# The cells come from streams.generate_synthetic_streams.exp3_specs()
+# -- the single source of truth. Each spec carries a builder
+# seed->(data, concept_per_chunk); streams are regenerated on the fly
+# per cell per replication seed (nothing is pre-saved to disk, exactly
+# like Experiment 2).
 #
-# REPLICATIONS (key structural difference from Experiment 5's
-# single-realization real streams): each stream is regenerated from
-# N_REPLICATIONS different seeds and the per-window results are stacked
-# into (n_reps, n_windows, n_clfs) -- exactly like Experiments 1c/2 do
-# with StreamGenerator's random_state. This is only meaningful because
-# the seed genuinely propagates into the river generators (see the
-# header note in generate_synthetic_streams.py); otherwise sudden-stream
-# reps would be byte-identical. RANDOM_STATES[0] = MASTER_SEED, so
-# replication 0 reproduces exactly the on-disk stream that analysis_3.py
-# loads.
+# This is one plain serial script: it loops over all 24 cells, and for
+# each cell over N_REPLICATIONS seeds, extracting ABFS (3 versions) and
+# Komorniczak (9 measures) and running the prequential sweep. Results
+# stack into (n_reps, n_windows, n_clfs). Re-running skips cells whose
+# result files already exist with the right shape, and the Komorniczak
+# pymfe features are cached per (cell, measure, seed), so an
+# interrupted run resumes cheaply.
 #
-# y_chunk (npy last column) vs concept label:
-#   y_chunk = generator's REAL target -- binary for SEA/STAGGER,
-#   10-class for LED. ABFS/Komorniczak compute meta-features against
-#   this, same as everywhere. The CONCEPT label per window is
-#   concept_per_chunk[i], the GENERATIVE concept id (exact, since we
-#   built the stream -- not positional like Experiment 5).
+# y_chunk (npy last column) vs concept label: y_chunk is the
+# generator's REAL target (binary SEA/STAGGER, 10-class LED); the
+# concept label per window is concept_per_chunk[i], the generative
+# concept id (exact, since we built the stream).
 #
-# chunk_size=200, WARMUP_WINDOWS=0 (consistent with Experiment 5).
+# WARMUP_WINDOWS = 0. ABFS window size ties to the cell's chunk_size.
 #
-# Output: results/experiment_3/, shape (n_reps, n_windows, n_clfs)
-#   preq_abfs_{version}_ba_{stream}.npy   / _f1_ / _kappa_
-#   preq_komor_{measure}_ba_{stream}.npy  / _f1_ / _kappa_
-#   concept_labels_{stream}.npy           (rep-0 concept labels)
+# Output: results/experiment_3/  (shape (n_reps, n_windows, n_clfs))
+#   preq_abfs_{version}_ba_{cell}.npy   / _f1_ / _kappa_
+#   preq_komor_{measure}_ba_{cell}.npy  / _f1_ / _kappa_
+#   concept_labels_{cell}.npy           (rep-0 concept labels)
+#   where {cell} = {gen}_chunk{cs}_{drift}
 # Figures: results/experiment_3/figures/
-#   heatmap_comparison_komorniczak_ABFS_preq_exp3_{stream}.png
+#   heatmap_comparison_komorniczak_ABFS_preq_exp3_{cell}.png
 #
 # Run from project root:
 #   python experiments/experiment_3/evaluate_concept_classification_3.py
@@ -66,7 +60,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal,
 )
-from streams.generate_synthetic_streams import exp3_specs, CHUNK_SIZE, MASTER_SEED
+from streams.generate_synthetic_streams import exp3_specs, MASTER_SEED
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 
 
@@ -97,6 +91,7 @@ _seed_rng = np.random.RandomState(MASTER_SEED)
 RANDOM_STATES = [MASTER_SEED] + [int(s) for s in
                                  _seed_rng.randint(100, 100000, N_REPLICATIONS - 1)]
 print(f"Replication seeds: {RANDOM_STATES}")
+print(f"Experiment 3 grid: {len(SPECS)} cells x {N_REPLICATIONS} reps")
 
 MEASURES = [
     'clustering', 'complexity', 'concept', 'general', 'info-theory',
@@ -118,60 +113,37 @@ EXP_TAG = 'exp3'
 #  HELPERS
 # ============================================================
 
-def already_done_abfs(stream_name, version):
-    prefixes = [f'preq_abfs_{version}_ba', f'preq_abfs_{version}_f1',
-                f'preq_abfs_{version}_kappa']
-    for p in prefixes:
-        path = os.path.join(RESULTS_DIR, f'{p}_{stream_name}.npy')
-        if not os.path.exists(path):
-            return False
-        arr = np.load(path)
-        if (arr.ndim != 3 or arr.shape[0] != N_REPLICATIONS
-                or arr.shape[2] != EXPECTED_N_CLFS):
-            print(f"  WARNING: {path} wrong shape {arr.shape} -- will rerun.")
-            return False
-    if not os.path.exists(os.path.join(RESULTS_DIR,
-                                       f'concept_labels_{stream_name}.npy')):
-        return False
-    return True
+def _shape_ok(arr):
+    return (arr.ndim == 3 and arr.shape[0] == N_REPLICATIONS
+            and arr.shape[2] == EXPECTED_N_CLFS)
 
 
-def already_done_komor(stream_name, measure):
-    prefixes = [f'preq_komor_{measure}_ba', f'preq_komor_{measure}_f1',
-                f'preq_komor_{measure}_kappa']
-    for p in prefixes:
-        path = os.path.join(RESULTS_DIR, f'{p}_{stream_name}.npy')
-        if not os.path.exists(path):
+def already_done_abfs(cell, version):
+    for p in (f'preq_abfs_{version}_ba', f'preq_abfs_{version}_f1',
+              f'preq_abfs_{version}_kappa'):
+        path = os.path.join(RESULTS_DIR, f'{p}_{cell}.npy')
+        if not os.path.exists(path) or not _shape_ok(np.load(path)):
             return False
-        arr = np.load(path)
-        if (arr.ndim != 3 or arr.shape[0] != N_REPLICATIONS
-                or arr.shape[2] != EXPECTED_N_CLFS):
-            print(f"  WARNING: {path} wrong shape {arr.shape} -- will rerun.")
+    return os.path.exists(os.path.join(RESULTS_DIR, f'concept_labels_{cell}.npy'))
+
+
+def already_done_komor(cell, measure):
+    for p in (f'preq_komor_{measure}_ba', f'preq_komor_{measure}_f1',
+              f'preq_komor_{measure}_kappa'):
+        path = os.path.join(RESULTS_DIR, f'{p}_{cell}.npy')
+        if not os.path.exists(path) or not _shape_ok(np.load(path)):
             return False
     return True
 
 
-def save(array, prefix, stream_name):
-    path = os.path.join(RESULTS_DIR, f'{prefix}_{stream_name}.npy')
-    np.save(path, array)
-    return path
+def save(array, prefix, cell):
+    np.save(os.path.join(RESULTS_DIR, f'{prefix}_{cell}.npy'), array)
 
 
-def print_label_dist(name, y):
-    dist = dict(zip(*np.unique(y, return_counts=True)))
-    print(f"  {name} label distribution: {dist}")
-    return dist
-
-
-def chunk_iter(data, concept_per_chunk):
-    """Yield (chunk_idx, X_chunk, y_chunk, concept) over a regenerated
-    in-memory stream array (data = (n_instances, n_features+1))."""
-    X_full = data[:, :-1]
-    y_full = data[:, -1]
-    n_chunks = len(concept_per_chunk)
-    for ci in range(n_chunks):
-        s = ci * CHUNK_SIZE
-        e = s + CHUNK_SIZE
+def chunk_iter(data, concept_per_chunk, chunk_size):
+    X_full = data[:, :-1]; y_full = data[:, -1]
+    for ci in range(len(concept_per_chunk)):
+        s = ci * chunk_size; e = s + chunk_size
         yield ci, X_full[s:e], y_full[s:e], int(concept_per_chunk[ci])
 
 
@@ -179,17 +151,15 @@ def chunk_iter(data, concept_per_chunk):
 #  COMBINED HEATMAP -- Komorniczak vs ABFS, mean final window over reps
 # ============================================================
 
-def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
+def plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions):
     clf_names = [n for n, _ in BASE_CLFS_PREQUENTIAL]
     n_clfs    = len(clf_names)
 
     komor_matrix = np.full((len(MEASURES), n_clfs), np.nan)
     for m_id, measure in enumerate(MEASURES):
-        path = os.path.join(RESULTS_DIR,
-                            f'preq_komor_{measure}_ba_{stream_name}.npy')
+        path = os.path.join(RESULTS_DIR, f'preq_komor_{measure}_ba_{cell}.npy')
         if not os.path.exists(path):
-            print(f"  Heatmap: missing {measure} -- skipping.")
-            return
+            print(f"  Heatmap: missing {measure} -- skipping."); return
         komor_matrix[m_id, :] = np.mean(np.load(path)[:, -1, :], axis=0)
 
     abfs_matrix = np.full((len(ABFS_VERSIONS), n_clfs), np.nan)
@@ -197,18 +167,14 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
         if version in tba_versions:
             abfs_matrix[v_id, :] = np.mean(tba_versions[version][:, -1, :], axis=0)
         else:
-            path = os.path.join(RESULTS_DIR,
-                                f'preq_abfs_{version}_ba_{stream_name}.npy')
+            path = os.path.join(RESULTS_DIR, f'preq_abfs_{version}_ba_{cell}.npy')
             if not os.path.exists(path):
-                print(f"  Heatmap: missing ABFS {version} -- skipping.")
-                return
+                print(f"  Heatmap: missing ABFS {version} -- skipping."); return
             abfs_matrix[v_id, :] = np.mean(np.load(path)[:, -1, :], axis=0)
 
     random_baseline = 1.0 / n_concepts
-    fig, axes = plt.subplots(
-        1, 2, figsize=(26, max(5, len(MEASURES) * 0.75)),
-        gridspec_kw={'width_ratios': [3, 1.5]})
-
+    fig, axes = plt.subplots(1, 2, figsize=(26, max(5, len(MEASURES) * 0.75)),
+                             gridspec_kw={'width_ratios': [3, 1.5]})
     ax = axes[0]
     ax.imshow(komor_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
     for i in range(len(MEASURES)):
@@ -233,167 +199,132 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
     ax.set_title('ABFS meta-features -- balanced accuracy', fontsize=12)
 
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
-    fig.suptitle(
-        f'Komorniczak vs ABFS -- {stream_name}\n'
-        f'Prequential  |  chunk_size={CHUNK_SIZE}  |  mean of {N_REPLICATIONS} reps  |  '
-        f'random baseline = {random_baseline:.3f}',
-        fontsize=13)
+    fig.suptitle(f'Komorniczak vs ABFS -- {cell}\n'
+                 f'Prequential | chunk_size={chunk_size} | mean of {N_REPLICATIONS} reps | '
+                 f'random baseline = {random_baseline:.3f}', fontsize=13)
     plt.tight_layout()
-    out_path = os.path.join(
-        FIGURES_DIR,
-        f'heatmap_comparison_komorniczak_ABFS_preq_{EXP_TAG}_{stream_name}.png')
-    plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"  Saved heatmap: {out_path}")
+    out = os.path.join(FIGURES_DIR,
+                       f'heatmap_comparison_komorniczak_ABFS_preq_{EXP_TAG}_{cell}.png')
+    plt.savefig(out, dpi=150, bbox_inches='tight'); plt.close()
+    print(f"  Saved heatmap: {out}")
 
 
 # ============================================================
-#  ABFS EXTRACTION -- all 3 versions in one pass over one realization
+#  EXTRACTION
 # ============================================================
 
-def extract_abfs_metafeatures(data, concept_per_chunk, n_features):
+def extract_abfs(data, concept_per_chunk, n_features, chunk_size):
     abfs = ABFS_match(n_features=n_features, categorical_features=[],
-                      accuracy_window_size=CHUNK_SIZE,
-                      class_window_size=CHUNK_SIZE)
-    mf_aggstats, mf_raw, mf_raw_temporal = [], [], []
-    concept_labels = []
+                      accuracy_window_size=chunk_size, class_window_size=chunk_size)
+    mf_agg, mf_raw, mf_rt, labels = [], [], [], []
     wt_prev = None
-
-    for ci, X_chunk, y_chunk, concept in chunk_iter(data, concept_per_chunk):
+    for ci, X_chunk, y_chunk, concept in chunk_iter(data, concept_per_chunk, chunk_size):
         for i in range(len(X_chunk)):
             abfs.update(X_chunk[i], y_chunk[i])
-        wt          = abfs.relevance_scores()
-        drift_count = abfs.pop_drift_count()
-        t_since     = abfs.time_since_drift
-
+        wt = abfs.relevance_scores(); dc = abfs.pop_drift_count(); ts = abfs.time_since_drift
         if ci >= WARMUP_WINDOWS:
-            mf_aggstats.append(extract_metafeatures(wt, wt_prev, drift_count, t_since))
+            mf_agg.append(extract_metafeatures(wt, wt_prev, dc, ts))
             mf_raw.append(extract_metafeatures_raw(wt))
-            mf_raw_temporal.append(extract_metafeatures_raw_temporal(wt, wt_prev))
-            concept_labels.append(concept)
+            mf_rt.append(extract_metafeatures_raw_temporal(wt, wt_prev))
+            labels.append(concept)
         wt_prev = wt
-
-    def clean(arr):
-        a = np.array(arr, dtype=float)
-        a[np.isnan(a)] = 0; a[np.isinf(a)] = 0
-        return a
-
-    return (clean(mf_aggstats), clean(mf_raw), clean(mf_raw_temporal),
-            np.array(concept_labels))
+    def clean(a):
+        a = np.array(a, dtype=float); a[np.isnan(a)] = 0; a[np.isinf(a)] = 0; return a
+    return clean(mf_agg), clean(mf_raw), clean(mf_rt), np.array(labels)
 
 
-# ============================================================
-#  KOMORNICZAK EXTRACTION -- inline, cached per (stream, measure, seed)
-# ============================================================
-
-def extract_komor_metafeatures(stream_name, measure, seed, data, concept_per_chunk):
-    cache_path = os.path.join(
-        KOMOR_CACHE_DIR, f'komor_{stream_name}_{measure}_seed{seed}.npy')
-    if os.path.exists(cache_path):
-        return np.load(cache_path)
-
+def extract_komor(cell, measure, seed, data, concept_per_chunk, chunk_size):
+    cache = os.path.join(KOMOR_CACHE_DIR, f'komor_{cell}_{measure}_seed{seed}.npy')
+    if os.path.exists(cache):
+        return np.load(cache)
     mfe = MFE(groups=[measure], suppress_warnings=True)
     out = []
-    for ci, X_chunk, y_chunk, concept in chunk_iter(data, concept_per_chunk):
+    for ci, X_chunk, y_chunk, concept in chunk_iter(data, concept_per_chunk, chunk_size):
         if ci < WARMUP_WINDOWS:
             continue
         try:
             mfe.fit(X_chunk, y_chunk)
             _, ft = mfe.extract(suppress_warnings=True)
-            ft = np.array(ft, dtype=float)
-            ft[np.isnan(ft)] = 0; ft[np.isinf(ft)] = 0
+            ft = np.array(ft, dtype=float); ft[np.isnan(ft)] = 0; ft[np.isinf(ft)] = 0
         except Exception as e:
-            print(f"    chunk {ci}: pymfe failed ({e}) -- skipping.")
-            continue
+            print(f"    chunk {ci}: pymfe failed ({e}) -- skipping."); continue
         out.append(np.append(ft, concept))
-
     result = np.array(out)
-    np.save(cache_path, result)
-    print(f"  [{measure} seed={seed}] cached: shape={result.shape}")
+    np.save(cache, result)
     return result
 
 
 # ============================================================
-#  MAIN SWEEP -- loop over all streams x all replications
+#  MAIN -- loop over all cells
 # ============================================================
 
 for spec in SPECS:
-    stream_name = spec['name']
-    n_features  = spec['n_features']
-    builder     = spec['builder']
+    cell       = spec['name']
+    n_features = spec['n_features']
+    chunk_size = spec['chunk_size']
+    builder    = spec['builder']
 
-    print(f"\n{'='*70}")
-    print(f"Stream   : {stream_name}")
-    print(f"Generator: {spec['gen_name']}  |  Features: {n_features}  |  "
-          f"Order: {spec['order']}  |  Concepts: {spec['n_concepts']}")
-    print(f"{'='*70}")
+    print(f"\n{'='*70}\nCell: {cell}  "
+          f"(gen={spec['gen_name']}, chunk_size={chunk_size}, "
+          f"order={spec['order']}, concepts={spec['n_concepts']})\n{'='*70}")
 
-    abfs_needed  = [v for v in ABFS_VERSIONS if not already_done_abfs(stream_name, v)]
-    komor_needed = [m for m in MEASURES if not already_done_komor(stream_name, m)]
-
+    abfs_needed  = [v for v in ABFS_VERSIONS if not already_done_abfs(cell, v)]
+    komor_needed = [m for m in MEASURES if not already_done_komor(cell, m)]
     tba_versions = {}
     n_concepts   = spec['n_concepts']
 
     if not abfs_needed and not komor_needed:
-        print("  All results present -- loading ABFS BA for heatmap only.")
-        for version in ABFS_VERSIONS:
-            tba_versions[version] = np.load(
-                os.path.join(RESULTS_DIR, f'preq_abfs_{version}_ba_{stream_name}.npy'))
-        plot_combined_heatmap(stream_name, n_concepts, tba_versions)
+        print("  Cell already complete -- loading ABFS BA for heatmap.")
+        for v in ABFS_VERSIONS:
+            tba_versions[v] = np.load(os.path.join(RESULTS_DIR, f'preq_abfs_{v}_ba_{cell}.npy'))
+        plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions)
         continue
 
     abfs_acc  = {v: {'ba': [], 'f1': [], 'kappa': []} for v in ABFS_VERSIONS}
     komor_acc = {m: {'ba': [], 'f1': [], 'kappa': []} for m in MEASURES}
 
     for rep_id, seed in enumerate(RANDOM_STATES):
-        print(f"\n  --- Replication {rep_id+1}/{N_REPLICATIONS} (seed={seed}) ---")
+        print(f"\n  --- rep {rep_id+1}/{N_REPLICATIONS} (seed={seed}) ---")
         data, cpc = builder(seed)
 
-        # ---- ABFS (all 3 versions, one pass) ----
-        X_agg, X_raw, X_rt, y = extract_abfs_metafeatures(data, cpc, n_features)
+        X_agg, X_raw, X_rt, y = extract_abfs(data, cpc, n_features, chunk_size)
         X_by_version = {'aggstats': X_agg, 'raw': X_raw, 'raw_temporal': X_rt}
         if rep_id == 0:
             n_concepts = len(np.unique(y))
-            print(f"    aggstats={X_agg.shape} raw={X_raw.shape} raw_temporal={X_rt.shape}")
-            print_label_dist('ABFS (rep0)', y)
-            save(y, 'concept_labels', stream_name)
+            print(f"    metafeatures: agg={X_agg.shape} raw={X_raw.shape} rt={X_rt.shape}; "
+                  f"concepts={n_concepts}")
+            save(y, 'concept_labels', cell)
 
         for version in ABFS_VERSIONS:
-            _, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(
-                X_by_version[version], y)
+            _, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(X_by_version[version], y)
             abfs_acc[version]['ba'].append(tba)
             abfs_acc[version]['f1'].append(tf1)
             abfs_acc[version]['kappa'].append(tk)
 
-        # ---- Komorniczak (all 9 measures) ----
         for measure in MEASURES:
-            komor_data = extract_komor_metafeatures(
-                stream_name, measure, seed, data, cpc)
-            Xk = komor_data[:, :-1]
-            yk = komor_data[:, -1].astype(int)
+            kd = extract_komor(cell, measure, seed, data, cpc, chunk_size)
+            Xk = kd[:, :-1]; yk = kd[:, -1].astype(int)
             Xk[np.isnan(Xk)] = 0; Xk[np.isinf(Xk)] = 0
             _, _, tba_k, _, _, tf1_k, _, _, tk_k = run_prequential_sweep(Xk, yk)
             komor_acc[measure]['ba'].append(tba_k)
             komor_acc[measure]['f1'].append(tf1_k)
             komor_acc[measure]['kappa'].append(tk_k)
 
-    # ---- stack across reps -> (n_reps, n_windows, n_clfs) and save ----
     for version in ABFS_VERSIONS:
         tba_arr = np.array(abfs_acc[version]['ba'])
-        save(tba_arr,                              f'preq_abfs_{version}_ba',    stream_name)
-        save(np.array(abfs_acc[version]['f1']),    f'preq_abfs_{version}_f1',    stream_name)
-        save(np.array(abfs_acc[version]['kappa']), f'preq_abfs_{version}_kappa', stream_name)
+        save(tba_arr,                              f'preq_abfs_{version}_ba',    cell)
+        save(np.array(abfs_acc[version]['f1']),    f'preq_abfs_{version}_f1',    cell)
+        save(np.array(abfs_acc[version]['kappa']), f'preq_abfs_{version}_kappa', cell)
         tba_versions[version] = tba_arr
-        mean_final = np.mean(tba_arr[:, -1, :], axis=0)
-        print(f"  [ABFS {version}, mean of {N_REPLICATIONS} reps] " + "  ".join(
-            f"{n}={mean_final[i]:.3f}"
-            for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
+        mf = np.mean(tba_arr[:, -1, :], axis=0)
+        print(f"  [ABFS {version}] " + "  ".join(
+            f"{n}={mf[i]:.3f}" for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
 
     for measure in MEASURES:
-        save(np.array(komor_acc[measure]['ba']),    f'preq_komor_{measure}_ba',    stream_name)
-        save(np.array(komor_acc[measure]['f1']),    f'preq_komor_{measure}_f1',    stream_name)
-        save(np.array(komor_acc[measure]['kappa']), f'preq_komor_{measure}_kappa', stream_name)
+        save(np.array(komor_acc[measure]['ba']),    f'preq_komor_{measure}_ba',    cell)
+        save(np.array(komor_acc[measure]['f1']),    f'preq_komor_{measure}_f1',    cell)
+        save(np.array(komor_acc[measure]['kappa']), f'preq_komor_{measure}_kappa', cell)
 
-    plot_combined_heatmap(stream_name, n_concepts, tba_versions)
+    plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions)
 
 print("\nExperiment 3 complete.")

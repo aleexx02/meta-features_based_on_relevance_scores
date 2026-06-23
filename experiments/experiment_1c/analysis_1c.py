@@ -68,6 +68,9 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn import clone
 from scipy.stats import entropy
@@ -76,10 +79,10 @@ import os
 import sys
 import warnings
 warnings.filterwarnings('ignore')
- 
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
- 
+
 from strlearn.streams import StreamGenerator
 from abfs.abfs_implementation import ABFS_match
 from metafeatures.mf_extraction import (
@@ -88,7 +91,7 @@ from metafeatures.mf_extraction import (
 )
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 from plot_results import print_sanity_check_summary
- 
+
 # ============================================================
 #  ARGUMENT PARSING
 # ============================================================
@@ -100,14 +103,14 @@ parser.add_argument('--metrics',    action='store_true', help='Run metrics heatm
 parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
 parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
 args = parser.parse_args()
- 
+
 RUN_SANITY_CHECK = args.sanity
 RUN_PERFORMANCE   = args.performance
 RUN_SHAP         = args.shap
 RUN_METRICS      = args.metrics
 RUN_STREAM_ANALYSIS = args.stream_analysis
 RUN_GAP          = args.gap
- 
+
 print(f"\nRunning analysis for Experiment 1c")
 print(f"Sanity check    : {RUN_SANITY_CHECK}")
 print(f"Performance     : {RUN_PERFORMANCE}")
@@ -115,7 +118,7 @@ print(f"SHAP            : {RUN_SHAP}")
 print(f"Metrics         : {RUN_METRICS}")
 print(f"Stream analysis : {RUN_STREAM_ANALYSIS}")
 print(f"Gap             : {RUN_GAP}")
- 
+
 # ============================================================
 #  PATHS
 # ============================================================
@@ -124,7 +127,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c')
 FIGURES_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
- 
+
 # ============================================================
 #  CONFIGURATION
 # ============================================================
@@ -134,33 +137,33 @@ N_FEATURES     = 10
 WARMUP_WINDOWS = 10
 SCORE_INTERVAL = 100
 N_REPLICATIONS = 5
- 
+
 np.random.seed(1233)
 RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
- 
+
 MF_CONFIGS = [
     ('raw',          'Raw scores (v2.0)',      MF_NAMES_RAW,          5),
     ('raw_temporal', 'Raw + temporal (v2.1)',  MF_NAMES_RAW_TEMPORAL, 6),
 ]
- 
+
 DRIFT_CONFIGS = [
     ('sudden',  20, 9999, 21),
     ('gradual',  6,    5, 25),
 ]
- 
+
 ABFS_MF_CONFIGS_FULL = [
     ('aggstats',     'Aggregate stats (v1.1)'),
     ('raw',          'Raw scores (v2.0)'),
     ('raw_temporal', 'Raw + temporal (v2.1)'),
 ]
- 
+
 MEASURES = ['clustering', 'complexity', 'concept', 'general',
     'info-theory', 'itemset', 'landmarking', 'model-based', 'statistical']
 STATISTICAL_IDX = MEASURES.index('statistical')
- 
+
 clf_names = [name for name, _ in BASE_CLFS_PREQUENTIAL]
- 
+
 # colors per classifier for trajectory plots
 CLF_COLORS = {
     'GNB': '#e6194b',
@@ -169,7 +172,7 @@ CLF_COLORS = {
     'HT':  '#f58231',
     'MLP':  '#911eb4',
 }
- 
+
 palette = [
     '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
     '#42d4f4', '#f032e6', '#808000', '#c9a0dc', '#469990',
@@ -177,12 +180,20 @@ palette = [
     '#556b2f', '#d2691e', '#000075', '#5e5151', '#08332b',
     '#000000', '#a9a9a9', '#ff69b4', '#00ced1', '#ff8c00'
 ]
- 
- 
+
+# SHAP: sklearn-compatible proxies for all 4 classifiers
+SHAP_CLFS = [
+    ('GNB', GaussianNB()),
+    ('KNN', KNeighborsClassifier()),
+    ('HT',  DecisionTreeClassifier(random_state=11313)),
+    ('MLP', MLPClassifier(random_state=11313)),
+]
+
+
 # ============================================================
 #  HELPERS
 # ============================================================
- 
+
 def assign_labels_gradual(stream, n_chunks, chunk_size):
     e = stream._sigmoid(stream.concept_sigmoid_spacing, stream.n_drifts)[1][::chunk_size]
     concept = 0
@@ -213,13 +224,13 @@ def assign_labels_gradual(stream, n_chunks, chunk_size):
                     decreasing = True
         labels.append(concept)
     return np.array(labels)
- 
- 
+
+
 def get_concept_boundaries(concept_labels_all, n_chunks):
     return [i for i in range(1, n_chunks) if
             concept_labels_all[i] != concept_labels_all[i-1]]
- 
- 
+
+
 def extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing):
     config = {
         'n_drifts': n_drifts,
@@ -233,7 +244,7 @@ def extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing):
         'random_state': rs
     }
     stream = StreamGenerator(**config)
- 
+
     # pass 1: relevance scores over time
     abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
         accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
@@ -248,7 +259,7 @@ def extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing):
             instance_counter += 1
     concept_selector_saved = stream.concept_selector.copy()
     scores_over_time = np.array(scores_over_time)
- 
+
     if drift_type == 'sudden':
         concept_labels_all = np.array([
             int(np.bincount(concept_selector_saved[
@@ -256,9 +267,9 @@ def extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing):
             for i in range(N_CHUNKS)])
     else:
         concept_labels_all = assign_labels_gradual(stream, N_CHUNKS, CHUNK_SIZE)
- 
+
     boundaries = get_concept_boundaries(concept_labels_all, N_CHUNKS)
- 
+
     # pass 2: meta-features
     results = {}
     for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
@@ -268,7 +279,7 @@ def extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing):
         concept_labels = []
         wt_prev        = None
         window_counter = 0
- 
+
         stream.reset()
         for X_chunk, y_chunk in stream:
             for i in range(len(X_chunk)):
@@ -283,16 +294,16 @@ def extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing):
                 concept_labels.append(concept_labels_all[window_counter])
             wt_prev = wt
             window_counter += 1
- 
+
         X = np.array(meta_features, dtype=float)
         y = np.array(concept_labels)
         X[np.isnan(X)] = 1
         X[np.isinf(X)] = 1
         results[mf_type] = {'X': X, 'y': y}
- 
+
     return scores_over_time, concept_labels_all, boundaries, results
- 
- 
+
+
 def get_stream_boundaries(drift_type, n_drifts, concept_sigmoid_spacing):
     """Get concept boundaries from one representative stream (seed=RANDOM_STATES[0])."""
     config = {
@@ -314,7 +325,7 @@ def get_stream_boundaries(drift_type, n_drifts, concept_sigmoid_spacing):
         for i in range(len(X_chunk)):
             abfs.update(X_chunk[i], y_chunk[i])
     concept_selector_saved = stream.concept_selector.copy()
- 
+
     if drift_type == 'sudden':
         concept_labels_all = np.array([
             int(np.bincount(concept_selector_saved[
@@ -322,14 +333,14 @@ def get_stream_boundaries(drift_type, n_drifts, concept_sigmoid_spacing):
             for i in range(N_CHUNKS)])
     else:
         concept_labels_all = assign_labels_gradual(stream, N_CHUNKS, CHUNK_SIZE)
- 
+
     # shift by warmup
     boundaries_stream = get_concept_boundaries(concept_labels_all, N_CHUNKS)
     boundaries_meta   = [b - WARMUP_WINDOWS for b in boundaries_stream
                          if b - WARMUP_WINDOWS > 0]
     return boundaries_meta
- 
- 
+
+
 def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing):
     """
     One pass over the stream computing PER-CHUNK diagnostics: class
@@ -340,7 +351,7 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     WARMUP_WINDOWS shift (unlike extract_stream_data's meta-feature
     pass), since this diagnostic covers the whole stream from chunk 0
     rather than feeding the concept classifiers.
- 
+
     Mirrors generate_real_streams.py's run_stream_analysis(), adapted
     for a freshly-generated (not saved-to-disk) synthetic stream.
     Concept boundaries reuse this file's own local
@@ -363,7 +374,7 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     stream = StreamGenerator(**config)
     abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
         accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
- 
+
     class_distribution, drift_intensity, label_entropy_vals = [], [], []
     delta_relevance = []
     prev_mean, wt_prev = None, None
@@ -371,13 +382,13 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     # project's Exp1c config (no n_classes override is set anywhere
     # above) -- not re-verified against the actual stream output here
     n_classes = 2
- 
+
     stream.reset()
     for X_chunk, y_chunk in stream:
         counts = np.bincount(y_chunk, minlength=n_classes)
         probs  = counts / np.sum(counts)
         class_distribution.append(probs)
- 
+
         mean = np.mean(X_chunk, axis=0)
         if prev_mean is None:
             drift_intensity.append(0.0)
@@ -385,18 +396,16 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
             drift_intensity.append(np.linalg.norm(mean - prev_mean))
         prev_mean = mean
         label_entropy_vals.append(entropy(probs + 1e-10))
- 
+
         for i in range(len(X_chunk)):
             abfs.update(X_chunk[i], y_chunk[i])
-        # relevance_scores() returns a plain list, not an ndarray --
-        # convert before subtracting, or list - list raises TypeError
-        wt = np.array(abfs.relevance_scores())
+        wt = abfs.relevance_scores()
         if wt_prev is None:
             delta_relevance.append(0.0)
         else:
             delta_relevance.append(np.linalg.norm(wt - wt_prev))
         wt_prev = wt
- 
+
     concept_selector_saved = stream.concept_selector.copy()
     if drift_type == 'sudden':
         concept_labels_all = np.array([
@@ -406,12 +415,12 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     else:
         concept_labels_all = assign_labels_gradual(stream, N_CHUNKS, CHUNK_SIZE)
     boundaries = get_concept_boundaries(concept_labels_all, N_CHUNKS)
- 
+
     return (np.array(class_distribution), np.array(drift_intensity),
             np.array(label_entropy_vals), np.array(delta_relevance),
             boundaries)
- 
- 
+
+
 # ============================================================
 #  1. SANITY CHECK PLOTS
 # ============================================================
@@ -419,14 +428,14 @@ if RUN_SANITY_CHECK:
     print("\n" + "="*60)
     print("1. SANITY CHECK PLOTS")
     print("="*60)
- 
+
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for rep_id, rs in enumerate(RANDOM_STATES):
             print(f"\nDrift: {drift_type} | Rep {rep_id+1}/{N_REPLICATIONS} (seed={rs})")
- 
+
             scores_over_time, concept_labels_all, boundaries, mf_results = \
                 extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing)
- 
+
             # relevance scores
             fig, ax = plt.subplots(figsize=(14, 4))
             for j in range(N_FEATURES):
@@ -447,12 +456,12 @@ if RUN_SANITY_CHECK:
             fig.savefig(fname, dpi=150)
             plt.close()
             print(f"Relevance scores saved at: '{fname}'")
- 
+
             for mf_type, mf_label, mf_names, n_mf_cols in MF_CONFIGS:
                 X = mf_results[mf_type]['X']
                 y = mf_results[mf_type]['y']
                 unique_concepts = np.unique(y)
- 
+
                 # meta-features over windows
                 fig, axes = plt.subplots(2, n_mf_cols, figsize=(4*n_mf_cols, 6))
                 axes = axes.flatten()
@@ -474,7 +483,7 @@ if RUN_SANITY_CHECK:
                 fig.savefig(fname, dpi=150)
                 plt.close()
                 print(f"Meta-features saved at: '{fname}'")
- 
+
                 # PCA
                 colors = {c: palette[i % len(palette)]
                           for i, c in enumerate(unique_concepts)}
@@ -499,12 +508,12 @@ if RUN_SANITY_CHECK:
                 fig.savefig(fname, dpi=150)
                 plt.close()
                 print(f"PCA saved at: '{fname}'")
- 
+
                 print_sanity_check_summary(
                     f'{drift_type} drift (seed={rs})', True,
                     mf_type, mf_names, X, y, X[:, :N_FEATURES], N_FEATURES)
- 
- 
+
+
 # ============================================================
 #  2. PERFORMANCE TRAJECTORY OVER TIME
 # ============================================================
@@ -512,35 +521,35 @@ if RUN_PERFORMANCE:
     print("\n" + "="*60)
     print("2. PERFORMANCE TRAJECTORY OVER TIME")
     print("="*60)
- 
+
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
- 
+
         # get concept boundaries in meta-window index space
         boundaries_meta = get_stream_boundaries(
             drift_type, n_drifts, concept_sigmoid_spacing)
- 
+
         # for gradual: only mark main drift points (every 4 boundaries)
         if drift_type == 'gradual':
             main_boundaries = boundaries_meta[::4]
         else:
             main_boundaries = boundaries_meta
- 
+
         random_baseline = 1 / n_concepts
- 
+
         for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
             path = os.path.join(RESULTS_DIR,
                 f'clf_ba_{mf_type}_{drift_type}.npy')
             if not os.path.exists(path):
                 print(f"Warning: {path} not found, skipping.")
                 continue
- 
+
             # shape: (n_replications, n_windows, n_clfs)
             traj = np.load(path)
             n_windows = traj.shape[1]
             x_axis    = np.arange(n_windows)
- 
+
             fig, ax = plt.subplots(figsize=(14, 4))
- 
+
             for clf_id, name in enumerate(clf_names):
                 mean_traj = np.mean(traj[:, :, clf_id], axis=0)
                 std_traj  = np.std(traj[:, :, clf_id],  axis=0)
@@ -550,12 +559,12 @@ if RUN_PERFORMANCE:
                     mean_traj - std_traj,
                     mean_traj + std_traj,
                     alpha=0.15, color=color)
- 
+
             # concept boundaries
             for b in main_boundaries:
                 ax.axvline(x=b, color='grey', linestyle='--',
                     linewidth=0.8, alpha=0.6)
- 
+
             ax.axhline(y=random_baseline, color='red', linestyle='--',
                 linewidth=1.0, label='random baseline')
             ax.set_xlabel('Window')
@@ -571,70 +580,55 @@ if RUN_PERFORMANCE:
             fig.savefig(fname, dpi=150)
             plt.close()
             print(f"Performance plot saved at: '{fname}'")
- 
- 
+
+
 # ============================================================
-#  3. SHAP ANALYSIS
+#  3. SHAP -- all 4 classifiers, all 3 ABFS versions
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
     print("3. SHAP ANALYSIS")
     print("="*60)
- 
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.neural_network import MLPClassifier
- 
-    # sklearn proxies for the River incremental classifiers -- same
-    # mapping used in analysis_3.py / analysis_4.py, so SHAP is
-    # comparable across experiments.
-    SHAP_CLFS = [
-        ('GNB', GaussianNB()),
-        ('KNN', KNeighborsClassifier()),
-        ('HT',  DecisionTreeClassifier(random_state=11313)),
-        ('MLP', MLPClassifier(random_state=11313)),
-    ]
- 
+
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
             fname = os.path.join(FIGURES_DIR,
                 f'shap_all_clfs_{mf_type}_{drift_type}.png')
             if os.path.exists(fname):
                 print(f"Exists: {fname}"); continue
- 
+
             print(f"\nSHAP: {mf_label} - {drift_type} drift")
- 
+
             all_X, all_y = [], []
             for rep_id, rs in enumerate(RANDOM_STATES):
                 _, _, _, mf_results = extract_stream_data(
                     rs, drift_type, n_drifts, concept_sigmoid_spacing)
                 all_X.append(mf_results[mf_type]['X'])
                 all_y.append(mf_results[mf_type]['y'])
- 
+
             X_all = np.vstack(all_X)
             y_all = np.concatenate(all_y)
             X_all[np.isnan(X_all)] = 1
             X_all[np.isinf(X_all)] = 1
- 
+
             fig, axes = plt.subplots(2, 2, figsize=(16, 10))
             axes_flat = axes.flatten()
- 
+
             for clf_idx, (clf_name, clf_proto) in enumerate(SHAP_CLFS):
                 ax  = axes_flat[clf_idx]
                 clf = clone(clf_proto)
                 clf.fit(X_all, y_all)
- 
+
                 explainer   = shap.KernelExplainer(
                     clf.predict_proba, shap.sample(X_all, 100))
                 shap_values = explainer.shap_values(
                     shap.sample(X_all, 200), nsamples=100)
- 
+
                 shap_array    = np.array(shap_values)
                 mean_abs_shap = (np.mean(np.abs(shap_array), axis=(0, 2))
                                  if shap_array.ndim == 3
                                  else np.mean(np.abs(shap_array), axis=0))
- 
+
                 sorted_idx = np.argsort(mean_abs_shap)[::-1]
                 ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx],
                        color='steelblue', alpha=0.8)
@@ -643,7 +637,7 @@ if RUN_SHAP:
                                    rotation=45, ha='right', fontsize=7)
                 ax.set_ylabel('Mean |SHAP|', fontsize=9)
                 ax.set_title(clf_name, fontsize=11)
- 
+
             fig.suptitle(f'SHAP - {mf_label} - {drift_type} drift - '
                          f'experiment [1c]\n(averaged over '
                          f'{N_REPLICATIONS} replications)', fontsize=12)
@@ -651,8 +645,8 @@ if RUN_SHAP:
             fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close()
             print(f"SHAP plot saved: {fname}")
- 
- 
+
+
 # ============================================================
 #  4. ADDITIONAL METRICS HEATMAPS (F1, KAPPA)
 # ============================================================
@@ -660,10 +654,10 @@ if RUN_METRICS:
     print("\n" + "="*60)
     print("4. ADDITIONAL METRICS HEATMAPS")
     print("="*60)
- 
+
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for metric, metric_label in [('f1', 'F1'), ('kappa', 'Kappa')]:
- 
+
             # Komorniczak baseline: statistical measure group, final window
             rc_path = os.path.join(RESULTS_DIR,
                 f'clf_komor_concept_classif_{metric}_{drift_type}.npy')
@@ -678,7 +672,7 @@ if RUN_METRICS:
             else:
                 rc_mean = None
                 print(f"Warning: {rc_path} not found")
- 
+
             all_rows = []
             for mf_type, mf_display_label in ABFS_MF_CONFIGS_FULL:
                 path = os.path.join(RESULTS_DIR,
@@ -694,19 +688,19 @@ if RUN_METRICS:
                 std_vals    = np.std(final,    axis=0)
                 median_vals = np.median(final, axis=0)
                 all_rows.append((mf_display_label, mean_vals, std_vals, median_vals))
- 
+
             if rc_mean is not None:
                 all_rows.append(
                     ('Komorniczak (statistical)', rc_mean, rc_std, rc_median))
- 
+
             if not all_rows:
                 continue
- 
+
             matrix        = np.array([r[1] for r in all_rows])
             matrix_std    = np.array([r[2] for r in all_rows])
             matrix_median = np.array([r[3] for r in all_rows])
             row_labels    = [r[0] for r in all_rows]
- 
+
             # print summary
             print(f"\n{metric_label} - {drift_type} drift - experiment [1c]")
             print(f"{'Meta-features':<25s}", end='')
@@ -719,7 +713,7 @@ if RUN_METRICS:
                 for v in mean_vals:
                     print(f"{v:>10.3f}", end='')
                 print()
- 
+
             fig, ax = plt.subplots(
                 figsize=(10, max(3, len(all_rows) * 0.9)))
             im = ax.imshow(matrix, vmin=0.0, vmax=1.0,
@@ -747,8 +741,8 @@ if RUN_METRICS:
             fig.savefig(fname, dpi=150)
             plt.close()
             print(f"Heatmap saved at: '{fname}'")
- 
- 
+
+
 # ============================================================
 #  5. STREAM ANALYSIS PLOTS
 # ============================================================
@@ -756,54 +750,54 @@ if RUN_STREAM_ANALYSIS:
     print("\n" + "="*60)
     print("5. STREAM ANALYSIS PLOTS")
     print("="*60)
- 
+
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for rep_id, rs in enumerate(RANDOM_STATES):
             print(f"\nDrift: {drift_type} | Rep {rep_id+1}/{N_REPLICATIONS} (seed={rs})")
- 
+
             class_dist, drift_intensity, entropy_vals, delta_relevance, boundaries = \
                 extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing)
- 
+
             drift_intensity_n = drift_intensity / (np.max(drift_intensity) + 1e-10)
             delta_relevance_n = delta_relevance / (np.max(delta_relevance) + 1e-10)
- 
+
             # ---- drift intensity vs ABFS relevance change vs entropy ----
             fname = os.path.join(FIGURES_DIR,
                 f'stream_drift_entropy_{drift_type}_rep{rep_id}.png')
             if not os.path.exists(fname):
                 fig, ax1 = plt.subplots(figsize=(14, 4))
- 
+
                 ax1.plot(drift_intensity_n, color='steelblue',
                         label='Drift intensity', linewidth=1.5)
                 ax1.plot(delta_relevance_n, color='purple',
                         label='ABFS relevance change', linewidth=1.2, alpha=0.7)
                 ax1.set_ylabel('Normalized value')
- 
+
                 ax2 = ax1.twinx()
                 ax2.plot(entropy_vals, color='darkorange',
                         label='Label entropy', alpha=0.7)
                 ax2.set_ylabel('Entropy', color='darkorange')
- 
+
                 for b in boundaries:
                     ax1.axvline(x=b, color='red', linestyle='--',
                                 linewidth=0.8, alpha=0.7)
- 
+
                 ax1.set_xlabel('Chunk')
- 
+
                 lines_1, labels_1 = ax1.get_legend_handles_labels()
                 lines_2, labels_2 = ax2.get_legend_handles_labels()
                 ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
- 
+
                 ax1.set_title(f'Drift vs ABFS dynamics - {drift_type} drift '
                     f'(seed={rs}) - experiment [1c]')
- 
+
                 fig.tight_layout()
                 fig.savefig(fname, dpi=150, bbox_inches='tight')
                 plt.close()
                 print(f"Stream drift/entropy plot saved at: '{fname}'")
             else:
                 print(f"Exists: {fname}")
- 
+
             # ---- class distribution over time ----
             fname = os.path.join(FIGURES_DIR,
                 f'class_distribution_{drift_type}_rep{rep_id}.png')
@@ -825,8 +819,8 @@ if RUN_STREAM_ANALYSIS:
                 print(f"Class distribution plot saved at: '{fname}'")
             else:
                 print(f"Exists: {fname}")
- 
- 
+
+
 # ============================================================
 #  6. GAP HEATMAP -- ABFS raw v2.0 vs Komorniczak best-of-9,
 #  one file per drift type (no chunk_size/n_informative grid here
@@ -836,12 +830,12 @@ if RUN_GAP:
     print("\n" + "="*60)
     print("6. GAP HEATMAP")
     print("="*60)
- 
+
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         fname = os.path.join(FIGURES_DIR, f'gap_heatmap_preq_{drift_type}.png')
         if os.path.exists(fname):
             print(f"Exists: {fname}"); continue
- 
+
         abfs_path = os.path.join(RESULTS_DIR, f'clf_ba_raw_{drift_type}.npy')
         if not os.path.exists(abfs_path):
             print(f"Warning: {abfs_path} not found, skipping {drift_type}.")
@@ -849,7 +843,7 @@ if RUN_GAP:
         # shape: (n_replications, n_windows, n_clfs)
         abfs_final = np.load(abfs_path)[:, -1, :]
         abfs_mean  = np.mean(abfs_final, axis=0)  # (n_clfs,)
- 
+
         komor_path = os.path.join(RESULTS_DIR,
             f'clf_komor_concept_classif_ba_{drift_type}.npy')
         if not os.path.exists(komor_path):
@@ -859,25 +853,29 @@ if RUN_GAP:
         komor_final          = np.load(komor_path)[:, :, -1, :]
         komor_mean_per_clf   = np.mean(komor_final, axis=1)  # (n_measures, n_clfs)
         komor_best           = np.max(komor_mean_per_clf, axis=0)  # (n_clfs,)
- 
+
         gap_row = abfs_mean - komor_best  # (n_clfs,)
         vmax    = np.max(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
- 
-        fig, ax = plt.subplots(figsize=(max(4, len(clf_names) * 1.4), 2.4))
+        
+        fig, ax = plt.subplots(figsize=(max(6, len(clf_names) * 1.8), 2.8))
         im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax,
-                       cmap='RdBu', aspect='auto')
+               cmap='RdBu', aspect='auto')
+        
         for j in range(len(clf_names)):
             val = gap_row[j]
-            txt_color = 'white' if abs(val) > vmax * 0.6 else 'black'
-            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center',
-                    fontsize=11, color=txt_color)
-        ax.set_xticks(range(len(clf_names))); ax.set_xticklabels(clf_names, fontsize=10)
-        ax.set_yticks([0]); ax.set_yticklabels([f'{drift_type} drift'], fontsize=10)
+            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center', fontsize=12,
+            color='white' if abs(val) > vmax * 0.6 else 'black')
+        
+        ax.set_xticks(range(len(clf_names)))
+        ax.set_xticklabels(clf_names, fontsize=11)
+        ax.set_yticks([0])
+        ax.set_yticklabels([f'{drift_type} drift'], fontsize=10)
         ax.set_xlabel('Classifier', fontsize=11)
         ax.set_title(f'Gap (ABFS raw v2.0 minus Komorniczak best) -- '
                      f'{drift_type} drift -- experiment [1c]', fontsize=11)
-        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.1, orientation='horizontal')
-        fig.tight_layout()
+        cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
+        cbar.set_label('Gap (BA)', fontsize=9)
+        fig.subplots_adjust(bottom=0.35)
         fig.savefig(fname, dpi=150, bbox_inches='tight')
         plt.close()
         print(f"Gap heatmap saved at: '{fname}'")

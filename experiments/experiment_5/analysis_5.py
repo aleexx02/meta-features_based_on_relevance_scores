@@ -878,23 +878,28 @@ if RUN_GAP:
         gap_row = pr_abfs[-1, :] - komor_best  # shape (N_CLFS,)
         vmax    = np.max(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
 
-        fig, ax = plt.subplots(figsize=(max(4, N_CLFS * 1.4), 2.4))
+        # ---- replace the gap-heatmap plotting block with this ----
+        fig, ax = plt.subplots(figsize=(max(6, N_CLFS * 1.8), 2.8))
         im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax,
-                       cmap='RdBu', aspect='auto')
+                    cmap='RdBu', aspect='auto')
         for j in range(N_CLFS):
             val = gap_row[j]
-            txt_color = 'white' if abs(val) > vmax * 0.6 else 'black'
-            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center',
-                    fontsize=11, color=txt_color)
-        ax.set_xticks(range(N_CLFS)); ax.set_xticklabels(CLF_NAMES, fontsize=10)
-        ax.set_yticks([0]); ax.set_yticklabels([stream_name], fontsize=10)
-        ax.set_xlabel('Classifier', fontsize=11)
+            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center', fontsize=12,
+                    color='white' if abs(val) > vmax * 0.6 else 'black')
+        ax.set_xticks(range(N_CLFS))
+        ax.set_xticklabels(CLF_NAMES, fontsize=11)
+        ax.set_yticks([0])
+        ax.set_yticklabels([stream_name], fontsize=10)
+        ax.tick_params(axis='x', length=0, pad=8)   # labels sit clear of the strip
+        ax.set_xlabel('Classifier', fontsize=11, labelpad=8)
         ax.set_title(f'Gap (ABFS raw v2.0 minus Komorniczak best) -- {stream_name}',
-                     fontsize=11)
-        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.1, orientation='horizontal')
-        fig.tight_layout()
+                    fontsize=11, pad=10)
+        # vertical colorbar on the RIGHT -- no longer overlaps the x-axis labels
+        cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
+        cbar.set_label('Gap (BA)', fontsize=9)
+        fig.subplots_adjust(bottom=0.35)            # guarantees room for x labels
         fig.savefig(fname, dpi=150, bbox_inches='tight')
-        plt.close(); print(f"  Gap heatmap saved: {fname}")
+        plt.close()
 
 
 print("\nAnalysis 5 complete.")
