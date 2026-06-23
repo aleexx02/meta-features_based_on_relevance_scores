@@ -129,7 +129,7 @@ os.makedirs(KOMOR_CACHE_DIR, exist_ok=True)
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-CHUNK_SIZE     = 200
+CHUNK_SIZE = 100
 WARMUP_WINDOWS = 0
 
 # N_CONCEPTS computed dynamically from the ground truth files
