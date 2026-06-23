@@ -250,7 +250,9 @@ count: at n_drifts = 1 (and SEA n_drifts = 3) concepts appear once each (no recu
 | INSECTS-incgradual_imbalanced | 33 | 6 (species) | 716 | 2 | 0.500 | exact |
 | SPAM | 499 | 2 (spam/legit) | ~46 | 6 | 0.167 | approximate |
 
-### Experiments 1c & 2 — `strlearn` StreamGenerator
+
+
+### Experiments 1c & 2 - `strlearn` StreamGenerator
 
 Binary-target streams (`make_classification`-backed); drift via concept
 switching. Concept label is multi-class even though the target is binary.
