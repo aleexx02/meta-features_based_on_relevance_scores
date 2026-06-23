@@ -14,14 +14,14 @@
 #
 #   Experiment 3 — river SEA / STAGGER / LED, SEQUENTIAL concepts,
 #     500,000 instances per stream, swept over chunk_size
-#     {100,200,500,1000}. No drift-count axis: each generator runs its
+#     {100,200,500}. No drift-count axis: each generator runs its
 #     fixed concept order once (SEA [0,1,2,3], STAGGER [0,1,2,0], LED
 #     [0,1,2,3]). The chunk_size sweep is the one grid axis -- the
 #     river analogue of "how does window size affect discrimination",
 #     parallel to one axis of Experiment 2.
 #
 #   Experiment 4 — river SEA / STAGGER, RECURRING concepts, full grid
-#     chunk_size {100,200,500,1000} x n_drifts {1,3,7,15}, 500,000
+#     chunk_size {100,200,500} x n_drifts {1,3,7,15}, 500,000
 #     instances per stream. Concepts CYCLE through the generator's
 #     concept set (segment i -> concept i % n_concepts), so as n_drifts
 #     grows the concepts recur more and more. This is the only way to
@@ -66,7 +66,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 # ============================================================
 #  SHARED CONFIG
 # ============================================================
-MASTER_SEED      = 1233
+SEED      = 1233
 TOTAL_INSTANCES  = 500_000          # per Experiment 3/4 stream (per grid cell)
 RIVER_TRANSITION_FRAC = 0.10        # gradual transition width as a fraction of
                                     # each segment (scales with segment length,
@@ -74,7 +74,7 @@ RIVER_TRANSITION_FRAC = 0.10        # gradual transition width as a fraction of
                                     # chunk_size / n_drifts combination instead
                                     # of a fixed chunk count that could overrun
                                     # short segments)
-np.random.seed(MASTER_SEED)
+np.random.seed(SEED)
 
 
 # ============================================================
@@ -383,7 +383,7 @@ if __name__ == "__main__":
     # build one small smoke-test cell per generator at a tiny instance count
     for gen_name in EXP3_GENERATORS:
         data, cpc = build_river_grid_stream(
-            gen_name, EXP3_ORDERS[gen_name], 'sudden', 100, MASTER_SEED,
+            gen_name, EXP3_ORDERS[gen_name], 'sudden', 100, SEED,
             total_instances=2000)
         segs = [int(cpc[i]) for i in range(len(cpc)) if i == 0 or cpc[i] != cpc[i-1]]
         print(f"  {gen_name:8s} n_feat={RIVER_N_FEATURES[gen_name]:2d} "

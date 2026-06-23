@@ -212,12 +212,9 @@ Important:
 
 Each `.npy` is `(n_instances, n_features + 1)`, last column = **target class** (not the concept label). "Concepts" = number of distinct concept labels; "baseline" = `1 / n_concepts`.
 
-### Experiment 3 — SEA / STAGGER / LED (sequential, chunk_size sweep)
+### Experiment 3 - SEA / STAGGER / LED (sequential, chunk_size sweep)
 
-`river.datasets.synth`. **500,000 instances** per stream. The one swept
-axis is **chunk_size ∈ {100, 200, 500, 1000}** (→ 5000 / 2500 / 1000 / 500
-chunks). Each generator runs its fixed concept order once; 3 drifts placed
-evenly. **Grid = 3 generators × 2 drift types × 4 chunk_sizes = 24 cells.**
+`river.datasets.synth`. **500,000 instances** per stream. The one swept axis is **chunk_size ∈ {100, 200, 500}** (5000 / 2500 / 1000 chunks respectively). Each generator runs its fixed concept order once; 3 drifts placed evenly. **Grid = 3 generators $\times$ 2 drift types $\times$ 3 chunk_sizes = 18 cells.**
 
 | Generator | Features | Target classes | Concept order | Concepts | Baseline |
 |---|---|---|---|---|---|
@@ -225,16 +222,12 @@ evenly. **Grid = 3 generators × 2 drift types × 4 chunk_sizes = 24 cells.**
 | STAGGER | 3 (size/color/shape) | 2 (binary) | [0,1,2,0] | 3 | 0.333 |
 | LED | 24 (7 relevant + 17 noise) | 10 (digit) | [0,1,2,3] | 4 | 0.250 |
 
-STAGGER has only 3 classification functions, so [0,1,2,0] reuses concept 0
-→ **3 unique concepts** (baseline 1/3), not 4.
 
-### Experiment 4 — recurring SEA / STAGGER (chunk_size × n_drifts grid)
+### Experiment 4 - recurring SEA / STAGGER (chunk_size $\times$ n_drifts grid)
 
 `river.datasets.synth`. **500,000 instances** per stream. Full grid:
-**chunk_size ∈ {100,200,500,1000} × n_drifts ∈ {1,3,7,15}**, × 2
-generators × 2 drift types = **64 cells.** Concepts **cycle** through the
-generator's set (segment i → concept i mod n_concepts), so recurrence
-grows with n_drifts.
+**chunk_size ∈ {100,200,500} $\times$ n_drifts ∈ {1,3,7,15}**, $\times$ 2 generators $\times$ 2 drift types = **64 cells.** Concepts **cycle** through the
+generator's set (segment i $\to$ concept i mod n_concepts), so recurrence grows with n_drifts.
 
 | n_drifts | Segments | SEA order | SEA concepts (baseline) | STAGGER order | STAGGER concepts (baseline) |
 |---|---|---|---|---|---|
@@ -244,19 +237,16 @@ grows with n_drifts.
 | 15 | 16 | 4 cycles of [0,1,2,3] | 4 (0.250) | 16-segment cycle | 3 (0.333) |
 
 Recurrence appears once `n_drifts + 1` exceeds the generator's concept
-count: at n_drifts=1 (and SEA n_drifts=3) concepts appear once each (no
-recurrence); from n_drifts=7 on they genuinely recur. Why this is the only
-way to get a drift-count axis: SEA has exactly 4 concepts and STAGGER
-exactly 3 (fixed labelling rules, not seed-tunable), so more drifts must
-reuse concepts — recurrence is forced by the generators, not chosen.
+count: at n_drifts = 1 (and SEA n_drifts = 3) concepts appear once each (no recurrence); from n_drifts = 7 on they genuinely recur. Why this is the only way to get a drift-count axis: SEA has exactly 4 concepts and STAGGER exactly 3, so more drifts must reuse concepts.
 
-### Experiment 5 — real (INSECTS + SPAM)
 
-| Stream | Features | Target classes | Chunks@200 | Concepts | Baseline | Drift |
+### Experiment 5 - real (INSECTS + SPAM)
+
+| Stream | Features | Target classes | Chunks@100 | Concepts | Baseline | Drift |
 |---|---|---|---|---|---|---|
 | INSECTS-abrupt_balanced | 33 | 6 (species) | 264 | 6 | 0.167 | exact |
 | INSECTS-abrupt_imbalanced | 33 | 6 (species) | 1,776 | 6 | 0.167 | exact |
-| INSECTS-incgradual_balanced | 33 | 6 (species) | 120 | 2 | 0.500 | exact |
+| INSECTS-incgradual_balanced | 33 | 6 (species) | 120 | 2 | 0.500 | exact |—
 | INSECTS-incgradual_imbalanced | 33 | 6 (species) | 716 | 2 | 0.500 | exact |
 | SPAM | 499 | 2 (spam/legit) | ~46 | 6 | 0.167 | approximate |
 

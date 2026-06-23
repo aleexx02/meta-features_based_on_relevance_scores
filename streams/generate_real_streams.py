@@ -105,7 +105,7 @@ os.makedirs(OUT_STREAMS,  exist_ok=True)
 os.makedirs(OUT_GT,       exist_ok=True)
 os.makedirs(ANALYSIS_DIR, exist_ok=True)
 
-CHUNK_SIZE = 200
+CHUNK_SIZE = 100
 
 
 # ============================================================
