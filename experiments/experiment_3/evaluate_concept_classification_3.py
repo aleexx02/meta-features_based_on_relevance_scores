@@ -60,7 +60,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal,
 )
-from streams.generate_synthetic_streams import exp3_specs, MASTER_SEED
+from streams.generate_synthetic_streams import exp3_specs, SEED
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
 
 
@@ -87,8 +87,8 @@ N_REPLICATIONS = 5
 
 SPECS = exp3_specs()
 
-_seed_rng = np.random.RandomState(MASTER_SEED)
-RANDOM_STATES = [MASTER_SEED] + [int(s) for s in
+_seed_rng = np.random.RandomState(SEED)
+RANDOM_STATES = [SEED] + [int(s) for s in
                                  _seed_rng.randint(100, 100000, N_REPLICATIONS - 1)]
 print(f"Replication seeds: {RANDOM_STATES}")
 print(f"Experiment 3 grid: {len(SPECS)} cells x {N_REPLICATIONS} reps")
