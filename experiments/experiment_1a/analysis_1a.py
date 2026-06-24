@@ -4,7 +4,7 @@
 #
 
 # Loads pre-computed results (.npy files) from
-# results/experiment_{exp}/ and produces:
+# results/experiment_1a/ and produces:
 #
 #   1. Sanity check plots (per replication x drift type):
 #      - Relevance scores over time
