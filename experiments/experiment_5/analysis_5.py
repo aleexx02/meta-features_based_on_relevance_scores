@@ -844,44 +844,61 @@ if RUN_STREAM_ANALYSIS:
             print(f"  Exists: {fname}")
 
 
-# ============================================================
-#  GAP HEATMAP -- one file PER STREAM, ABFS raw v2.0 vs
-#  Komorniczak best-of-9, so multiple streams' gap heatmaps don't
-#  collide and are easy to tell apart by filename.
+#  ============================================================
+#  GAP HEATMAP -- one file PER STREAM.
+#  Per classifier: best ABFS version (max BA over aggstats / raw /
+#  raw+temporal) minus best Komorniczak group (max BA over the 9
+#  groups). Computed independently per classifier, so each cell
+#  compares each side's strongest option for that classifier -- no
+#  fixed group, not limited to raw v2.0. Matches the best-vs-best
+#  definition of Experiment 2.
 # ============================================================
 if RUN_GAP:
     print("\n" + "="*60)
-    print("GAP HEATMAP -- ABFS raw v2.0 vs Komorniczak best-of-9")
+    print("GAP HEATMAP - best ABFS version vs best Komorniczak group (per classifier)")
     print("="*60)
-
+ 
     for stream_name in REAL_STREAMS:
         fname = os.path.join(FIGURES_DIR,
                              f'gap_heatmap_preq_exp5_{stream_name}.png')
         if os.path.exists(fname):
             print(f"  Exists: {fname}"); continue
-
-        pr_abfs = load('preq_abfs_raw_ba', stream_name, optional=True)
-
-        komor_best = None
+ 
+        # best ABFS per classifier: element-wise max over the 3 versions
+        # at the final window
+        abfs_finals = []
+        for version in ABFS_VERSIONS:
+            data = load(f'preq_abfs_{version}_ba', stream_name, optional=True)
+            if data is not None:
+                abfs_finals.append(data[-1, :])
+ 
+        # best Komorniczak per classifier: element-wise max over the 9
+        # groups at the final window
+        komor_finals = []
         for measure in MEASURES:
             data = load(f'preq_komor_{measure}_ba', stream_name, optional=True)
-            if data is None:
-                continue
-            final = data[-1, :]
-            if komor_best is None or np.max(final) > np.max(komor_best):
-                komor_best = final
-
-        if pr_abfs is None or komor_best is None:
+            if data is not None:
+                komor_finals.append(data[-1, :])
+ 
+        if not abfs_finals or not komor_finals:
             print(f"  {stream_name}: missing data -- skipping.")
             continue
-
-        gap_row = pr_abfs[-1, :] - komor_best  # shape (N_CLFS,)
-        vmax    = np.max(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
-
-        # ---- replace the gap-heatmap plotting block with this ----
+ 
+        best_abfs  = np.nanmax(np.vstack(abfs_finals),  axis=0)   # (N_CLFS,)
+        best_komor = np.nanmax(np.vstack(komor_finals), axis=0)   # (N_CLFS,)
+        gap_row    = best_abfs - best_komor                       # (N_CLFS,)
+ 
+        # provenance print: best of each side and the resulting gap
+        for j, clf in enumerate(CLF_NAMES):
+            print(f"    {stream_name:32s} {clf:4s} "
+                  f"ABFS {best_abfs[j]:.3f}  Komor {best_komor[j]:.3f}  "
+                  f"gap {gap_row[j]:+.3f}")
+ 
+        vmax = np.nanmax(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
+ 
         fig, ax = plt.subplots(figsize=(max(6, N_CLFS * 1.8), 2.8))
         im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax,
-                    cmap='RdBu', aspect='auto')
+                       cmap='RdBu', aspect='auto')
         for j in range(N_CLFS):
             val = gap_row[j]
             ax.text(j, 0, f'{val:+.3f}', ha='center', va='center', fontsize=12,
@@ -892,14 +909,14 @@ if RUN_GAP:
         ax.set_yticklabels([stream_name], fontsize=10)
         ax.tick_params(axis='x', length=0, pad=8)   # labels sit clear of the strip
         ax.set_xlabel('Classifier', fontsize=11, labelpad=8)
-        ax.set_title(f'Gap (ABFS raw v2.0 minus Komorniczak best) -- {stream_name}',
-                    fontsize=11, pad=10)
-        # vertical colorbar on the RIGHT -- no longer overlaps the x-axis labels
+        ax.set_title(f'Gap (best ABFS minus best Komorniczak) -- {stream_name}',
+                     fontsize=11, pad=10)
+        # vertical colorbar on the RIGHT -- no overlap with x-axis labels
         cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
         cbar.set_label('Gap (BA)', fontsize=9)
-        fig.subplots_adjust(bottom=0.35)            # guarantees room for x labels
+        fig.subplots_adjust(bottom=0.35)            # room for x labels
         fig.savefig(fname, dpi=150, bbox_inches='tight')
         plt.close()
-
+        print(f"  Saved: {fname}")
 
 print("\nAnalysis 5 complete.")
