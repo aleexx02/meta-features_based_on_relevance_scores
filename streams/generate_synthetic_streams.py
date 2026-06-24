@@ -34,19 +34,46 @@
 #     4 cycles of SEA's 4 concepts).
 #
 # ------------------------------------------------------------------
-#  Two river facts, both verified empirically against the installed
-#  library before being relied on here:
+#  river facts, all verified empirically against the installed library
+#  (river 0.25) before being relied on here:
 #
 #  1. STAGGER takes `classification_function`, NOT `variant` (only SEA
 #     takes `variant`). The factories below use the right keyword.
 #
-#  2. SEED PROPAGATION. The seed passed to the build_* functions flows
+#  2. river generators are ITERABLES -- there is NO `next_sample()`
+#     method (that is the old scikit-multiflow API). Samples are pulled
+#     with `next(iter(gen))`. Using next_sample() raises AttributeError.
+#
+#  3. Plain river LED has no concept variants: changing only the seed
+#     gives the SAME distribution (verified: feature-mean L2 ~ 0.015
+#     between "concepts", i.e. noise), so LED segments would be
+#     statistically identical and impossible to discriminate. We use
+#     river LEDDrift with a different `n_drift_features` per concept
+#     (0/2/4/6), which produces genuinely different concepts
+#     (feature-mean L2 ~ 0.42-0.76).
+#
+#  4. SEED PROPAGATION. The seed passed to the build_* functions flows
 #     into the river generators (via the factory closures) and into
 #     every random choice (gradual transition masks). The evaluate
 #     scripts regenerate each grid cell once per replication seed and
 #     stack into (n_reps, n_windows, n_clfs); if the seed did not reach
 #     the generators, every replication of a sudden cell would be
 #     byte-identical and the error bars would be a meaningless zero.
+#
+# ------------------------------------------------------------------
+#  CHUNK ALIGNMENT (important). Concept labels are assigned on the
+#  GLOBAL chunk grid, by majority vote over each chunk's instances --
+#  NOT by per-segment integer division. The per-segment approach
+#  (seg_size // chunk_size) silently drops the partial chunk at every
+#  segment boundary whenever seg_size is not a multiple of chunk_size,
+#  which (a) makes len(concept_per_chunk) < total_instances //
+#  chunk_size and (b) desyncs the labels from the windows the evaluator
+#  actually tiles over the continuous stream. This bites Experiment 4
+#  at n_drifts=7 (chunk 200) and n_drifts=15 (chunks 100/200/500),
+#  where segments are 62500 / 31250 instances. Majority labeling on the
+#  global grid always yields exactly total_instances // chunk_size
+#  labels, aligned to the real windows, and matches the sudden-drift
+#  labeling already used in Experiment 2.
 #
 # Target class (npy last column) vs concept label: the last column is
 # the generator's REAL target (binary for SEA/STAGGER, 10-class digit
@@ -93,9 +120,14 @@ def make_stagger(seed, concept_idx):
 
 def make_led(seed, concept_idx):
     # LED: 24 features (7 real segments + 17 irrelevant), 10-class digit.
-    # Concepts differentiated by per-concept seed offset.
-    return river_synth.LED(seed=seed + concept_idx,
-                           noise_percentage=0.1, irrelevant_features=True)
+    # Plain LED has NO concept variants (seed only changes sample order ->
+    # statistically identical segments), so we use LEDDrift and encode the
+    # concept in n_drift_features (0/2/4/6 for concepts 0/1/2/3). The seed
+    # still varies the realization across replications.
+    return river_synth.LEDDrift(seed=seed,
+                                noise_percentage=0.1,
+                                irrelevant_features=True,
+                                n_drift_features=2 * concept_idx)
 
 GENERATOR_FACTORY = {'sea': make_sea, 'stagger': make_stagger, 'led': make_led}
 GENERATOR_N_CONCEPTS = {'sea': 4, 'stagger': 3, 'led': 4}
@@ -142,6 +174,14 @@ def build_river_grid_stream(gen_name,
     """
     Builder for Experiments 3 and 4.
     Generates sequential or recurring concept streams with optional gradual drift.
+
+    Returns
+    -------
+    data : np.ndarray, shape (total_instances, n_features + 1)
+        Last column is the generator's real target class.
+    concept_per_chunk : np.ndarray, shape (total_instances // chunk_size,)
+        Generative concept id per chunk, assigned by majority vote on the
+        GLOBAL chunk grid (aligned to the windows the evaluator tiles).
     """
 
     rng = np.random.RandomState(seed)
@@ -165,13 +205,14 @@ def build_river_grid_stream(gen_name,
     # ============================================================
     X = np.zeros((total_instances, n_features))
     y = np.zeros(total_instances)
+    # per-instance concept id -> later collapsed to per-chunk by majority
+    concept_per_instance = np.zeros(total_instances, dtype=int)
 
     encoder = CategoricalEncoder()
 
-    concept_per_chunk = []
     start = 0
 
-    # GLOBAL feature order (CRITICAL FIX)
+    # GLOBAL feature order (set once, reused for every segment incl. gradual)
     feature_keys = None
 
     # ============================================================
@@ -186,21 +227,23 @@ def build_river_grid_stream(gen_name,
         end = start + seg_size
 
         # --------------------------------------------------------
-        # Generate NEW concept segment
+        # Generate NEW concept segment (river generators are iterables;
+        # there is no next_sample()).
         # --------------------------------------------------------
         gen = generator_factory(
             seed=rng.randint(0, 10_000),
             concept_idx=concept_id
         )
+        gen_it = iter(gen)
 
         X_seg = []
         y_seg = []
 
         for _ in range(seg_size):
-            x_i, y_i = gen.next_sample()
+            x_i, y_i = next(gen_it)
 
             if feature_keys is None:
-                feature_keys = sorted(x_i.keys())
+                feature_keys = sorted(x_i.keys(), key=str)
 
             x_vec = [encoder.encode(k, x_i[k]) for k in feature_keys]
 
@@ -211,7 +254,10 @@ def build_river_grid_stream(gen_name,
         y_seg = np.array(y_seg, dtype=int)
 
         # --------------------------------------------------------
-        # Gradual drift
+        # Gradual drift: blend the first `width` instances with the
+        # previous concept (both features and labels). The concept
+        # LABEL of the whole segment stays the new concept id -- the
+        # blend only affects the data, matching the original design.
         # --------------------------------------------------------
         if transition == 'gradual' and seg_id > 0:
 
@@ -226,12 +272,13 @@ def build_river_grid_stream(gen_name,
                     seed=rng.randint(0, 10_000),
                     concept_idx=prev_concept
                 )
+                gen_old_it = iter(gen_old)
 
                 X_old = []
                 y_old = []
 
                 for _ in range(width):
-                    x_i, y_i = gen_old.next_sample()
+                    x_i, y_i = next(gen_old_it)
 
                     # IMPORTANT: use SAME feature_keys
                     x_vec = [encoder.encode(k, x_i[k]) for k in feature_keys]
@@ -254,7 +301,9 @@ def build_river_grid_stream(gen_name,
                     alpha[:, None] * X_seg[:width]
                 )
 
-                # Probabilistic label transition (correct drift)
+                # Probabilistic label transition (correct drift).
+                # NOTE: y_seg[:width] is a slice -> a VIEW, so the masked
+                # assignment writes back into y_seg (verified).
                 mask = rng.rand(width) < alpha
                 y_seg[:width][~mask] = y_old[~mask]
 
@@ -263,20 +312,21 @@ def build_river_grid_stream(gen_name,
         # --------------------------------------------------------
         X[start:end] = X_seg
         y[start:end] = y_seg
-
-        # --------------------------------------------------------
-        # Concept labels per chunk
-        # --------------------------------------------------------
-        n_chunks = seg_size // chunk_size
-        concept_per_chunk.extend([concept_id] * n_chunks)
+        concept_per_instance[start:end] = concept_id
 
         start = end
 
     # ============================================================
-    # Align chunk labels
+    # Concept labels on the GLOBAL chunk grid (majority vote per chunk).
+    # Always yields exactly total_instances // chunk_size labels, aligned
+    # to the windows the evaluator tiles over the continuous stream.
     # ============================================================
-    expected_chunks = total_instances // chunk_size
-    concept_per_chunk = np.array(concept_per_chunk[:expected_chunks])
+    n_chunks_total = total_instances // chunk_size
+    usable = n_chunks_total * chunk_size
+    chunk_concepts = concept_per_instance[:usable].reshape(n_chunks_total, chunk_size)
+    concept_per_chunk = np.array(
+        [np.bincount(row).argmax() for row in chunk_concepts]
+    )
 
     # ============================================================
     # Final dataset
@@ -296,7 +346,7 @@ EXP3_ORDERS = {
     'stagger': [0, 1, 2, 0],   # 3 unique concepts (0 recurs once), 3 drifts
     'led':     [0, 1, 2, 3],   # 4 concepts, 3 drifts
 }
-CHUNK_SIZES_EXP3 = [100, 200, 500]
+CHUNK_SIZES_EXP3 = [100, 200, 500]   # add 1000 here for a 24-cell grid
 
 
 def build_exp3_stream(gen_name, transition, chunk_size, seed):
@@ -338,7 +388,7 @@ EXP4_GENERATORS  = ['sea', 'stagger']
 EXP4_TRANSITIONS = ['sudden', 'gradual']
 EXP4_N_DRIFTS    = [1, 3, 7, 15]   # concept switches over the stream;
                                    # n_segments = n_drifts + 1
-CHUNK_SIZES_EXP4 = [100, 200, 500]
+CHUNK_SIZES_EXP4 = [100, 200, 500]   # add 1000 here for a 64-cell grid
 
 
 def cycling_order(gen_name, n_drifts):
@@ -495,4 +545,24 @@ if __name__ == "__main__":
                   f"({n_unique} unique, baseline {1/n_unique:.3f}, "
                   f"{'RECURS' if recurs else 'no recurrence'})")
 
-    print("\nVerification complete (no files written).")
+    # ----- chunk-alignment self-check on the cells that used to break -----
+    print("\n" + "=" * 64)
+    print("Chunk-alignment self-check (len(labels) must equal total//chunk):")
+    print("=" * 64)
+    checks = [
+        ('sea', cycling_order('sea', 15), 200),   # 16 segs, 31250
+        ('sea', cycling_order('sea', 7),  200),   # 8 segs,  62500
+        ('sea', cycling_order('sea', 15), 500),
+        ('sea', cycling_order('sea', 15), 100),
+    ]
+    all_ok = True
+    for gen, order, cs in checks:
+        _, cpc = build_river_grid_stream(gen, order, 'sudden', cs, 7,
+                                         total_instances=TOTAL_INSTANCES)
+        exp = TOTAL_INSTANCES // cs
+        ok = (len(cpc) == exp)
+        all_ok &= ok
+        print(f"  {gen} segs={len(order):2d} chunk={cs:4d}: "
+              f"len(labels)={len(cpc)} expected={exp}  {'OK' if ok else 'FAIL'}")
+    print(f"\nVerification complete (no files written). Alignment: "
+          f"{'ALL OK' if all_ok else 'FAILURES PRESENT'}")
