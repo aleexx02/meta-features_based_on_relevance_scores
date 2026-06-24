@@ -475,23 +475,27 @@ if args.stream_analysis:
 if args.gap:
     print("\n" + "="*60); print("GAP HEATMAP (fixed layout)"); print("="*60)
     for cell in REF_CELLS:
+ 
+        # ---- ABFS raw v2.0 (mean over reps), per classifier ----
         pr = load('preq_abfs_raw_ba', cell, optional=True)
         if pr is None:
             print(f"  {cell}: no ABFS raw -- skipping."); continue
-        abfs_final = np.mean(pr[:, -1, :], axis=0)
-        komor_best = None
+        abfs_final = np.mean(pr[:, -1, :], axis=0)            # (n_clfs,)
+ 
+        komor_rows = []
         for measure in MEASURES:
             d = load(f'preq_komor_{measure}_ba', cell, optional=True)
-            if d is None:
-                continue
-            f = np.mean(d[:, -1, :], axis=0)
-            if komor_best is None or np.max(f) > np.max(komor_best):
-                komor_best = f
-        if komor_best is None:
+            if d is not None:
+                komor_rows.append(np.mean(d[:, -1, :], axis=0))
+        if not komor_rows:
             print(f"  {cell}: no Komorniczak -- skipping."); continue
-        gap = abfs_final - komor_best
-        vmax = np.max(np.abs(gap)) if np.any(~np.isnan(gap)) else 1.0
-        gap_heatmap(cell, gap, vmax, f'Gap (ABFS raw v2.0 minus Komorniczak best) -- {cell}')
+        komor_best = np.nanmax(np.vstack(komor_rows), axis=0)  # (n_clfs,)
+ 
+        gap  = abfs_final - komor_best
+        vmax = np.nanmax(np.abs(gap)) if np.any(~np.isnan(gap)) else 1.0
+        gap_heatmap(
+            cell, gap, vmax,
+            f'Gap (ABFS raw v2.0 minus best Komorniczak per classifier) -- {cell}')
 
 
 # ============================================================
