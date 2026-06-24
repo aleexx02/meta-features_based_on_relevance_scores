@@ -133,103 +133,157 @@ def river_stream_to_arrays(dataset, n, encoder):
 #  CORE GRID BUILDER  (shared by Experiments 3 and 4)
 # ============================================================
 
-def build_river_grid_stream(gen_name, concept_order, transition, chunk_size,
-                            seed, total_instances=TOTAL_INSTANCES):
+def build_river_grid_stream(gen_name,
+                           concept_order,
+                           transition,
+                           chunk_size,
+                           seed,
+                           total_instances=TOTAL_INSTANCES):
     """
-    Build one river stream of ~total_instances instances, windowed at
-    chunk_size, walking through concept_order (repeats in this list =
-    recurrence). Drift boundaries split the chunks evenly across the
-    segments. Gradual transitions sigmoid-blend the last
-    RIVER_TRANSITION_FRAC of each segment into the next.
-
-    Returns: data (n_chunks*chunk_size, n_features+1), concept_per_chunk.
+    Builder for Experiments 3 and 4.
+    Generates sequential or recurring concept streams with optional gradual drift.
     """
-    factory  = GENERATOR_FACTORY[gen_name]
-    make_gen = lambda c: factory(seed, c)
-    rng      = np.random.RandomState(seed)
-    encoder  = CategoricalEncoder()
 
-    n_chunks   = total_instances // chunk_size
+    rng = np.random.RandomState(seed)
+
+    generator_factory = GENERATOR_FACTORY[gen_name]
+    n_features = RIVER_N_FEATURES[gen_name]
+
     n_segments = len(concept_order)
-    boundaries = [round(i * n_chunks / n_segments) for i in range(n_segments + 1)]
 
-    X_all, y_all, concept_per_chunk = [], [], []
+    # ============================================================
+    # Segment sizes
+    # ============================================================
+    base = total_instances // n_segments
+    remainder = total_instances % n_segments
 
-    for seg_id, concept in enumerate(concept_order):
-        seg_start, seg_end = boundaries[seg_id], boundaries[seg_id + 1]
-        seg_len = seg_end - seg_start
-        if seg_len <= 0:
+    sizes = np.array([base] * n_segments)
+    sizes[:remainder] += 1
+
+    # ============================================================
+    # Allocate arrays
+    # ============================================================
+    X = np.zeros((total_instances, n_features))
+    y = np.zeros(total_instances)
+
+    encoder = CategoricalEncoder()
+
+    concept_per_chunk = []
+    start = 0
+
+    # GLOBAL feature order (CRITICAL FIX)
+    feature_keys = None
+
+    # ============================================================
+    # Build segments
+    # ============================================================
+    for seg_id, concept_id in enumerate(concept_order):
+
+        seg_size = int(sizes[seg_id])
+        if seg_size == 0:
             continue
-        next_concept = (concept_order[seg_id + 1]
-                        if seg_id + 1 < n_segments else None)
-        gen_current = make_gen(concept)
-        gen_next    = make_gen(next_concept) if next_concept is not None else None
 
-        trans_chunks = (max(1, int(RIVER_TRANSITION_FRAC * seg_len))
-                        if (transition == 'gradual' and gen_next is not None) else 0)
+        end = start + seg_size
 
-        for c in range(seg_start, seg_end):
-            in_transition = trans_chunks > 0 and c >= seg_end - trans_chunks
-            if not in_transition:
-                Xc, yc = river_stream_to_arrays(gen_current, chunk_size, encoder)
-                concept_per_chunk.append(concept)
-            else:
-                steps    = c - (seg_end - trans_chunks)
-                progress = (steps + 0.5) / trans_chunks
-                p_new    = 1.0 / (1.0 + np.exp(-12 * (progress - 0.5)))
-                mask_new = rng.random(chunk_size) < p_new
-                n_old, n_new = int((~mask_new).sum()), int(mask_new.sum())
-                Xa, ya = river_stream_to_arrays(gen_current, n_old, encoder)
-                Xb, yb = river_stream_to_arrays(gen_next,    n_new, encoder)
-                Xc = np.empty((chunk_size, Xa.shape[1] if n_old else Xb.shape[1]))
-                yc = np.empty(chunk_size, dtype=int)
-                # Assign OLD samples safely
-                if n_old > 0:
-                    if Xa.ndim == 1:
-                        Xa = Xa.reshape(-1, Xc.shape[1])
-                    if ya.ndim == 0:
-                        ya = np.array([ya])
-                    elif ya.ndim > 1:
-                        ya = ya.ravel()
+        # --------------------------------------------------------
+        # Generate NEW concept segment
+        # --------------------------------------------------------
+        gen = generator_factory(
+            seed=rng.randint(0, 10_000),
+            concept_idx=concept_id
+        )
 
-                    if Xa.shape[0] != n_old or ya.shape[0] != n_old:
-                        raise ValueError(
-                            f"[build_river_grid_stream OLD] mismatch:\n"
-                            f"mask_old selects {n_old} rows\n"
-                            f"Xa shape: {Xa.shape}, ya shape: {ya.shape}"
-                        )
+        X_seg = []
+        y_seg = []
 
-                    Xc[~mask_new] = Xa
-                    yc[~mask_new] = ya
+        for _ in range(seg_size):
+            x_i, y_i = gen.next_sample()
 
+            if feature_keys is None:
+                feature_keys = sorted(x_i.keys())
 
-                # Assign NEW samples safely
-                if n_new > 0:
-                    if Xb.ndim == 1:
-                        Xb = Xb.reshape(-1, Xc.shape[1])
-                    if yb.ndim == 0:
-                        yb = np.array([yb])
-                    elif yb.ndim > 1:
-                        yb = yb.ravel()
+            x_vec = [encoder.encode(k, x_i[k]) for k in feature_keys]
 
-                    if Xb.shape[0] != n_new or yb.shape[0] != n_new:
-                        raise ValueError(
-                            f"[build_river_grid_stream NEW] mismatch:\n"
-                            f"mask_new selects {n_new} rows\n"
-                            f"Xb shape: {Xb.shape}, yb shape: {yb.shape}"
-                        )
+            X_seg.append(x_vec)
+            y_seg.append(int(y_i))
 
-                    Xc[mask_new] = Xb
-                    yc[mask_new] = yb
-                concept_per_chunk.append(
-                    concept if mask_new.mean() < 0.5 else next_concept)
+        X_seg = np.array(X_seg, dtype=float)
+        y_seg = np.array(y_seg, dtype=int)
 
-            X_all.append(Xc)
-            y_all.append(yc)
+        # --------------------------------------------------------
+        # Gradual drift
+        # --------------------------------------------------------
+        if transition == 'gradual' and seg_id > 0:
 
-    X_all = np.vstack(X_all)
-    y_all = np.concatenate(y_all)
-    return np.column_stack([X_all, y_all]), np.array(concept_per_chunk)
+            prev_concept = concept_order[seg_id - 1]
+
+            width = int(seg_size * RIVER_TRANSITION_FRAC)
+            width = min(width, seg_size)
+
+            if width > 0:
+
+                gen_old = generator_factory(
+                    seed=rng.randint(0, 10_000),
+                    concept_idx=prev_concept
+                )
+
+                X_old = []
+                y_old = []
+
+                for _ in range(width):
+                    x_i, y_i = gen_old.next_sample()
+
+                    # IMPORTANT: use SAME feature_keys
+                    x_vec = [encoder.encode(k, x_i[k]) for k in feature_keys]
+
+                    X_old.append(x_vec)
+                    y_old.append(int(y_i))
+
+                X_old = np.array(X_old, dtype=float)
+                y_old = np.array(y_old, dtype=int)
+
+                # Safety (shape alignment)
+                if X_old.shape != X_seg[:width].shape:
+                    raise ValueError("Shape mismatch in gradual drift construction")
+
+                # Smooth feature transition
+                alpha = np.linspace(0, 1, width)
+
+                X_seg[:width] = (
+                    (1 - alpha[:, None]) * X_old +
+                    alpha[:, None] * X_seg[:width]
+                )
+
+                # Probabilistic label transition (correct drift)
+                mask = rng.rand(width) < alpha
+                y_seg[:width][~mask] = y_old[~mask]
+
+        # --------------------------------------------------------
+        # Assign to global arrays
+        # --------------------------------------------------------
+        X[start:end] = X_seg
+        y[start:end] = y_seg
+
+        # --------------------------------------------------------
+        # Concept labels per chunk
+        # --------------------------------------------------------
+        n_chunks = seg_size // chunk_size
+        concept_per_chunk.extend([concept_id] * n_chunks)
+
+        start = end
+
+    # ============================================================
+    # Align chunk labels
+    # ============================================================
+    expected_chunks = total_instances // chunk_size
+    concept_per_chunk = np.array(concept_per_chunk[:expected_chunks])
+
+    # ============================================================
+    # Final dataset
+    # ============================================================
+    data = np.hstack((X, y.reshape(-1, 1)))
+
+    return data, concept_per_chunk
 
 
 # ============================================================
