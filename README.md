@@ -48,11 +48,8 @@ meta-features_based_on_relevance_scores/
 │   │   └── replication_check_1a.py
 │   │
 │   ├── experiment_1a/
+│   │   ├── analysis_1a.py
 │   │   └── evaluate_concept_classification_1a.py
-│   │
-│   ├── experiment_1b/
-│   │   ├── evaluate_concept_classification_1b.py
-│   │   └── komor_concept_classification_1b.py
 │   │
 │   ├── experiment_1c/
 │   │   ├── analysis_1c.py
@@ -75,7 +72,6 @@ meta-features_based_on_relevance_scores/
 │   │   ├── analysis_5.py
 │   │   └── evaluate_concept_classification_5.py
 │   │
-│   ├── analysis_1a_1b.py
 │   ├── classifier_sweep_komor.py
 │   └── classifier_sweep_prequential.py
 │
@@ -100,9 +96,6 @@ meta-features_based_on_relevance_scores/
 │   ├── experiment_0/
 │   │   └── figures/
 │   ├── experiment_1a/
-│   │   └── figures/
-│   │       └── analysis/
-│   ├── experiment_1b/
 │   │   └── figures/
 │   │       └── analysis/
 │   ├── experiment_1c/
@@ -284,7 +277,7 @@ Experiment 2 also uses StreamGenerator:
 
 ## Evaluation Protocol
 
-Prequential (test-then-train) throughout (batch CV in 1a/1b). Classifiers: River GNB, KNN, HT + sklearn MLP.
+Prequential (test-then-train) throughout (batch CV in 1a). Classifiers: River GNB, KNN, HT + sklearn MLP.
 
 **Replications.** Experiments 1c, 2, 3, 4 regenerate each stream/cell from several seeds and stack into `(n_reps, n_windows, n_clfs)` (`n_reps = 5`). Experiment 5 has no replication axis: real streams are fixed, `(n_windows, n_clfs)`. For Exp 3/4 the seed propagates into the river generators, so the replications are genuinely different realizations; replication 0 uses `SEED`.
 
@@ -301,29 +294,26 @@ Prequential (test-then-train) throughout (batch CV in 1a/1b). Classifiers: River
 **3.** `experiments/experiment_0/comparison.py`
 **4.** `experiments/experiment_0/replication_check_1a.py`
 
-### Experiments 1a & 1b: Batch CV
+### Experiments 1a: Batch CV
 
 **5.** `experiments/experiment_1a/evaluate_concept_classification_1a.py`
-**6.** `experiments/analysis_1a_1b.py --exp 1a --sanity --variance --shap --metrics`
-**7.** `experiments/experiment_1b/komor_concept_classification_1b.py`
-**8.** `experiments/experiment_1b/evaluate_concept_classification_1b.py`
-**9.** `experiments/analysis_1a_1b.py --exp 1b --sanity --variance --shap --metrics`
+**6.** `experiments/analysis_1a.py --sanity --variance --shap --metrics`
 
 ### Experiment 1c: Prequential
-**10.** `experiments/experiment_1c/komor_concept_classification_1c.py`
-**11.** `experiments/experiment_1c/evaluate_concept_classification_1c.py`
-**12.** `experiments/experiment_1c/analysis_1c.py --sanity --performance --shap --metrics --stream_analysis --gap`
+**7.** `experiments/experiment_1c/komor_concept_classification_1c.py`
+**8.** `experiments/experiment_1c/evaluate_concept_classification_1c.py`
+**9.** `experiments/experiment_1c/analysis_1c.py --sanity --performance --shap --metrics --stream_analysis --gap`
 
 ### Experiment 2: Stream Configuration Sensitivity
 chunk_size $\in$ {100,200,500,1000} $\times$ n_informative $\in$ {3,5,10,15}, $\times$2 drift $\times$5 reps.
-**13.** `experiments/experiment_2/evaluate_concept_classification_2.py`
-**14.** `experiments/experiment_2/analysis_2.py --sanity --performance --shap --metrics --grid --stream_analysis`
+**10.** `experiments/experiment_2/evaluate_concept_classification_2.py`
+**11.** `experiments/experiment_2/analysis_2.py --sanity --performance --shap --metrics --grid --stream_analysis`
 
 ### Experiment 3: SEA / STAGGER / LED (chunk_size sweep)
 **Purpose:** find out how does window size (chunk_size) affect ABFS vs Komorniczak on three classic generators, at
 500k instances?
 
-**15.** `experiments/experiment_3/evaluate_concept_classification_3.py`
+**12.** `experiments/experiment_3/evaluate_concept_classification_3.py`
 Regenerates each cell (generator $\times$ drift $\times$ chunk_size) per replication seed; ABFS (3 versions) + Komorniczak (9 measures) inline; caches pymfe to
 `external/komorniczak/results/synthetic_sea_stagger_led/`. Output per cell (shape `(n_reps, n_windows, n_clfs)`):
 ```
@@ -333,7 +323,7 @@ concept_labels_{gen}_chunk{cs}_{drift}.npy
 heatmap_comparison_komorniczak_ABFS_preq_exp3_{gen}_chunk{cs}_{drift}.png
 ```
 
-**16.** `experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics --stream_analysis --gap --grid`
+**13.** `experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics --stream_analysis --gap --grid`
 `--grid` 
 Figures saved in:
 `results/experiment_3/figures/analysis/`.
@@ -342,7 +332,7 @@ Figures saved in:
 **Purpose:** experiment where concepts recur; characterize ABFS vs
 Komorniczak across window size and drift frequency / recurrence amount.
 
-**17.** `experiments/experiment_4/evaluate_concept_classification_4.py`
+**14.** `experiments/experiment_4/evaluate_concept_classification_4.py`
 Grid is generator $\times$ drift $\times$ chunk_size $\times$ n_drifts (64 cells); pymfe cache in `external/komorniczak/results/synthetic_recurring/`.
 Output per cell:
 ```
@@ -353,12 +343,12 @@ heatmap_comparison_komorniczak_ABFS_preq_exp4_{gen}_chunk{cs}_ndrift{nd}_{drift}
 ```
 This grid is large (64 cells $\times$ 5 reps $\times$ 12 feature sets).
 
-**18.** `experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics --stream_analysis --gap --grid`
+**15.** `experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics --stream_analysis --gap --grid`
 `--grid` adds chunk_size $\times$ n_drifts gap heatmaps (ABFS minus Komorniczak best) per generator $\times$ drift, and BA-vs-n_drifts curves at each chunk_size.
 
 ### Experiment 5: real streams (INSECTS + SPAM)
-**19.** `streams/generate_real_streams.py`
-**20.** `experiments/experiment_5/evaluate_concept_classification_5.py`
+**16.** `streams/generate_real_streams.py`
+**17.** `experiments/experiment_5/evaluate_concept_classification_5.py`
 Iterates `REAL_STREAMS`; pymfe cache in `external/komorniczak/results/real/`.
 Output per stream (shape `(n_windows, n_clfs)` - no rep axis):
 ```
@@ -367,7 +357,7 @@ preq_komor_{measure}_ba_{stream}.npy  (+ _f1_, _kappa_)
 concept_labels_{stream}.npy
 heatmap_comparison_komorniczak_ABFS_preq_exp5_{stream}.png
 ```
-**21.** `experiments/experiment_5/analysis_5.py --sanity --performance --shap --metrics --stream_analysis --gap`
+**18.** `experiments/experiment_5/analysis_5.py --sanity --performance --shap --metrics --stream_analysis --gap`
 SPAM (499 feat) caps per-feature plots to the top 20 by relevance-score
 variance (PCA never capped).
 
@@ -426,7 +416,6 @@ Shared field values:
 
 | Finding | Result |
 |---|---|
-| Shuffling (1a vs 1b) | <0.002 BA — non-recurring concepts have no temporal structure |
 | Raw vs aggstats | v2.0 >> v1.1 on synthetic; v1.1 competitive on high-dim real |
 | Temporal features (v2.1) | No improvement — delta_mean, cosine_sim rank last in SHAP |
 | Sudden drift (Exp 2) | ABFS competitive at high n_informative (crossover ≈ n_inf=10) |

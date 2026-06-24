@@ -1,11 +1,8 @@
-# analysis_1a_1b.py
+# analysis_1a.py
 # ============================================================
-# Analysis of Experiment 1 results (1a and 1b).
+# Analysis of Experiment 1a results 
 #
-# Usage:
-#   python analysis_exp1.py - exp 1a
-#   python analysis_exp1.py - exp 1b
-#
+
 # Loads pre-computed results (.npy files) from
 # results/experiment_{exp}/ and produces:
 #
@@ -27,13 +24,11 @@
 #      - Same format as balanced accuracy heatmaps
 #      - Includes Komorniczak (statistical) as baseline
 #
-# Inputs (from results/experiment_{exp}/):
-#   For 1a: clf_replication_ba_*.npy, clf_replication_f1_*.npy,
+# Inputs (from results/experiment_1a/):
+#            clf_replication_ba_*.npy, clf_replication_f1_*.npy,
 #            clf_replication_kappa_*.npy (from replication_check_1a.py)
-#   For 1b: clf_komor_concept_classif_ba_*.npy, etc.
-#            (from komor_concept_classification_1b.py)
 #
-# Outputs saved to results/experiment_{exp}/figures/analysis/
+# Outputs saved to results/experiment_1a/figures/analysis/
 # ============================================================
 
 import argparse
@@ -63,22 +58,19 @@ from plot_results import print_sanity_check_summary
 # ============================================================
 #  ARGUMENT PARSING
 # ============================================================
-parser = argparse.ArgumentParser(description='Analysis for Experiment 1a or 1b.')
-parser.add_argument('--exp', type=str, choices=['1a', '1b'], required=True,
-    help='Which experiment to analyse: 1a (shuffled CV) or 1b (unshuffled CV)')
+parser = argparse.ArgumentParser(description='Analysis for Experiment 1a.')
 parser.add_argument('--sanity', action='store_true', help='Run sanity check plots')
 parser.add_argument('--variance', action='store_true', help='Run variance plots')
 parser.add_argument('--shap', action='store_true', help='Run SHAP analysis')
 parser.add_argument('--metrics', action='store_true', help='Run metrics heatmaps')
 args = parser.parse_args()
 
-EXP = args.exp
 RUN_SANITY_CHECK = args.sanity
 RUN_VARIANCE = args.variance
 RUN_SHAP = args.shap
 RUN_METRICS = args.metrics
 
-print(f"\nRunning analysis for Experiment {EXP}")
+print(f"\nRunning analysis for Experiment 1a")
 print(f"Sanity check: {RUN_SANITY_CHECK}")
 print(f"Variance: {RUN_VARIANCE}")
 print(f"SHAP: {RUN_SHAP}")
@@ -89,8 +81,8 @@ print(f"Metrics: {RUN_METRICS}")
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', f'experiment_{EXP}')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', f'experiment_{EXP}', 'figures', 'analysis')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 # ============================================================
@@ -267,7 +259,7 @@ if RUN_SANITY_CHECK:
             ax.axvline(x=-1, color='red', linestyle='--', linewidth=1.0, label='concept boundary')
             ax.set_xlabel('Time (x100 instances)')
             ax.set_ylabel('Relevance score')
-            ax.set_title(f'ABFS relevance scores - {drift_type} drift (seed={rs}) - experiment [{EXP}]')
+            ax.set_title(f'ABFS relevance scores - {drift_type} drift (seed={rs}) - experiment 1a')
             ax.legend(ncol=5, fontsize=8)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'relevance_scores_{drift_type}_rep{rep_id}.png')
@@ -291,7 +283,7 @@ if RUN_SANITY_CHECK:
                     axes[k].set_title(name, fontsize=9)
                     axes[k].set_xlabel('Window')
                     axes[k].set_ylabel('Value')
-                fig.suptitle(f'Meta-features ({mf_type}) - {drift_type} drift (seed={rs}) - experiment [{EXP}]', fontsize=11)
+                fig.suptitle(f'Meta-features ({mf_type}) - {drift_type} drift (seed={rs}) - experiment 1a', fontsize=11)
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR, f'metafeatures_{mf_type}_{drift_type}_rep{rep_id}.png')
                 fig.savefig(fname, dpi=150)
@@ -308,7 +300,7 @@ if RUN_SANITY_CHECK:
                         label=f'concept {c}', alpha=0.6, edgecolors='none', s=30)
                 ax.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}% variance)')
                 ax.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}% variance)')
-                ax.set_title(f'PCA ({mf_type}) - {drift_type} drift (seed={rs}) - experiment [{EXP}]')
+                ax.set_title(f'PCA ({mf_type}) - {drift_type} drift (seed={rs}) - experiment 1a')
                 ax.legend(ncol=4, fontsize=8)
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR, f'pca_{mf_type}_{drift_type}_rep{rep_id}.png')
@@ -351,7 +343,7 @@ if RUN_VARIANCE:
             ax.axhline(y=1/n_concepts, color='red', linestyle='--', linewidth=1.0, label='random baseline')
             ax.set_xlabel('Replication')
             ax.set_ylabel('Mean balanced accuracy')
-            ax.set_title(f'Performance variance - {mf_label} - {drift_type} drift - experiment [{EXP}]')
+            ax.set_title(f'Performance variance - {mf_label} - {drift_type} drift - experiment 1a')
             ax.set_xticks(x + width * 2)
             ax.set_xticklabels([f'Rep {i+1}\n(seed={RANDOM_STATES[i]})' for i in range(N_REPLICATIONS)], fontsize=8)
             ax.legend(fontsize=9, bbox_to_anchor=(1.01, 1), loc='upper left', borderaxespad=0)
@@ -408,7 +400,7 @@ if RUN_SHAP:
             ax.set_xticks(range(len(mf_names)))
             ax.set_xticklabels([mf_names[i] for i in sorted_idx], rotation=45, ha='right', fontsize=9)
             ax.set_ylabel('Mean absolute SHAP value')
-            ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift - experiment [{EXP}]\n'
+            ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift - experiment 1a\n'
                 f'(MLP, averaged over {N_REPLICATIONS} replications)')
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'shap_{mf_type}_{drift_type}.png')
@@ -429,11 +421,7 @@ if RUN_METRICS:
         for metric, metric_label in [('f1', 'F1'), ('kappa', 'Kappa')]:
 
             # Komorniczak baseline: for 1a use replication files (shuffled CV),
-            # for 1b use komor_concept_classif files (no-shuffle CV)
-            if EXP == '1a':
-                rc_path = os.path.join(RESULTS_DIR, f'clf_replication_{metric}_{drift_type}.npy')
-            else:  # 1b
-                rc_path = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_{metric}_{drift_type}.npy')
+            rc_path = os.path.join(RESULTS_DIR, f'clf_replication_{metric}_{drift_type}.npy')
 
             if os.path.exists(rc_path):
                 rc_raw  = np.load(rc_path)  # (n_measures, n_replications, n_folds, n_clfs)
@@ -466,7 +454,7 @@ if RUN_METRICS:
             matrix_median = np.array([r[3] for r in all_rows])
             row_labels = [r[0] for r in all_rows]
 
-            print(f"\n{metric_label} - {drift_type} drift - experiment [{EXP}]")
+            print(f"\n{metric_label} - {drift_type} drift - experiment 1a")
             print(f"{'Meta-features':<25s}", end='')
             for name in clf_names:
                 print(f"{name:>10s}", end='')
@@ -493,7 +481,7 @@ if RUN_METRICS:
             ax.set_xticklabels(clf_names, fontsize=9)
             ax.set_yticks(range(len(all_rows)))
             ax.set_yticklabels(row_labels, fontsize=9)
-            ax.set_title(f'{metric_label} - {drift_type} drift ({n_concepts} concepts) - experiment [{EXP}]', fontsize=10)
+            ax.set_title(f'{metric_label} - {drift_type} drift ({n_concepts} concepts) - experiment 1a', fontsize=10)
             plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR, f'heatmap_{metric}_{drift_type}.png')
