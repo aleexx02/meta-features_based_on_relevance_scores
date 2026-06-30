@@ -9,7 +9,7 @@
 # Per-cell plots (sanity / PCA / SHAP / stream_analysis) need ONE
 # realization of a stream. Since Exp 3 streams are not saved to disk
 # (regenerated per cell), this script regenerates the rep-0
-# (MASTER_SEED) realization of each cell via the builder in
+# (SEED) realization of each cell via the builder in
 # exp4_specs(). Performance / metrics / gap figures average over the
 # rep axis.
 #
@@ -57,7 +57,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw,
     extract_metafeatures_raw_temporal, MF_NAMES_AGGSTATS,
 )
-from streams.generate_synthetic_streams import exp4_specs, MASTER_SEED, CHUNK_SIZES
+from streams.generate_synthetic_streams import exp4_specs, SEED, CHUNK_SIZES
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -154,9 +154,9 @@ def feat_names_for(version, n_features):
 
 
 def regenerate_cell(cell):
-    """Rebuild the rep-0 (MASTER_SEED) realization of a cell."""
+    """Rebuild the rep-0 (SEED) realization of a cell."""
     spec = SPEC_BY_NAME[cell]
-    data, cpc = spec['builder'](MASTER_SEED)
+    data, cpc = spec['builder'](SEED)
     return data, cpc, spec
 
 
