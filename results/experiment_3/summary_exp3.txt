@@ -1,0 +1,23 @@
+Experiment 3 summary (SEA/STAGGER/LED)
+======================================
+
+generator  n_feat  drift    chunk  n_seg  n_conc  baseline  n_inst  inst/seg  best Komor (grp/clf)  Komor BA  best ABFS (ver/clf)         ABFS BA  gap   
+---------  ------  -------  -----  -----  ------  --------  ------  --------  --------------------  --------  --------------------------  -------  ------
+sea        3       sudden   100    4      4       0.250     500000  125000    statistical / MLP     0.995     Aggstats (v1.1) / MLP       0.983    -0.012
+sea        3       sudden   200    4      4       0.250     500000  125000    statistical / MLP     0.990     Aggstats (v1.1) / MLP       0.980    -0.011
+sea        3       sudden   500    4      4       0.250     500000  125000    statistical / MLP     0.972     Aggstats (v1.1) / MLP       0.966    -0.006
+sea        3       gradual  100    4      4       0.250     500000  125000    statistical / MLP     0.995     Aggstats (v1.1) / MLP       0.994    -0.001
+sea        3       gradual  200    4      4       0.250     500000  125000    statistical / MLP     0.990     Aggstats (v1.1) / MLP       0.987    -0.003
+sea        3       gradual  500    4      4       0.250     500000  125000    statistical / MLP     0.973     Aggstats (v1.1) / MLP       0.966    -0.007
+stagger    3       sudden   100    4      3       0.333     500000  125000    complexity / HT       0.999     Aggstats (v1.1) / MLP       0.990    -0.009
+stagger    3       sudden   200    4      3       0.333     500000  125000    complexity / HT       0.998     Aggstats (v1.1) / MLP       0.979    -0.019
+stagger    3       sudden   500    4      3       0.333     500000  125000    complexity / KNN      0.996     Aggstats (v1.1) / MLP       0.940    -0.056
+stagger    3       gradual  100    4      3       0.333     500000  125000    complexity / KNN      0.997     Aggstats (v1.1) / KNN       0.981    -0.016
+stagger    3       gradual  200    4      3       0.333     500000  125000    concept / MLP         0.991     Aggstats (v1.1) / MLP       0.963    -0.028
+stagger    3       gradual  500    4      3       0.333     500000  125000    info-theory / GNB     0.977     Aggstats (v1.1) / MLP       0.937    -0.041
+led        24      sudden   100    4      4       0.250     500000  125000    general / MLP         0.995     Aggstats (v1.1) / MLP       0.990    -0.004
+led        24      sudden   200    4      4       0.250     500000  125000    model-based / MLP     0.993     Aggstats (v1.1) / MLP       0.982    -0.011
+led        24      sudden   500    4      4       0.250     500000  125000    model-based / MLP     0.988     Raw scores (v2.0) / HT      0.994    +0.007
+led        24      gradual  100    4      4       0.250     500000  125000    general / MLP         0.994     Aggstats (v1.1) / MLP       0.979    -0.015
+led        24      gradual  200    4      4       0.250     500000  125000    model-based / MLP     0.993     Raw + temporal (v2.1) / HT  0.961    -0.032
+led        24      gradual  500    4      4       0.250     500000  125000    model-based / MLP     0.988     Raw + temporal (v2.1) / HT  0.977    -0.011

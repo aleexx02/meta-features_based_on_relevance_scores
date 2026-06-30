@@ -1,0 +1,53 @@
+Experiment 4 summary (recurring SEA/STAGGER)
+============================================
+
+generator  n_feat  drift    chunk  n_drifts  n_seg  n_conc  recurs  baseline  n_inst  inst/seg  best Komor (grp/clf)  Komor BA  best ABFS (ver/clf)    ABFS BA  gap   
+---------  ------  -------  -----  --------  -----  ------  ------  --------  ------  --------  --------------------  --------  ---------------------  -------  ------
+sea        3       sudden   100    1         2      2       no      0.500     500000  250000    general / MLP         0.999     Aggstats (v1.1) / KNN  0.998    -0.002
+sea        3       sudden   100    3         4      4       no      0.250     500000  125000    statistical / MLP     0.995     Aggstats (v1.1) / MLP  0.983    -0.012
+sea        3       sudden   100    7         8      4       yes     0.250     500000  62500     concept / MLP         0.983     Aggstats (v1.1) / MLP  0.968    -0.015
+sea        3       sudden   100    15        16     4       yes     0.250     500000  31250     concept / MLP         0.946     Aggstats (v1.1) / MLP  0.939    -0.007
+sea        3       sudden   200    1         2      2       no      0.500     500000  250000    general / MLP         0.999     Aggstats (v1.1) / KNN  0.997    -0.002
+sea        3       sudden   200    3         4      4       no      0.250     500000  125000    statistical / MLP     0.990     Aggstats (v1.1) / MLP  0.980    -0.011
+sea        3       sudden   200    7         8      4       yes     0.250     500000  62500     concept / MLP         0.966     Aggstats (v1.1) / MLP  0.954    -0.012
+sea        3       sudden   200    15        16     4       yes     0.250     500000  31250     concept / MLP         0.926     Aggstats (v1.1) / MLP  0.877    -0.049
+sea        3       sudden   500    1         2      2       no      0.500     500000  250000    general / MLP         0.997     Aggstats (v1.1) / MLP  0.997    +0.000
+sea        3       sudden   500    3         4      4       no      0.250     500000  125000    statistical / MLP     0.972     Aggstats (v1.1) / MLP  0.966    -0.006
+sea        3       sudden   500    7         8      4       yes     0.250     500000  62500     complexity / GNB      0.930     Aggstats (v1.1) / MLP  0.890    -0.039
+sea        3       sudden   500    15        16     4       yes     0.250     500000  31250     complexity / HT       0.916     Aggstats (v1.1) / HT   0.838    -0.078
+sea        3       gradual  100    1         2      2       no      0.500     500000  250000    general / MLP         0.999     Aggstats (v1.1) / KNN  0.997    -0.002
+sea        3       gradual  100    3         4      4       no      0.250     500000  125000    statistical / MLP     0.995     Aggstats (v1.1) / MLP  0.994    -0.001
+sea        3       gradual  100    7         8      4       yes     0.250     500000  62500     concept / MLP         0.982     Aggstats (v1.1) / MLP  0.982    +0.000
+sea        3       gradual  100    15        16     4       yes     0.250     500000  31250     clustering / MLP      0.939     Aggstats (v1.1) / MLP  0.888    -0.051
+sea        3       gradual  200    1         2      2       no      0.500     500000  250000    general / MLP         0.999     Aggstats (v1.1) / KNN  0.994    -0.005
+sea        3       gradual  200    3         4      4       no      0.250     500000  125000    statistical / MLP     0.990     Aggstats (v1.1) / MLP  0.987    -0.003
+sea        3       gradual  200    7         8      4       yes     0.250     500000  62500     concept / MLP         0.964     Aggstats (v1.1) / MLP  0.967    +0.003
+sea        3       gradual  200    15        16     4       yes     0.250     500000  31250     concept / MLP         0.910     Aggstats (v1.1) / MLP  0.917    +0.007
+sea        3       gradual  500    1         2      2       no      0.500     500000  250000    general / MLP         0.997     Aggstats (v1.1) / MLP  0.997    -0.000
+sea        3       gradual  500    3         4      4       no      0.250     500000  125000    statistical / MLP     0.973     Aggstats (v1.1) / MLP  0.966    -0.007
+sea        3       gradual  500    7         8      4       yes     0.250     500000  62500     concept / MLP         0.909     Aggstats (v1.1) / MLP  0.924    +0.015
+sea        3       gradual  500    15        16     4       yes     0.250     500000  31250     complexity / KNN      0.862     Aggstats (v1.1) / MLP  0.834    -0.028
+stagger    3       sudden   100    1         2      2       no      0.500     500000  250000    complexity / GNB      1.000     Aggstats (v1.1) / GNB  1.000    +0.000
+stagger    3       sudden   100    3         4      3       yes     0.333     500000  125000    complexity / HT       0.999     Aggstats (v1.1) / MLP  0.990    -0.009
+stagger    3       sudden   100    7         8      3       yes     0.333     500000  62500     complexity / HT       0.999     Aggstats (v1.1) / MLP  0.968    -0.032
+stagger    3       sudden   100    15        16     3       yes     0.333     500000  31250     complexity / HT       0.998     Aggstats (v1.1) / MLP  0.928    -0.071
+stagger    3       sudden   200    1         2      2       no      0.500     500000  250000    complexity / KNN      0.999     Aggstats (v1.1) / GNB  0.999    -0.000
+stagger    3       sudden   200    3         4      3       yes     0.333     500000  125000    info-theory / HT      0.998     Aggstats (v1.1) / MLP  0.979    -0.019
+stagger    3       sudden   200    7         8      3       yes     0.333     500000  62500     info-theory / HT      0.998     Aggstats (v1.1) / MLP  0.947    -0.051
+stagger    3       sudden   200    15        16     3       yes     0.333     500000  31250     complexity / HT       0.996     Aggstats (v1.1) / MLP  0.879    -0.116
+stagger    3       sudden   500    1         2      2       no      0.500     500000  250000    complexity / KNN      0.999     Aggstats (v1.1) / GNB  0.998    -0.001
+stagger    3       sudden   500    3         4      3       yes     0.333     500000  125000    clustering / HT       0.995     Aggstats (v1.1) / MLP  0.940    -0.056
+stagger    3       sudden   500    7         8      3       yes     0.333     500000  62500     info-theory / HT      0.997     Aggstats (v1.1) / MLP  0.863    -0.133
+stagger    3       sudden   500    15        16     3       yes     0.333     500000  31250     info-theory / HT      0.994     Aggstats (v1.1) / MLP  0.675    -0.319
+stagger    3       gradual  100    1         2      2       no      0.500     500000  250000    complexity / GNB      0.999     Aggstats (v1.1) / KNN  0.997    -0.003
+stagger    3       gradual  100    3         4      3       yes     0.333     500000  125000    complexity / KNN      0.997     Aggstats (v1.1) / KNN  0.980    -0.017
+stagger    3       gradual  100    7         8      3       yes     0.333     500000  62500     general / MLP         0.982     Aggstats (v1.1) / MLP  0.955    -0.027
+stagger    3       gradual  100    15        16     3       yes     0.333     500000  31250     complexity / GNB      0.948     Aggstats (v1.1) / MLP  0.920    -0.029
+stagger    3       gradual  200    1         2      2       no      0.500     500000  250000    complexity / GNB      0.999     Aggstats (v1.1) / GNB  0.995    -0.004
+stagger    3       gradual  200    3         4      3       yes     0.333     500000  125000    concept / MLP         0.991     Aggstats (v1.1) / MLP  0.963    -0.028
+stagger    3       gradual  200    7         8      3       yes     0.333     500000  62500     complexity / GNB      0.966     Aggstats (v1.1) / MLP  0.934    -0.033
+stagger    3       gradual  200    15        16     3       yes     0.333     500000  31250     complexity / GNB      0.950     Aggstats (v1.1) / MLP  0.865    -0.085
+stagger    3       gradual  500    1         2      2       no      0.500     500000  250000    clustering / GNB      0.998     Aggstats (v1.1) / MLP  0.998    -0.000
+stagger    3       gradual  500    3         4      3       yes     0.333     500000  125000    info-theory / GNB     0.977     Aggstats (v1.1) / MLP  0.937    -0.041
+stagger    3       gradual  500    7         8      3       yes     0.333     500000  62500     complexity / HT       0.961     Aggstats (v1.1) / MLP  0.841    -0.120
+stagger    3       gradual  500    15        16     3       yes     0.333     500000  31250     complexity / HT       0.949     Aggstats (v1.1) / MLP  0.673    -0.276

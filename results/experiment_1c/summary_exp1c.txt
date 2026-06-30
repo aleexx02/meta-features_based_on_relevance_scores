@@ -1,0 +1,7 @@
+Experiment 1c summary
+=====================
+
+drift    n_feat  n_conc  baseline  best Komor (grp/clf)  Komor BA  best ABFS (ver/clf)           ABFS BA  gap   
+-------  ------  ------  --------  --------------------  --------  ----------------------------  -------  ------
+sudden   10      21      0.048     statistical / HT      0.896     Raw scores (v2.0) / KNN       0.860    -0.036
+gradual  10      25      0.040     statistical / HT      0.640     Aggregate stats (v1.1) / MLP  0.562    -0.078
