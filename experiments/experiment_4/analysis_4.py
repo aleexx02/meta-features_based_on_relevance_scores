@@ -1,4 +1,4 @@
-# analysis_3.py
+# analysis_4.py
 # ============================================================
 # Analysis of Experiment 4 results (recurring SEA / STAGGER, chunk_size x n_drifts grid).
 #
@@ -57,7 +57,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw,
     extract_metafeatures_raw_temporal, MF_NAMES_AGGSTATS,
 )
-from streams.generate_synthetic_streams import exp4_specs, SEED, CHUNK_SIZES
+from streams.generate_synthetic_streams import exp4_specs, SEED, CHUNK_SIZES_EXP4 as CHUNK_SIZES
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier

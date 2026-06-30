@@ -56,7 +56,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw,
     extract_metafeatures_raw_temporal, MF_NAMES_AGGSTATS,
 )
-from streams.generate_synthetic_streams import exp3_specs, SEED, CHUNK_SIZES
+from streams.generate_synthetic_streams import exp3_specs, SEED, CHUNK_SIZES_EXP3 as CHUNK_SIZES
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
