@@ -104,6 +104,7 @@ parser.add_argument('--shap',       action='store_true', help='Run SHAP analysis
 parser.add_argument('--metrics',    action='store_true', help='Run metrics heatmaps')
 parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
 parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
+parser.add_argument('--bars', action='store_true')
 parser.add_argument('--summary', action='store_true')
 
 args = parser.parse_args()
@@ -114,6 +115,7 @@ RUN_SHAP         = args.shap
 RUN_METRICS      = args.metrics
 RUN_STREAM_ANALYSIS = args.stream_analysis
 RUN_GAP          = args.gap
+RUN_BARS         = args.bars
 
 print(f"\nRunning analysis for Experiment 1c")
 print(f"Sanity check    : {RUN_SANITY_CHECK}")
@@ -910,6 +912,76 @@ if RUN_GAP:
             plt.close(); print(f"Gap heatmap saved at: '{fname}'")
             print(f"Gap heatmap saved at: '{fname}'")
 
+
+# ============================================================
+#  BARS - BA per ABFS version (best clf) + Komorniczak, per drift type
+#  (1c has no swept parameter, like Exp 5: grouped bars, one group per
+#   drift type instead of per stream.)
+# ============================================================
+if RUN_BARS:
+    print("\n" + "="*60)
+    print("BA per version, per drift type")
+    print("="*60)
+
+    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
+
+    drifts, abfs_ba, komor_ba, baselines = [], {v: [] for v in ABFS_VERSIONS}, [], []
+    for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
+        # best clf per ABFS version (mean over reps, final window)
+        per_version = {}
+        any_ok = False
+        for version in ABFS_VERSIONS:
+            apath = os.path.join(RESULTS_DIR, f'clf_ba_{version}_{drift_type}.npy')
+            if os.path.exists(apath):
+                per_version[version] = float(np.max(np.mean(np.load(apath)[:, -1, :], axis=0)))
+                any_ok = True
+            else:
+                per_version[version] = np.nan
+        # Komorniczak best-of-9 (best clf)
+        kpath = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_ba_{drift_type}.npy')
+        kb = np.nan
+        if os.path.exists(kpath):
+            kfin = np.mean(np.load(kpath)[:, :, -1, :], axis=1)   # (n_measures, n_clfs)
+            kb = float(np.nanmax(kfin))
+        if not any_ok and np.isnan(kb):
+            continue
+        drifts.append(drift_type)
+        for version in ABFS_VERSIONS:
+            abfs_ba[version].append(per_version[version])
+        komor_ba.append(kb)
+        baselines.append(1.0 / n_concepts)
+
+    if not drifts:
+        print("  no data -- skipping.")
+    else:
+        fname = os.path.join(FIGURES_DIR, 'ba_per_version.png')
+        n_groups = len(drifts)
+        n_bars   = len(ABFS_VERSIONS) + 1
+        width    = 0.8 / n_bars
+        x        = np.arange(n_groups)
+
+        fig, ax = plt.subplots(figsize=(max(7, n_groups * 2.2), 5))
+        for bi, version in enumerate(ABFS_VERSIONS):
+            ax.bar(x + bi * width, abfs_ba[version], width,
+                   color=VERSION_COLORS[version], label=f'ABFS {ABFS_LABELS[version]}')
+        ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
+               color='#3cb44b', label='Komorniczak best-of-9')
+
+        for gi in range(n_groups):
+            ax.hlines(baselines[gi], x[gi] - width/2, x[gi] + n_bars*width - width/2,
+                      color='red', linestyle='--', linewidth=1.0,
+                      label='random baseline' if gi == 0 else None)
+
+        ax.set_xticks(x + (n_bars - 1) * width / 2)
+        ax.set_xticklabels([f'{d} drift' for d in drifts], fontsize=10)
+        ax.set_ylabel('Final balanced accuracy (best clf)')
+        ax.set_ylim(0, 1)
+        ax.set_title('Exp 1c: BA per ABFS version vs Komorniczak (best classifier)')
+        ax.legend(fontsize=8, ncol=2)
+        ax.grid(alpha=0.3, axis='y')
+        fig.tight_layout()
+        fig.savefig(fname, dpi=150, bbox_inches='tight')
+        plt.close(); print(f"  Saved: {fname}")
 
 
 if args.summary:
