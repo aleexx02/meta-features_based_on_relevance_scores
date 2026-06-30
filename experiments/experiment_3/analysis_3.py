@@ -576,57 +576,55 @@ if args.gap:
 #  ABFS: one curve per version (best clf) + Komorniczak best-of-9
 # ============================================================
 if args.grid:
-    print("\n" + "="*60); print("GRID: BA vs chunk_size"); print("="*60)
+    print("\n" + "="*60); print("GRID: BA vs chunk_size (per classifier)"); print("="*60)
 
-    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
+    def komor_best_per_clf(cell):
+        """Best Komorniczak group per classifier (mean over reps, final window)."""
+        best = None
+        for measure in MEASURES:
+            d = load(f'preq_komor_{measure}_ba', cell, optional=True)
+            if d is None:
+                continue
+            per_clf = np.mean(d[:, -1, :], axis=0)
+            best = per_clf if best is None else np.nanmax(np.vstack([best, per_clf]), axis=0)
+        return best
 
     for (gen, drift) in GEN_DRIFT_PAIRS:
         fname = os.path.join(FIGURES_DIR, f'ba_vs_chunksize_{gen}_{drift}.png')
         if os.path.exists(fname):
             print(f"  Exists: {fname}"); continue
 
-        # one ABFS curve per version + one Komorniczak curve
-        abfs_curves = {v: {'xs': [], 'ba': []} for v in ABFS_VERSIONS}
-        komor_xs, komor_curve = [], []
+        xs = []
+        abfs_clf  = {name: [] for name in CLF_NAMES}   # raw v2.0, per clf
+        komor_clf = {name: [] for name in CLF_NAMES}   # best-of-9, per clf
 
         for cs in CHUNK_SIZES:
             cell = f'{gen}_chunk{cs}_{drift}'
+            pr = load('preq_abfs_raw_ba', cell, optional=True)
+            kb = komor_best_per_clf(cell)
+            if pr is None or kb is None:
+                continue
+            abfs_per_clf = np.mean(pr[:, -1, :], axis=0)
+            xs.append(cs)
+            for ci, name in enumerate(CLF_NAMES):
+                abfs_clf[name].append(abfs_per_clf[ci])
+                komor_clf[name].append(kb[ci])
 
-            for version in ABFS_VERSIONS:
-                pr = load(f'preq_abfs_{version}_ba', cell, optional=True)
-                if pr is None:
-                    continue
-                abfs_curves[version]['xs'].append(cs)
-                abfs_curves[version]['ba'].append(float(np.max(np.mean(pr[:, -1, :], axis=0))))
-
-            kb = None
-            for measure in MEASURES:
-                d = load(f'preq_komor_{measure}_ba', cell, optional=True)
-                if d is None:
-                    continue
-                v = float(np.max(np.mean(d[:, -1, :], axis=0)))
-                kb = v if kb is None else max(kb, v)
-            if kb is not None:
-                komor_xs.append(cs); komor_curve.append(kb)
-
-        if not any(abfs_curves[v]['xs'] for v in ABFS_VERSIONS) and not komor_xs:
+        if not xs:
             print(f"  {gen}_{drift}: no data -- skipping."); continue
 
         fig, ax = plt.subplots(figsize=(8, 5))
-        for version in ABFS_VERSIONS:
-            c = abfs_curves[version]
-            if not c['xs']:
-                continue
-            ax.plot(c['xs'], c['ba'], 'o-', color=VERSION_COLORS[version],
-                    label=f'ABFS {ABFS_LABELS[version]} (best clf)', linewidth=2)
-        if komor_xs:
-            ax.plot(komor_xs, komor_curve, 's--', color='#3cb44b',
-                    label='Komorniczak best-of-9 (best clf)', linewidth=2)
-
+        for ci, name in enumerate(CLF_NAMES):
+            color = CLF_COLORS.get(name, f'C{ci}')
+            ax.plot(xs, abfs_clf[name], 'o-', color=color,
+                    label=f'{name} ABFS', linewidth=1.5, markersize=5)
+            ax.plot(xs, komor_clf[name], 's--', color=color,
+                    label=f'{name} Komor', linewidth=1.5, markersize=5)
         ax.set_xscale('log'); ax.set_xticks(CHUNK_SIZES); ax.set_xticklabels(CHUNK_SIZES)
         ax.set_xlabel('chunk_size'); ax.set_ylabel('Final balanced accuracy (mean over reps)')
-        ax.set_title(f'BA vs chunk_size -- {gen}, {drift}'); ax.legend(); ax.set_ylim(0, 1)
-        ax.grid(alpha=0.3)
+        ax.set_title(f'BA vs chunk_size -- ABFS raw v2.0 vs Komorniczak -- {gen}, {drift}')
+        ax.legend(fontsize=8, ncol=2, bbox_to_anchor=(1.01, 1), loc='upper left')
+        ax.set_ylim(0, 1); ax.grid(alpha=0.3)
         fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
         plt.close(); print(f"  Saved: {fname}")
 

@@ -572,24 +572,19 @@ if args.gap:
 # ============================================================
 #  GRID - BA-vs-n_drifts curves
 # ============================================================
-# ============================================================
-#  GRID  -- BA vs n_drifts curves (per gen, chunk_size, drift)
-#  ABFS: one curve per version (best clf) + Komorniczak best-of-9
-# ============================================================
+
 if args.grid:
-    print("\n" + "="*60); print("GRID: BA vs n_drifts curves"); print("="*60)
+    print("\n" + "="*60); print("GRID: BA vs n_drifts (per classifier)"); print("="*60)
 
-    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
-
-    def best_komor(cell):
-        kb = None
+    def komor_best_per_clf(cell):
+        best = None
         for measure in MEASURES:
             d = load(f'preq_komor_{measure}_ba', cell, optional=True)
             if d is None:
                 continue
-            v = float(np.max(np.mean(d[:, -1, :], axis=0)))
-            kb = v if kb is None else max(kb, v)
-        return kb
+            per_clf = np.mean(d[:, -1, :], axis=0)
+            best = per_clf if best is None else np.nanmax(np.vstack([best, per_clf]), axis=0)
+        return best
 
     for (gen, drift) in GEN_DRIFT_PAIRS:
         for cs in CHUNK_SIZES:
@@ -597,41 +592,37 @@ if args.grid:
             if os.path.exists(fname):
                 continue
 
-            abfs_curves = {v: {'xs': [], 'ba': []} for v in ABFS_VERSIONS}
-            komor_xs, komor_curve = [], []
+            xs = []
+            abfs_clf  = {name: [] for name in CLF_NAMES}
+            komor_clf = {name: [] for name in CLF_NAMES}
 
             for nd in EXP4_N_DRIFTS:
                 cell = f'{gen}_chunk{cs}_ndrift{nd}_{drift}'
+                pr = load('preq_abfs_raw_ba', cell, optional=True)
+                kb = komor_best_per_clf(cell)
+                if pr is None or kb is None:
+                    continue
+                abfs_per_clf = np.mean(pr[:, -1, :], axis=0)
+                xs.append(nd)
+                for ci, name in enumerate(CLF_NAMES):
+                    abfs_clf[name].append(abfs_per_clf[ci])
+                    komor_clf[name].append(kb[ci])
 
-                for version in ABFS_VERSIONS:
-                    pr = load(f'preq_abfs_{version}_ba', cell, optional=True)
-                    if pr is None:
-                        continue
-                    abfs_curves[version]['xs'].append(nd)
-                    abfs_curves[version]['ba'].append(float(np.max(np.mean(pr[:, -1, :], axis=0))))
-
-                k = best_komor(cell)
-                if k is not None:
-                    komor_xs.append(nd); komor_curve.append(k)
-
-            if not any(abfs_curves[v]['xs'] for v in ABFS_VERSIONS) and not komor_xs:
+            if not xs:
                 continue
 
             fig, ax = plt.subplots(figsize=(8, 5))
-            for version in ABFS_VERSIONS:
-                c = abfs_curves[version]
-                if not c['xs']:
-                    continue
-                ax.plot(c['xs'], c['ba'], 'o-', color=VERSION_COLORS[version],
-                        label=f'ABFS {ABFS_LABELS[version]} (best clf)', linewidth=2)
-            if komor_xs:
-                ax.plot(komor_xs, komor_curve, 's--', color='#3cb44b',
-                        label='Komorniczak best-of-9 (best clf)', linewidth=2)
-
+            for ci, name in enumerate(CLF_NAMES):
+                color = CLF_COLORS.get(name, f'C{ci}')
+                ax.plot(xs, abfs_clf[name], 'o-', color=color,
+                        label=f'{name} ABFS', linewidth=1.5, markersize=5)
+                ax.plot(xs, komor_clf[name], 's--', color=color,
+                        label=f'{name} Komor', linewidth=1.5, markersize=5)
             ax.set_xticks(EXP4_N_DRIFTS); ax.set_xlabel('n_drifts (recurrence amount)')
             ax.set_ylabel('Final balanced accuracy (mean over reps)')
-            ax.set_title(f'BA vs n_drifts -- {gen}, chunk_size={cs}, {drift}')
-            ax.legend(); ax.set_ylim(0, 1); ax.grid(alpha=0.3)
+            ax.set_title(f'BA vs n_drifts -- ABFS raw v2.0 vs Komorniczak -- {gen}, chunk_size={cs}, {drift}')
+            ax.legend(fontsize=8, ncol=2, bbox_to_anchor=(1.01, 1), loc='upper left')
+            ax.set_ylim(0, 1); ax.grid(alpha=0.3)
             fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
 
