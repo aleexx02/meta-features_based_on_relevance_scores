@@ -78,6 +78,8 @@ import shap
 import os
 import sys
 import warnings
+import csv
+
 warnings.filterwarnings('ignore')
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -450,18 +452,12 @@ def best_side(load_fn, keys, has_reps):
     return best
 
 
-def write_summary_txt(path, title, header, rows):
-    """Write a fixed-width aligned text table."""
-    cols = list(zip(header, *rows)) if rows else [(h,) for h in header]
-    widths = [max(len(str(c)) for c in col) for col in cols]
-    def fmt(r): return "  ".join(str(c).ljust(w) for c, w in zip(r, widths))
-    with open(path, 'w') as f:
-        f.write(title + "\n")
-        f.write("=" * len(title) + "\n\n")
-        f.write(fmt(header) + "\n")
-        f.write("  ".join("-" * w for w in widths) + "\n")
-        for r in rows:
-            f.write(fmt(r) + "\n")
+def write_summary_csv(path, title, header, rows):
+    """Write the summary as a CSV file."""
+    with open(path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(rows)
     print(f"  Saved: {path}")
 
 
@@ -947,5 +943,5 @@ if args.summary:
     header = ['drift', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_txt(os.path.join(RESULTS_DIR, 'summary_exp1c.txt'),
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1c.csv'),
                       'Experiment 1c summary', header, rows)
