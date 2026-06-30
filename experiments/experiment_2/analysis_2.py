@@ -1003,7 +1003,7 @@ if args.summary:
     header = ['drift', 'chunk', 'n_inform', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp2.txt'),
+    write_summary_txt(os.path.join(RESULTS_DIR, 'summary_exp2.txt'),
                       'Experiment 2 summary (config sensitivity)', header, rows)
 
 print("\nAnalysis 2 complete.")

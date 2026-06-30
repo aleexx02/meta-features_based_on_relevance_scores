@@ -1058,7 +1058,7 @@ if args.summary:
     header = ['stream', 'n_feat', 'n_conc', 'n_drifts', 'n_win', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp5.txt'),
+    write_summary_txt(os.path.join(RESULTS_DIR, 'summary_exp5.txt'),
                       'Experiment 5 summary (real streams)', header, rows)
     
     

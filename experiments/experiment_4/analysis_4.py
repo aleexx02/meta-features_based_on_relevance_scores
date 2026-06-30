@@ -652,7 +652,7 @@ if args.summary:
               'n_conc', 'recurs', 'baseline', 'n_inst', 'inst/seg',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp4.txt'),
+    write_summary_txt(os.path.join(RESULTS_DIR, 'summary_exp4.txt'),
                       'Experiment 4 summary (recurring SEA/STAGGER)', header, rows)
 
 print("\nAnalysis 4 complete.")

@@ -947,5 +947,5 @@ if args.summary:
     header = ['drift', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp1c.txt'),
+    write_summary_txt(os.path.join(RESULTS_DIR, 'summary_exp1c.txt'),
                       'Experiment 1c summary', header, rows)

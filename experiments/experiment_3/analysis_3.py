@@ -652,7 +652,7 @@ if args.summary:
               'n_inst', 'inst/seg',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp3.txt'),
+    write_summary_txt(os.path.join(RESULTS_DIR, 'summary_exp3.txt'),
                       'Experiment 3 summary (SEA/STAGGER/LED)', header, rows)
     
 
