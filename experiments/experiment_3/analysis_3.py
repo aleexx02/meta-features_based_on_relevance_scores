@@ -473,62 +473,118 @@ if args.stream_analysis:
 #  GAP HEATMAP  (reference cells, fixed layout, mean over reps)
 # ============================================================
 if args.gap:
-    print("\n" + "="*60); print("GAP HEATMAP (fixed layout)"); print("="*60)
-    for cell in REF_CELLS:
- 
-        # ---- ABFS raw v2.0 (mean over reps), per classifier ----
-        pr = load('preq_abfs_raw_ba', cell, optional=True)
-        if pr is None:
-            print(f"  {cell}: no ABFS raw -- skipping."); continue
-        abfs_final = np.mean(pr[:, -1, :], axis=0)            # (n_clfs,)
- 
-        komor_rows = []
+    print("\n" + "="*60); print("GRID GAP HEATMAP (per ABFS version)"); print("="*60)
+    GENERATORS = sorted({g for (g, d) in GEN_DRIFT_PAIRS})
+    DRIFTS     = sorted({d for (g, d) in GEN_DRIFT_PAIRS})
+
+    def best_abfs_v(cell, version):
+        pr = load(f'preq_abfs_{version}_ba', cell, optional=True)
+        return None if pr is None else float(np.max(np.mean(pr[:, -1, :], axis=0)))
+
+    def best_komor(cell):
+        kb = None
         for measure in MEASURES:
             d = load(f'preq_komor_{measure}_ba', cell, optional=True)
-            if d is not None:
-                komor_rows.append(np.mean(d[:, -1, :], axis=0))
-        if not komor_rows:
-            print(f"  {cell}: no Komorniczak -- skipping."); continue
-        komor_best = np.nanmax(np.vstack(komor_rows), axis=0)  # (n_clfs,)
- 
-        gap  = abfs_final - komor_best
-        vmax = np.nanmax(np.abs(gap)) if np.any(~np.isnan(gap)) else 1.0
-        gap_heatmap(
-            cell, gap, vmax,
-            f'Gap (ABFS raw v2.0 minus best Komorniczak per classifier) -- {cell}')
+            if d is None:
+                continue
+            v = float(np.max(np.mean(d[:, -1, :], axis=0)))
+            kb = v if kb is None else max(kb, v)
+        return kb
+
+    for drift in DRIFTS:
+        grids = {}
+        for version in ABFS_VERSIONS:
+            g = np.full((len(GENERATORS), len(CHUNK_SIZES)), np.nan)
+            for ri, gen in enumerate(GENERATORS):
+                for ci, cs in enumerate(CHUNK_SIZES):
+                    cell = f'{gen}_chunk{cs}_{drift}'
+                    a = best_abfs_v(cell, version); k = best_komor(cell)
+                    if a is not None and k is not None:
+                        g[ri, ci] = a - k
+            grids[version] = g
+
+        finite = np.concatenate([g[np.isfinite(g)] for g in grids.values()]) \
+                 if any(np.any(np.isfinite(g)) for g in grids.values()) else np.array([])
+        if finite.size == 0:
+            print(f"  {drift}: no data -- skipping."); continue
+        vmax = float(np.max(np.abs(finite))) or 1.0
+
+        for version in ABFS_VERSIONS:
+            g = grids[version]
+            if not np.any(np.isfinite(g)):
+                continue
+            fname = os.path.join(FIGURES_DIR, f'gap_grid_{version}_{drift}.png')
+            if os.path.exists(fname):
+                print(f"  Exists: {fname}"); continue
+            fig, ax = plt.subplots(figsize=(7, 4.5))
+            im = ax.imshow(g, vmin=-vmax, vmax=vmax, cmap='RdBu', aspect='auto')
+            for ri in range(len(GENERATORS)):
+                for ci in range(len(CHUNK_SIZES)):
+                    v = g[ri, ci]
+                    if not np.isnan(v):
+                        ax.text(ci, ri, f'{v:+.3f}', ha='center', va='center', fontsize=10,
+                                color='white' if abs(v) > vmax * 0.6 else 'black')
+            ax.set_xticks(range(len(CHUNK_SIZES))); ax.set_xticklabels(CHUNK_SIZES)
+            ax.set_yticks(range(len(GENERATORS))); ax.set_yticklabels(GENERATORS)
+            ax.set_xlabel('chunk_size'); ax.set_ylabel('generator')
+            ax.set_title(f'Gap (best ABFS {ABFS_LABELS[version]} minus best Komorniczak)\n{drift}')
+            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04); cbar.set_label('Gap (BA)')
+            fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
+            plt.close(); print(f"  Saved: {fname}")
 
 
 # ============================================================
-#  GRID  -- BA vs chunk_size sensitivity curves (per gen, drift)
+#  GRID  - BA vs chunk_size sensitivity curves (per gen, drift)
+#  ABFS: one curve per version (best clf) + Komorniczak best-of-9
 # ============================================================
 if args.grid:
     print("\n" + "="*60); print("GRID: BA vs chunk_size"); print("="*60)
+
+    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
+
     for (gen, drift) in GEN_DRIFT_PAIRS:
         fname = os.path.join(FIGURES_DIR, f'ba_vs_chunksize_{gen}_{drift}.png')
         if os.path.exists(fname):
             print(f"  Exists: {fname}"); continue
-        xs, abfs_curve, komor_curve = [], [], []
+
+        # one ABFS curve per version + one Komorniczak curve
+        abfs_curves = {v: {'xs': [], 'ba': []} for v in ABFS_VERSIONS}
+        komor_xs, komor_curve = [], []
+
         for cs in CHUNK_SIZES:
             cell = f'{gen}_chunk{cs}_{drift}'
-            pr = load('preq_abfs_raw_ba', cell, optional=True)
-            if pr is None:
-                continue
-            abfs_best = np.max(np.mean(pr[:, -1, :], axis=0))   # best classifier, mean over reps
+
+            for version in ABFS_VERSIONS:
+                pr = load(f'preq_abfs_{version}_ba', cell, optional=True)
+                if pr is None:
+                    continue
+                abfs_curves[version]['xs'].append(cs)
+                abfs_curves[version]['ba'].append(float(np.max(np.mean(pr[:, -1, :], axis=0))))
+
             kb = None
             for measure in MEASURES:
                 d = load(f'preq_komor_{measure}_ba', cell, optional=True)
                 if d is None:
                     continue
-                v = np.max(np.mean(d[:, -1, :], axis=0))
+                v = float(np.max(np.mean(d[:, -1, :], axis=0)))
                 kb = v if kb is None else max(kb, v)
-            if kb is None:
-                continue
-            xs.append(cs); abfs_curve.append(abfs_best); komor_curve.append(kb)
-        if not xs:
+            if kb is not None:
+                komor_xs.append(cs); komor_curve.append(kb)
+
+        if not any(abfs_curves[v]['xs'] for v in ABFS_VERSIONS) and not komor_xs:
             print(f"  {gen}_{drift}: no data -- skipping."); continue
+
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(xs, abfs_curve, 'o-', color='#911eb4', label='ABFS raw v2.0 (best clf)', linewidth=2)
-        ax.plot(xs, komor_curve, 's-', color='#3cb44b', label='Komorniczak best-of-9 (best clf)', linewidth=2)
+        for version in ABFS_VERSIONS:
+            c = abfs_curves[version]
+            if not c['xs']:
+                continue
+            ax.plot(c['xs'], c['ba'], 'o-', color=VERSION_COLORS[version],
+                    label=f'ABFS {ABFS_LABELS[version]} (best clf)', linewidth=2)
+        if komor_xs:
+            ax.plot(komor_xs, komor_curve, 's--', color='#3cb44b',
+                    label='Komorniczak best-of-9 (best clf)', linewidth=2)
+
         ax.set_xscale('log'); ax.set_xticks(CHUNK_SIZES); ax.set_xticklabels(CHUNK_SIZES)
         ax.set_xlabel('chunk_size'); ax.set_ylabel('Final balanced accuracy (mean over reps)')
         ax.set_title(f'BA vs chunk_size -- {gen}, {drift}'); ax.legend(); ax.set_ylim(0, 1)
