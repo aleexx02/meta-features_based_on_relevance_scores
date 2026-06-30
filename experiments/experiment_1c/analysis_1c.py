@@ -446,7 +446,7 @@ def best_side(load_fn, keys, has_reps):
             continue
         j = int(np.nanargmax(v))
         if v[j] > best[2]:
-            best = (label, CLF_NAMES[j], float(v[j]))
+            best = (label, clf_names[j], float(v[j]))
     return best
 
 
