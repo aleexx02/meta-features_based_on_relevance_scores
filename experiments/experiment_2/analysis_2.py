@@ -84,6 +84,7 @@ parser.add_argument('--shap',        action='store_true')
 parser.add_argument('--metrics',     action='store_true')
 parser.add_argument('--grid',        action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
+parser.add_argument('--summary', action='store_true')
 args = parser.parse_args()
 
 RUN_SANITY      = args.sanity
@@ -100,6 +101,7 @@ print(f"SHAP:            {RUN_SHAP}")
 print(f"Metrics:         {RUN_METRICS}")
 print(f"Grid:            {RUN_GRID}")
 print(f"Stream analysis: {RUN_STREAM_ANALYSIS}")
+print(f"Summary:         {args.summary}")
 
 
 # ============================================================
@@ -364,6 +366,44 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     return (np.array(class_distribution), np.array(drift_intensity),
             np.array(label_entropy_vals), np.array(delta_relevance),
             boundaries)
+
+def _final_per_clf(arr, has_reps):
+    """Final-window BA per classifier. arr: (n_reps,n_win,n_clf) if has_reps
+    else (n_win,n_clf). Returns (n_clf,) vector (mean over reps if present)."""
+    if arr is None:
+        return None
+    return np.mean(arr[:, -1, :], axis=0) if has_reps else arr[-1, :]
+
+
+def best_side(load_fn, keys, has_reps):
+    """Given a list of (label, prefix) keys, return (best_label, best_clf, best_ba)
+    = the single (group/version, classifier) with the highest final BA."""
+    best = (None, None, -1.0)
+    for label, prefix in keys:
+        d = load_fn(prefix)
+        v = _final_per_clf(d, has_reps)
+        if v is None:
+            continue
+        j = int(np.nanargmax(v))
+        if v[j] > best[2]:
+            best = (label, CLF_NAMES[j], float(v[j]))
+    return best
+
+
+def write_summary_txt(path, title, header, rows):
+    """Write a fixed-width aligned text table."""
+    cols = list(zip(header, *rows)) if rows else [(h,) for h in header]
+    widths = [max(len(str(c)) for c in col) for col in cols]
+    def fmt(r): return "  ".join(str(c).ljust(w) for c, w in zip(r, widths))
+    with open(path, 'w') as f:
+        f.write(title + "\n")
+        f.write("=" * len(title) + "\n\n")
+        f.write(fmt(header) + "\n")
+        f.write("  ".join("-" * w for w in widths) + "\n")
+        for r in rows:
+            f.write(fmt(r) + "\n")
+    print(f"  Saved: {path}")
+
 
 
 # ============================================================
@@ -834,38 +874,49 @@ if RUN_GRID:
         x_labels = [str(ni) for ni in N_INFORMATIVES]
         y_labels  = [str(cs) for cs in CHUNK_SIZES]
 
-        # gap heatmap
-        gap_grid = grid_abfs_preq - grid_komor_preq
-        fname    = os.path.join(FIGURES_DIR,
-                                f'gap_heatmap_preq_{drift_type}.png')
-        if not os.path.exists(fname):
+        # ---- gap heatmaps, one per ABFS version (shared color scale) ----
+        version_grids = {}
+        for version in ABFS_VERSIONS:
+            g = np.full((len(CHUNK_SIZES), len(N_INFORMATIVES)), np.nan)
+            for i, chunk_size in enumerate(CHUNK_SIZES):
+                for j, n_informative in enumerate(N_INFORMATIVES):
+                    tag = make_tag(chunk_size, n_informative, drift_type)
+                    pr = load(f'preq_abfs_{version}_ba', tag, optional=True)
+                    kb = load_komor_best(tag)
+                    if pr is not None and kb is not None:
+                        a = np.max(np.mean(pr[:, -1, :], axis=0))
+                        g[i, j] = a - np.max(kb)
+            version_grids[version] = g
+
+        finite = np.concatenate([g[np.isfinite(g)] for g in version_grids.values()]) \
+                 if any(np.any(np.isfinite(g)) for g in version_grids.values()) else np.array([])
+        vmax = float(np.max(np.abs(finite))) if finite.size else 1.0
+
+        for version in ABFS_VERSIONS:
+            gap_grid = version_grids[version]
+            if not np.any(np.isfinite(gap_grid)):
+                continue
+            fname = os.path.join(FIGURES_DIR,
+                                 f'gap_heatmap_preq_{version}_{drift_type}.png')
+            if os.path.exists(fname):
+                print(f"  Exists: {fname}"); continue
             fig, ax = plt.subplots(figsize=(7, 5))
-            vmax = np.nanmax(np.abs(gap_grid))
-            im   = ax.imshow(gap_grid, vmin=-vmax, vmax=vmax,
-                             cmap='RdBu', aspect='auto')
+            im = ax.imshow(gap_grid, vmin=-vmax, vmax=vmax, cmap='RdBu', aspect='auto')
             for i in range(len(CHUNK_SIZES)):
                 for j in range(len(N_INFORMATIVES)):
                     val = gap_grid[i, j]
                     if not np.isnan(val):
-                        txt_color = 'white' if abs(val) > vmax * 0.6 else 'black'
                         ax.text(j, i, f'{val:+.3f}', ha='center', va='center',
-                                fontsize=10, color=txt_color)
+                                fontsize=10, color='white' if abs(val) > vmax*0.6 else 'black')
                     else:
-                        ax.text(j, i, 'N/A', ha='center', va='center',
-                                fontsize=9, color='grey')
-            ax.set_xticks(range(len(N_INFORMATIVES)))
-            ax.set_xticklabels(x_labels, fontsize=10)
-            ax.set_yticks(range(len(CHUNK_SIZES)))
-            ax.set_yticklabels(y_labels, fontsize=10)
-            ax.set_xlabel('n_informative', fontsize=11)
-            ax.set_ylabel('chunk_size', fontsize=11)
-            ax.set_title(
-                f'Gap heatmap (ABFS raw v2.0 minus Komorniczak best)\n'
-                f'{drift_type} drift ({n_concepts} concepts)',
-                fontsize=11)
+                        ax.text(j, i, 'N/A', ha='center', va='center', fontsize=9, color='grey')
+            ax.set_xticks(range(len(N_INFORMATIVES))); ax.set_xticklabels(x_labels, fontsize=10)
+            ax.set_yticks(range(len(CHUNK_SIZES))); ax.set_yticklabels(y_labels, fontsize=10)
+            ax.set_xlabel('n_informative', fontsize=11); ax.set_ylabel('chunk_size', fontsize=11)
+            ax.set_title(f'Gap (best ABFS {ABFS_LABELS[version]} minus Komorniczak best)\n'
+                         f'{drift_type} drift ({n_concepts} concepts)', fontsize=11)
             plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-            fig.tight_layout()
-            fig.savefig(fname, dpi=150, bbox_inches='tight')
+            fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Gap heatmap saved: {fname}")
 
         # sensitivity curves
@@ -927,5 +978,32 @@ if RUN_GRID:
             fig.tight_layout()
             fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Sensitivity (ninf) saved: {fname}")
+
+
+
+
+if args.summary:
+    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
+    rows = []
+    for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
+        for chunk_size in CHUNK_SIZES:
+            for n_informative in N_INFORMATIVES:
+                tag = make_tag(chunk_size, n_informative, drift_type)
+                loadf = lambda prefix, t=tag: load(prefix, t, optional=True)
+                kb = best_side(loadf, [(m, f'preq_komor_{m}_ba') for m in MEASURES], has_reps=True)
+                ab = best_side(loadf, [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS], has_reps=True)
+                if kb[0] is None or ab[0] is None:
+                    continue
+                rb = 1.0 / n_concepts
+                rows.append([drift_type, chunk_size, n_informative, N_FEATURES,
+                             n_concepts, f'{rb:.3f}',
+                             f'{kb[0]} / {kb[1]}', f'{kb[2]:.3f}',
+                             f'{ab[0]} / {ab[1]}', f'{ab[2]:.3f}',
+                             f'{ab[2]-kb[2]:+.3f}'])
+    header = ['drift', 'chunk', 'n_inform', 'n_feat', 'n_conc', 'baseline',
+              'best Komor (grp/clf)', 'Komor BA',
+              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp2.txt'),
+                      'Experiment 2 summary (config sensitivity)', header, rows)
 
 print("\nAnalysis 2 complete.")

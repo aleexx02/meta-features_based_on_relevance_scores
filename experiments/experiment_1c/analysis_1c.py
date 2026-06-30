@@ -102,6 +102,8 @@ parser.add_argument('--shap',       action='store_true', help='Run SHAP analysis
 parser.add_argument('--metrics',    action='store_true', help='Run metrics heatmaps')
 parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
 parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
+parser.add_argument('--summary', action='store_true')
+
 args = parser.parse_args()
 
 RUN_SANITY_CHECK = args.sanity
@@ -157,6 +159,11 @@ ABFS_MF_CONFIGS_FULL = [
     ('raw',          'Raw scores (v2.0)'),
     ('raw_temporal', 'Raw + temporal (v2.1)'),
 ]
+
+ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
+ABFS_LABELS   = {'aggstats': 'Aggstats (v1.1)', 'raw': 'Raw scores (v2.0)',
+                    'raw_temporal': 'Raw + temporal (v2.1)'}
+
 
 MEASURES = ['clustering', 'complexity', 'concept', 'general',
     'info-theory', 'itemset', 'landmarking', 'model-based', 'statistical']
@@ -419,6 +426,44 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     return (np.array(class_distribution), np.array(drift_intensity),
             np.array(label_entropy_vals), np.array(delta_relevance),
             boundaries)
+
+def _final_per_clf(arr, has_reps):
+    """Final-window BA per classifier. arr: (n_reps,n_win,n_clf) if has_reps
+    else (n_win,n_clf). Returns (n_clf,) vector (mean over reps if present)."""
+    if arr is None:
+        return None
+    return np.mean(arr[:, -1, :], axis=0) if has_reps else arr[-1, :]
+
+
+def best_side(load_fn, keys, has_reps):
+    """Given a list of (label, prefix) keys, return (best_label, best_clf, best_ba)
+    = the single (group/version, classifier) with the highest final BA."""
+    best = (None, None, -1.0)
+    for label, prefix in keys:
+        d = load_fn(prefix)
+        v = _final_per_clf(d, has_reps)
+        if v is None:
+            continue
+        j = int(np.nanargmax(v))
+        if v[j] > best[2]:
+            best = (label, CLF_NAMES[j], float(v[j]))
+    return best
+
+
+def write_summary_txt(path, title, header, rows):
+    """Write a fixed-width aligned text table."""
+    cols = list(zip(header, *rows)) if rows else [(h,) for h in header]
+    widths = [max(len(str(c)) for c in col) for col in cols]
+    def fmt(r): return "  ".join(str(c).ljust(w) for c, w in zip(r, widths))
+    with open(path, 'w') as f:
+        f.write(title + "\n")
+        f.write("=" * len(title) + "\n\n")
+        f.write(fmt(header) + "\n")
+        f.write("  ".join("-" * w for w in widths) + "\n")
+        for r in rows:
+            f.write(fmt(r) + "\n")
+    print(f"  Saved: {path}")
+
 
 
 # ============================================================
@@ -832,50 +877,75 @@ if RUN_GAP:
     print("="*60)
 
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
-        fname = os.path.join(FIGURES_DIR, f'gap_heatmap_preq_{drift_type}.png')
-        if os.path.exists(fname):
-            print(f"Exists: {fname}"); continue
-
-        abfs_path = os.path.join(RESULTS_DIR, f'clf_ba_raw_{drift_type}.npy')
-        if not os.path.exists(abfs_path):
-            print(f"Warning: {abfs_path} not found, skipping {drift_type}.")
-            continue
-        # shape: (n_replications, n_windows, n_clfs)
-        abfs_final = np.load(abfs_path)[:, -1, :]
-        abfs_mean  = np.mean(abfs_final, axis=0)  # (n_clfs,)
-
         komor_path = os.path.join(RESULTS_DIR,
             f'clf_komor_concept_classif_ba_{drift_type}.npy')
         if not os.path.exists(komor_path):
-            print(f"Warning: {komor_path} not found, skipping {drift_type}.")
-            continue
-        # shape: (n_measures, n_replications, n_windows, n_clfs)
-        komor_final          = np.load(komor_path)[:, :, -1, :]
-        komor_mean_per_clf   = np.mean(komor_final, axis=1)  # (n_measures, n_clfs)
-        komor_best           = np.max(komor_mean_per_clf, axis=0)  # (n_clfs,)
+            print(f"Warning: {komor_path} not found, skipping {drift_type}."); continue
+        komor_final        = np.load(komor_path)[:, :, -1, :]
+        komor_mean_per_clf = np.mean(komor_final, axis=1)
+        komor_best         = np.max(komor_mean_per_clf, axis=0)   # (n_clfs,)
 
-        gap_row = abfs_mean - komor_best  # (n_clfs,)
-        vmax    = np.max(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
-        
-        fig, ax = plt.subplots(figsize=(max(6, len(clf_names) * 1.8), 2.8))
-        im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax,
-               cmap='RdBu', aspect='auto')
-        
-        for j in range(len(clf_names)):
-            val = gap_row[j]
-            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center', fontsize=12,
-            color='white' if abs(val) > vmax * 0.6 else 'black')
-        
-        ax.set_xticks(range(len(clf_names)))
-        ax.set_xticklabels(clf_names, fontsize=11)
-        ax.set_yticks([0])
-        ax.set_yticklabels([f'{drift_type} drift'], fontsize=10)
-        ax.set_xlabel('Classifier', fontsize=11)
-        ax.set_title(f'Gap (ABFS raw v2.0 minus Komorniczak best) -- '
-                     f'{drift_type} drift -- experiment [1c]', fontsize=11)
-        cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
-        cbar.set_label('Gap (BA)', fontsize=9)
-        fig.subplots_adjust(bottom=0.35)
-        fig.savefig(fname, dpi=150, bbox_inches='tight')
-        plt.close()
-        print(f"Gap heatmap saved at: '{fname}'")
+        for version in ABFS_VERSIONS:
+            fname = os.path.join(FIGURES_DIR, f'gap_heatmap_preq_{version}_{drift_type}.png')
+            if os.path.exists(fname):
+                print(f"Exists: {fname}"); continue
+            abfs_path = os.path.join(RESULTS_DIR, f'clf_ba_{version}_{drift_type}.npy')
+            if not os.path.exists(abfs_path):
+                print(f"Warning: {abfs_path} not found, skipping {version}/{drift_type}."); continue
+            abfs_mean = np.mean(np.load(abfs_path)[:, -1, :], axis=0)  # (n_clfs,)
+            gap_row   = abfs_mean - komor_best
+            vmax      = np.max(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
+
+            fig, ax = plt.subplots(figsize=(max(6, len(clf_names) * 1.8), 2.8))
+            im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax, cmap='RdBu', aspect='auto')
+            for j in range(len(clf_names)):
+                val = gap_row[j]
+                ax.text(j, 0, f'{val:+.3f}', ha='center', va='center', fontsize=12,
+                        color='white' if abs(val) > vmax * 0.6 else 'black')
+            ax.set_xticks(range(len(clf_names))); ax.set_xticklabels(clf_names, fontsize=11)
+            ax.set_yticks([0]); ax.set_yticklabels([f'{drift_type} drift'], fontsize=10)
+            ax.set_xlabel('Classifier', fontsize=11)
+            ax.set_title(f'Gap ({ABFS_LABELS[version]} minus Komorniczak best) -- '
+                         f'{drift_type} drift -- experiment [1c]', fontsize=11)
+            cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
+            cbar.set_label('Gap (BA)', fontsize=9)
+            fig.subplots_adjust(bottom=0.35)
+            fig.savefig(fname, dpi=150, bbox_inches='tight')
+            plt.close(); print(f"Gap heatmap saved at: '{fname}'")
+            print(f"Gap heatmap saved at: '{fname}'")
+
+
+
+if args.summary:
+    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
+    rows = []
+    for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
+        # Komorniczak best-of-9 (mean over reps, final window)
+        kpath = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_ba_{drift_type}.npy')
+        if not os.path.exists(kpath):
+            continue
+        kfin = np.mean(np.load(kpath)[:, :, -1, :], axis=1)   # (n_measures, n_clfs)
+        ki, kj = np.unravel_index(np.nanargmax(kfin), kfin.shape)
+        k_label, k_clf, k_ba = MEASURES[ki], clf_names[kj], float(kfin[ki, kj])
+        # best ABFS over available versions (mean over reps, final window)
+        best = (None, None, -1.0)
+        for version, vlabel in ABFS_MF_CONFIGS_FULL:
+            apath = os.path.join(RESULTS_DIR, f'clf_ba_{version}_{drift_type}.npy')
+            if not os.path.exists(apath):
+                continue
+            af = np.mean(np.load(apath)[:, -1, :], axis=0)    # (n_clfs,)
+            j = int(np.nanargmax(af))
+            if af[j] > best[2]:
+                best = (vlabel, clf_names[j], float(af[j]))
+        if best[0] is None:
+            continue
+        rb = 1.0 / n_concepts
+        rows.append([drift_type, N_FEATURES, n_concepts, f'{rb:.3f}',
+                     f'{k_label} / {k_clf}', f'{k_ba:.3f}',
+                     f'{best[0]} / {best[1]}', f'{best[2]:.3f}',
+                     f'{best[2]-k_ba:+.3f}'])
+    header = ['drift', 'n_feat', 'n_conc', 'baseline',
+              'best Komor (grp/clf)', 'Komor BA',
+              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp1c.txt'),
+                      'Experiment 1c summary', header, rows)

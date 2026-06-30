@@ -78,13 +78,14 @@ parser.add_argument('--metrics',         action='store_true')
 parser.add_argument('--gap',             action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--grid',            action='store_true')
+parser.add_argument('--summary',         action='store_true')
 args = parser.parse_args()
 
 EXP_TAG = 'exp4'
 print(f"\nExperiment 4 analysis (recurring SEA/STAGGER, chunk_size x n_drifts grid)")
 print(f"sanity={args.sanity} performance={args.performance} shap={args.shap} "
       f"metrics={args.metrics} gap={args.gap} stream_analysis={args.stream_analysis} "
-      f"grid={args.grid}")
+      f"grid={args.grid} summary={args.summary}")
 
 
 # ============================================================
@@ -222,6 +223,43 @@ def gap_heatmap(cell, gap_row, vmax, title):
     fig.subplots_adjust(bottom=0.35)
     fig.savefig(fname, dpi=150, bbox_inches='tight'); plt.close()
     print(f"  Saved: {fname}")
+
+def _final_per_clf(arr, has_reps):
+    """Final-window BA per classifier. arr: (n_reps,n_win,n_clf) if has_reps
+    else (n_win,n_clf). Returns (n_clf,) vector (mean over reps if present)."""
+    if arr is None:
+        return None
+    return np.mean(arr[:, -1, :], axis=0) if has_reps else arr[-1, :]
+
+
+def best_side(load_fn, keys, has_reps):
+    """Given a list of (label, prefix) keys, return (best_label, best_clf, best_ba)
+    = the single (group/version, classifier) with the highest final BA."""
+    best = (None, None, -1.0)
+    for label, prefix in keys:
+        d = load_fn(prefix)
+        v = _final_per_clf(d, has_reps)
+        if v is None:
+            continue
+        j = int(np.nanargmax(v))
+        if v[j] > best[2]:
+            best = (label, CLF_NAMES[j], float(v[j]))
+    return best
+
+
+def write_summary_txt(path, title, header, rows):
+    """Write a fixed-width aligned text table."""
+    cols = list(zip(header, *rows)) if rows else [(h,) for h in header]
+    widths = [max(len(str(c)) for c in col) for col in cols]
+    def fmt(r): return "  ".join(str(c).ljust(w) for c, w in zip(r, widths))
+    with open(path, 'w') as f:
+        f.write(title + "\n")
+        f.write("=" * len(title) + "\n\n")
+        f.write(fmt(header) + "\n")
+        f.write("  ".join("-" * w for w in widths) + "\n")
+        for r in rows:
+            f.write(fmt(r) + "\n")
+    print(f"  Saved: {path}")
 
 
 # ============================================================
@@ -597,5 +635,33 @@ if args.grid:
             fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
 
+
+if args.summary:
+    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
+    from streams.generate_synthetic_streams import TOTAL_INSTANCES
+    rows = []
+    for spec in SPECS:
+        cell = spec['name']
+        loadf = lambda prefix, c=cell: load(prefix, c, optional=True)
+        kb = best_side(loadf, [(m, f'preq_komor_{m}_ba') for m in MEASURES], has_reps=True)
+        ab = best_side(loadf, [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS], has_reps=True)
+        if kb[0] is None or ab[0] is None:
+            continue
+        n_seg = len(spec['order'])
+        recurs = 'yes' if spec['n_concepts'] < n_seg else 'no'
+        rb = 1.0 / spec['n_concepts']
+        rows.append([spec['gen_name'], spec['n_features'], spec['transition'],
+                     spec['chunk_size'], spec['n_drifts'], n_seg,
+                     spec['n_concepts'], recurs, f'{rb:.3f}',
+                     TOTAL_INSTANCES, TOTAL_INSTANCES // n_seg,
+                     f'{kb[0]} / {kb[1]}', f'{kb[2]:.3f}',
+                     f'{ab[0]} / {ab[1]}', f'{ab[2]:.3f}',
+                     f'{ab[2]-kb[2]:+.3f}'])
+    header = ['generator', 'n_feat', 'drift', 'chunk', 'n_drifts', 'n_seg',
+              'n_conc', 'recurs', 'baseline', 'n_inst', 'inst/seg',
+              'best Komor (grp/clf)', 'Komor BA',
+              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp4.txt'),
+                      'Experiment 4 summary (recurring SEA/STAGGER)', header, rows)
 
 print("\nAnalysis 4 complete.")

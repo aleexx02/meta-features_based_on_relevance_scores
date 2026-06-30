@@ -134,6 +134,8 @@ parser.add_argument('--shap',        action='store_true')
 parser.add_argument('--metrics',     action='store_true')
 parser.add_argument('--gap',         action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
+parser.add_argument('--bars', action='store_true')
+parser.add_argument('--summary', action='store_true')
 
 args = parser.parse_args()
 
@@ -143,6 +145,8 @@ RUN_SHAP        = args.shap
 RUN_METRICS     = args.metrics
 RUN_GAP         = args.gap
 RUN_STREAM_ANALYSIS = args.stream_analysis
+RUN_BARS        = args.bars
+RUN_SUMMARY     = args.summary
 
 print(f"\nRunning analysis for Experiment 5 (annotated real streams):")
 print(f"Sanity          : {RUN_SANITY}")
@@ -151,6 +155,8 @@ print(f"SHAP            : {RUN_SHAP}")
 print(f"Metrics         : {RUN_METRICS}")
 print(f"Gap             : {RUN_GAP}")
 print(f"Stream analysis : {RUN_STREAM_ANALYSIS}")
+print(f"Bars            : {RUN_BARS}")
+print(f"Summary         : {RUN_SUMMARY}")
 
 
 # ============================================================
@@ -323,6 +329,47 @@ def re_extract_stream(stream_name, drift_chunks):
 
     X_by_version = {v: clean(mf[v]) for v in ABFS_VERSIONS}
     return np.array(scores_over_time), X_by_version, np.array(concept_labels)
+
+
+
+
+def _final_per_clf(arr, has_reps):
+    """Final-window BA per classifier. arr: (n_reps,n_win,n_clf) if has_reps
+    else (n_win,n_clf). Returns (n_clf,) vector (mean over reps if present)."""
+    if arr is None:
+        return None
+    return np.mean(arr[:, -1, :], axis=0) if has_reps else arr[-1, :]
+
+
+def best_side(load_fn, keys, has_reps):
+    """Given a list of (label, prefix) keys, return (best_label, best_clf, best_ba)
+    = the single (group/version, classifier) with the highest final BA."""
+    best = (None, None, -1.0)
+    for label, prefix in keys:
+        d = load_fn(prefix)
+        v = _final_per_clf(d, has_reps)
+        if v is None:
+            continue
+        j = int(np.nanargmax(v))
+        if v[j] > best[2]:
+            best = (label, CLF_NAMES[j], float(v[j]))
+    return best
+
+
+def write_summary_txt(path, title, header, rows):
+    """Write a fixed-width aligned text table."""
+    cols = list(zip(header, *rows)) if rows else [(h,) for h in header]
+    widths = [max(len(str(c)) for c in col) for col in cols]
+    def fmt(r): return "  ".join(str(c).ljust(w) for c, w in zip(r, widths))
+    with open(path, 'w') as f:
+        f.write(title + "\n")
+        f.write("=" * len(title) + "\n\n")
+        f.write(fmt(header) + "\n")
+        f.write("  ".join("-" * w for w in widths) + "\n")
+        for r in rows:
+            f.write(fmt(r) + "\n")
+    print(f"  Saved: {path}")
+
 
 
 # ============================================================
@@ -919,4 +966,100 @@ if RUN_GAP:
         plt.close()
         print(f"  Saved: {fname}")
 
+
+# ============================================================
+#  BARS - BA per ABFS version (best clf) + Komorniczak, per stream
+#  (Exp 5 has no swept parameter, so this replaces the sensitivity
+#   curves used in Exp 2/3/4: grouped bars, one group per stream.)
+# ============================================================
+if RUN_BARS:
+    print("\n" + "="*60)
+    print("BA per version, per stream")
+    print("="*60)
+
+    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
+
+    streams, abfs_ba, komor_ba = [], {v: [] for v in ABFS_VERSIONS}, []
+    for stream_name in REAL_STREAMS:
+        # best clf per ABFS version at the final window
+        row_ok = False
+        per_version = {}
+        for version in ABFS_VERSIONS:
+            d = load(f'preq_abfs_{version}_ba', stream_name, optional=True)
+            per_version[version] = float(np.max(d[-1, :])) if d is not None else np.nan
+            row_ok |= d is not None
+        # best Komorniczak group (best clf)
+        kb = np.nan
+        for measure in MEASURES:
+            d = load(f'preq_komor_{measure}_ba', stream_name, optional=True)
+            if d is not None:
+                v = float(np.max(d[-1, :]))
+                kb = v if np.isnan(kb) else max(kb, v)
+        if not row_ok and np.isnan(kb):
+            continue
+        streams.append(stream_name)
+        for version in ABFS_VERSIONS:
+            abfs_ba[version].append(per_version[version])
+        komor_ba.append(kb)
+
+    if not streams:
+        print("  no data -- skipping.")
+    else:
+        fname = os.path.join(FIGURES_DIR, 'ba_per_version.png')
+        n_groups = len(streams)
+        n_bars   = len(ABFS_VERSIONS) + 1            # 3 versions + Komorniczak
+        width    = 0.8 / n_bars
+        x        = np.arange(n_groups)
+
+        fig, ax = plt.subplots(figsize=(max(8, n_groups * 1.8), 5))
+        for bi, version in enumerate(ABFS_VERSIONS):
+            ax.bar(x + bi * width, abfs_ba[version], width,
+                   color=VERSION_COLORS[version],
+                   label=f'ABFS {ABFS_LABELS[version]}')
+        ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
+               color='#3cb44b', label='Komorniczak best-of-9')
+
+        # random-baseline marker per stream
+        for gi, s in enumerate(streams):
+            rb = 1.0 / N_CONCEPTS[s]
+            ax.hlines(rb, x[gi] - width/2, x[gi] + n_bars*width - width/2,
+                      color='red', linestyle='--', linewidth=1.0,
+                      label='random baseline' if gi == 0 else None)
+
+        ax.set_xticks(x + (n_bars - 1) * width / 2)
+        ax.set_xticklabels(streams, rotation=20, ha='right', fontsize=9)
+        ax.set_ylabel('Final balanced accuracy (best clf)')
+        ax.set_ylim(0, 1)
+        ax.set_title('Exp 5: BA per ABFS version vs Komorniczak (best classifier)')
+        ax.legend(fontsize=8, ncol=2)
+        ax.grid(alpha=0.3, axis='y')
+        fig.tight_layout()
+        fig.savefig(fname, dpi=150, bbox_inches='tight')
+        plt.close(); print(f"  Saved: {fname}")
+
+
+if args.summary:
+    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
+    rows = []
+    for s in REAL_STREAMS:
+        loadf = lambda prefix, st=s: load(prefix, st, optional=True)
+        kb = best_side(loadf, [(m, f'preq_komor_{m}_ba') for m in MEASURES], has_reps=False)
+        ab = best_side(loadf, [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS], has_reps=False)
+        if kb[0] is None or ab[0] is None:
+            continue
+        rb = 1.0 / N_CONCEPTS[s]
+        n_drifts_real = len(load_gt(s))
+        cl = load('concept_labels', s, optional=True)
+        n_win = len(cl) if cl is not None else '-'
+        rows.append([s, N_FEATURES[s], N_CONCEPTS[s], n_drifts_real, n_win, f'{rb:.3f}',
+                     f'{kb[0]} / {kb[1]}', f'{kb[2]:.3f}',
+                     f'{ab[0]} / {ab[1]}', f'{ab[2]:.3f}',
+                     f'{ab[2]-kb[2]:+.3f}'])
+    header = ['stream', 'n_feat', 'n_conc', 'n_drifts', 'n_win', 'baseline',
+              'best Komor (grp/clf)', 'Komor BA',
+              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+    write_summary_txt(os.path.join(FIGURES_DIR, 'summary_exp5.txt'),
+                      'Experiment 5 summary (real streams)', header, rows)
+    
+    
 print("\nAnalysis 5 complete.")
