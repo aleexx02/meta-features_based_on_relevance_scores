@@ -915,8 +915,7 @@ if RUN_GAP:
 
 # ============================================================
 #  BARS - BA per ABFS version (best clf) + Komorniczak, per drift type
-#  (1c has no swept parameter, like Exp 5: grouped bars, one group per
-#   drift type instead of per stream.)
+#  grouped bars, one group per drift type instead of per stream.
 # ============================================================
 if RUN_BARS:
     print("\n" + "="*60)

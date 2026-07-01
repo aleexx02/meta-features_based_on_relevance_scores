@@ -63,12 +63,15 @@ parser.add_argument('--sanity', action='store_true', help='Run sanity check plot
 parser.add_argument('--variance', action='store_true', help='Run variance plots')
 parser.add_argument('--shap', action='store_true', help='Run SHAP analysis')
 parser.add_argument('--metrics', action='store_true', help='Run metrics heatmaps')
+parser.add_argument('--bars', action='store_true')
+
 args = parser.parse_args()
 
 RUN_SANITY_CHECK = args.sanity
 RUN_VARIANCE = args.variance
 RUN_SHAP = args.shap
 RUN_METRICS = args.metrics
+RUN_BARS = args.bars
 
 print(f"\nRunning analysis for Experiment 1a")
 print(f"Sanity check: {RUN_SANITY_CHECK}")
@@ -112,6 +115,13 @@ MEASURES = ['clustering', 'complexity', 'concept', 'general',
 STATISTICAL_IDX = MEASURES.index('statistical')
 
 clf_names = [name for name, _ in BASE_CLFS]
+
+ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
+ABFS_LABELS = {
+    'aggstats':     'Aggstats (v1.1)',
+    'raw':          'Raw scores (v2.0)',
+    'raw_temporal': 'Raw + temporal (v2.1)',
+}
 
 palette = [
     '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
@@ -499,3 +509,76 @@ if RUN_METRICS:
             fig.savefig(fname, dpi=150)
             plt.close()
             print(f"Heatmap for metric {metric_label} saved at: '{fname}'")
+
+
+# ============================================================
+#  5. BARS - BA per ABFS version (best clf) + Komorniczak, per drift type
+#  1a is batch CV. Shapes:
+#    ABFS  clf_ba_{version}_{drift}.npy  -> (n_reps, n_folds, n_clfs)
+#    Komor clf_replication_ba_{drift}.npy  -> (n_measures, n_reps, n_folds, n_clfs)
+#  Score = mean over reps AND folds, then best classifier (and best measure for Komor).
+# ============================================================
+if RUN_BARS:
+    print("\n" + "="*60)
+    print("BA per version, per drift type (batch CV)")
+    print("="*60)
+
+    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
+
+    drifts, abfs_ba, komor_ba, baselines = [], {v: [] for v in ABFS_VERSIONS}, [], []
+    for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
+        # ABFS: (n_reps, n_folds, n_clfs) -> mean over reps+folds -> (n_clfs,) -> best clf
+        per_version = {}
+        any_ok = False
+        for version in ABFS_VERSIONS:
+            apath = os.path.join(RESULTS_DIR, f'clf_ba_{version}_{drift_type}.npy')
+            if os.path.exists(apath):
+                arr = np.load(apath)                      # (n_reps, n_folds, n_clfs)
+                per_clf = np.mean(arr, axis=(0, 1))       # (n_clfs,)
+                per_version[version] = float(np.nanmax(per_clf))
+                any_ok = True
+            else:
+                per_version[version] = np.nan
+
+        # Komorniczak: (n_measures, n_reps, n_folds, n_clfs) -> mean over reps+folds
+        #              -> (n_measures, n_clfs) -> best measure & clf
+        kpath = os.path.join(RESULTS_DIR, f'clf_replication_ba_{drift_type}.npy')
+        kb = np.nan
+        if os.path.exists(kpath):
+            karr = np.load(kpath)                         # (n_measures, n_reps, n_folds, n_clfs)
+            kmean = np.mean(karr, axis=(1, 2))            # (n_measures, n_clfs)
+            kb = float(np.nanmax(kmean))
+
+        if not any_ok and np.isnan(kb):
+            continue
+        drifts.append(drift_type)
+        for version in ABFS_VERSIONS:
+            abfs_ba[version].append(per_version[version])
+        komor_ba.append(kb)
+        baselines.append(1.0 / n_concepts)
+
+    if not drifts:
+        print("  no data -- skipping.")
+    else:
+        fname = os.path.join(FIGURES_DIR, 'ba_per_version.png')
+        n_groups = len(drifts); n_bars = len(ABFS_VERSIONS) + 1
+        width = 0.8 / n_bars; x = np.arange(n_groups)
+
+        fig, ax = plt.subplots(figsize=(max(7, n_groups * 2.2), 5))
+        for bi, version in enumerate(ABFS_VERSIONS):
+            ax.bar(x + bi * width, abfs_ba[version], width,
+                   color=VERSION_COLORS[version], label=f'ABFS {ABFS_LABELS[version]}')
+        ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
+               color='#3cb44b', label='Komorniczak best-of-9')
+        for gi in range(n_groups):
+            ax.hlines(baselines[gi], x[gi] - width/2, x[gi] + n_bars*width - width/2,
+                      color='red', linestyle='--', linewidth=1.0,
+                      label='random baseline' if gi == 0 else None)
+        ax.set_xticks(x + (n_bars - 1) * width / 2)
+        ax.set_xticklabels([f'{d} drift' for d in drifts], fontsize=10)
+        ax.set_ylabel('Balanced accuracy (mean over reps & folds, best clf)')
+        ax.set_ylim(0, 1)
+        ax.set_title('Exp 1a: BA per ABFS version vs Komorniczak (best classifier)')
+        ax.legend(fontsize=8, ncol=2); ax.grid(alpha=0.3, axis='y')
+        fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
+        plt.close(); print(f"  Saved: {fname}")
