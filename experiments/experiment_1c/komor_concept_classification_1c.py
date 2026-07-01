@@ -26,7 +26,7 @@
 
 # RUN: their meta-features evaluated with our prequential protocol
 # COMPARISON: their meta-features (prequential) vs our meta-features (prequential)
-# COMPARE: meta-features (their statistical vs our ABFS-based)
+# COMPARE: meta-features (their static vs our ABFS-based)
 
 # Input: Komorniczak's raw pre-extracted meta-features, written once by
 #          E1_extract_synthetic.py (external/komorniczak/results/synthetic/),
