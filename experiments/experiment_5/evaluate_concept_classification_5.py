@@ -9,9 +9,8 @@
 # step needed. Komorniczak results are cached to disk so re-running the
 # script skips already-computed streams.
 #
-# Why chunk_size=200?
-#   Consistent with Experiments 1a-1c and the Experiment 2 baseline.
-#   Keeps results comparable across all experiments.
+# Why chunk_size=100?
+#   Performs best in Experiment 2.
 #
 # Why no warmup?
 #   Some streams (gradual, incremental INSECTS) have their first drift at
@@ -39,7 +38,7 @@
 # automatically if streams are added/removed there):
 #
 #   Genuinely annotated (Table 2, Souza et al. 2020, instance-level change
-#   points converted to chunk indices at chunk_size=200):
+#   points converted to chunk indices at chunk_size=100):
 #     INSECTS-abrupt_balanced          33 features,  6 concepts
 #     INSECTS-abrupt_imbalanced        33 features,  6 concepts
 #     INSECTS-incgradual_balanced      33 features,  2 concepts

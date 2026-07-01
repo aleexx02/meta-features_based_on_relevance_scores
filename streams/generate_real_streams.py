@@ -298,7 +298,7 @@ if __name__ == "__main__":
     #  INSECTS — genuinely annotated (Table 2, Souza et al. 2020)
     # --------------------------------------------------------
     print("=" * 60)
-    print("INSECTS streams (Table 2, Souza et al. 2020)")
+    print("INSECTS")
     print("=" * 60)
 
     # (csv filename, change points in raw instance numbers)
@@ -406,9 +406,7 @@ if __name__ == "__main__":
     #  Download + extract with unrar first, same as any other ARFF
     #  source.
     #
-    #  Drift: NOT instance-precise like INSECTS' Table 2. Per Katakis
-    #  et al. (2010), as reported in Yu et al. (2018,
-    #  arXiv:1707.07821): three dominant concepts ("Region I/II/III"),
+    #  Drift: NOT instance-precise like INSECTS' Table 2.Three dominant concepts ("Region I/II/III"),
     #  with drift occurring "approximately in the neighbors of"
     #  instants 200, 1800 (Region I), 2300, 6200 (Region II), and 8000
     #  (Region III). Region II is additionally described as containing
@@ -417,11 +415,11 @@ if __name__ == "__main__":
     #  similar in spirit to (but worse than) the INSECTS incgradual
     #  caveat.
     #
-    #  chunk_size=200 (the project default) works cleanly here --
-    #  9324/200 ~= 46 chunks, no per-stream override needed.
+    #  chunk_size=100
+    #  9324/100 ~= 93 chunks, no per-stream override needed.
     # --------------------------------------------------------
     print("\n" + "=" * 60)
-    print("SPAM (Katakis, Tsoumakas, Vlahavas, 2010)")
+    print("SPAM")
     print("=" * 60)
     
     stream_name = 'SPAM'
