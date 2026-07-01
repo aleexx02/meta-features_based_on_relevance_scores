@@ -16,7 +16,7 @@
 #      - One plot per meta-feature set per drift type
 #
 #   3. SHAP analysis:
-#      - Mean absolute SHAP values per meta-feature (MLP)
+#      - Mean absolute SHAP values per meta-feature (across 4 different classifiers)
 #      - One plot per meta-feature set per drift type
 #        averaged over replications
 #
@@ -121,6 +121,7 @@ palette = [
     '#000000', '#a9a9a9', '#ff69b4', '#00ced1', '#ff8c00'
 ]
 
+SHAP_CLFS = [(name, clf) for name, clf in BASE_CLFS if name != 'SVM']
 
 # ============================================================
 #  HELPERS
@@ -354,6 +355,7 @@ if RUN_VARIANCE:
             print(f"Performance variance plot saved at: '{fname}'")
 
 
+
 # ============================================================
 #  3. SHAP ANALYSIS
 # ============================================================
@@ -361,6 +363,11 @@ if RUN_SHAP:
     print("\n" + "="*60)
     print("3. SHAP ANALYSIS")
     print("="*60)
+
+    # SHAP for the same batch classifiers as the 1a sweep, excluding SVM
+    # (SVC has no predict_proba by default and is too slow under KernelExplainer).
+    # 1a is fully batch, so SHAP explains the exact models used for the numbers.
+    SHAP_CLFS = [(name, clf) for name, clf in BASE_CLFS if name != 'SVM']
 
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
@@ -377,36 +384,40 @@ if RUN_SHAP:
             X_all[np.isnan(X_all)] = 1
             X_all[np.isinf(X_all)] = 1
 
-            mlp = clone(dict(BASE_CLFS)['MLP'])
-            mlp.fit(X_all, y_all)
+            # shared background + evaluation samples across classifiers
+            X_bg = shap.sample(X_all, 100)
+            X_ev = shap.sample(X_all, 200)
 
-            explainer = shap.KernelExplainer(mlp.predict_proba, shap.sample(X_all, 100))
-            shap_values = explainer.shap_values(shap.sample(X_all, 200), nsamples=100)
+            for clf_name, clf_proto in SHAP_CLFS:
+                fname = os.path.join(FIGURES_DIR, f'shap_{mf_type}_{clf_name}_{drift_type}.png')
+                if os.path.exists(fname):
+                    print(f"  {clf_name}: exists, skipping"); continue
+                print(f"  Classifier: {clf_name}")
 
-            shap_array = np.array(shap_values)
-            if shap_array.ndim == 3:
-                # shape: (n_samples, n_features, n_classes)
-                mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 2))  # (n_features,)
-            else:
-                mean_abs_shap = np.mean(np.abs(shap_array), axis=0)
+                clf = clone(clf_proto)
+                clf.fit(X_all, y_all)
 
-            print(f"shap_array shape: {shap_array.shape}")
-            print(f"mean_abs_shap shape: {mean_abs_shap.shape}")
-            print(f"n_features: {len(mf_names)}")
+                explainer = shap.KernelExplainer(clf.predict_proba, X_bg)
+                shap_values = explainer.shap_values(X_ev, nsamples=100)
 
-            sorted_idx = np.argsort(mean_abs_shap)[::-1]
-            fig, ax = plt.subplots(figsize=(10, 4))
-            ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx], color='steelblue', alpha=0.8)
-            ax.set_xticks(range(len(mf_names)))
-            ax.set_xticklabels([mf_names[i] for i in sorted_idx], rotation=45, ha='right', fontsize=9)
-            ax.set_ylabel('Mean absolute SHAP value')
-            ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift - experiment 1a\n'
-                f'(MLP, averaged over {N_REPLICATIONS} replications)')
-            fig.tight_layout()
-            fname = os.path.join(FIGURES_DIR, f'shap_{mf_type}_{drift_type}.png')
-            fig.savefig(fname, dpi=150)
-            plt.close()
-            print(f"SHAP plot saved: {fname}")
+                shap_array = np.array(shap_values)
+                if shap_array.ndim == 3:          # (n_samples, n_features, n_classes)
+                    mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 2))
+                else:
+                    mean_abs_shap = np.mean(np.abs(shap_array), axis=0)
+
+                sorted_idx = np.argsort(mean_abs_shap)[::-1]
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx], color='steelblue', alpha=0.8)
+                ax.set_xticks(range(len(mf_names)))
+                ax.set_xticklabels([mf_names[i] for i in sorted_idx], rotation=45, ha='right', fontsize=9)
+                ax.set_ylabel('Mean absolute SHAP value')
+                ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift - experiment 1a\n'
+                             f'({clf_name}, pooled over {N_REPLICATIONS} replications)')
+                fig.tight_layout()
+                fig.savefig(fname, dpi=150)
+                plt.close()
+                print(f"SHAP plot saved: {fname}")
 
 
 # ============================================================
