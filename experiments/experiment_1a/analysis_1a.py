@@ -519,8 +519,6 @@ if RUN_METRICS:
 #  Score = mean over reps AND folds, then best classifier (and best measure for Komor).
 # ============================================================
 if RUN_BARS:
-    print("ABFS_VERSIONS =", ABFS_VERSIONS)                # <-- ¿está vacío?
-    print("DRIFT_CONFIGS =", DRIFT_CONFIGS)                # <-- ¿entra al bucle?
 
     print("\n" + "="*60)
     print("BA per version, per drift type (batch CV)")
@@ -529,10 +527,6 @@ if RUN_BARS:
     VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
 
     drifts, abfs_ba, komor_ba, baselines = [], {v: [] for v in ABFS_VERSIONS}, [], []
-    
-    print("RESULTS_DIR =", RESULTS_DIR)
-    import glob
-    print("npy encontrados:", glob.glob(os.path.join(RESULTS_DIR, 'clf_ba_*.npy')))
 
     for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
         # ABFS: (n_reps, n_folds, n_clfs) -> mean over reps+folds -> (n_clfs,) -> best clf
