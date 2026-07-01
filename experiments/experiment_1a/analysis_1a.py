@@ -83,7 +83,7 @@ print(f"Metrics: {RUN_METRICS}")
 #  PATHS
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a')
 FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1a', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -533,7 +533,7 @@ if RUN_BARS:
     print("RESULTS_DIR =", RESULTS_DIR)
     import glob
     print("npy encontrados:", glob.glob(os.path.join(RESULTS_DIR, 'clf_ba_*.npy')))
-    
+
     for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
         # ABFS: (n_reps, n_folds, n_clfs) -> mean over reps+folds -> (n_clfs,) -> best clf
         print("drift_type =", drift_type)
