@@ -105,7 +105,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures_raw,
     extract_metafeatures_raw_temporal,
 )
-from streams.generate_real_streams import REAL_STREAMS, N_FEATURES
+from streams.generate_real_streams import REAL_STREAMS, N_FEATURES, CHUNK_SIZE
 from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUENTIAL
  
  
@@ -128,7 +128,6 @@ os.makedirs(KOMOR_CACHE_DIR, exist_ok=True)
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-CHUNK_SIZE = 100
 WARMUP_WINDOWS = 0
 
 # N_CONCEPTS computed dynamically from the ground truth files

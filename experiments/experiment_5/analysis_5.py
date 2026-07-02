@@ -115,7 +115,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw,
     extract_metafeatures_raw_temporal, MF_NAMES_AGGSTATS,
 )
-from streams.generate_real_streams import REAL_STREAMS, N_FEATURES
+from streams.generate_real_streams import REAL_STREAMS, N_FEATURES, CHUNK_SIZE
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -180,8 +180,6 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ============================================================
 #  CONFIGURATION
 # ============================================================
-# chunk_size = 200, same as evaluate_concept_classification_5.py
-CHUNK_SIZE = 200
 
 # Streams with more raw ABFS features than this get truncated to the
 # top N_TOP_FEATURES_CAPPED (by relevance-score variance) in the
@@ -1071,7 +1069,7 @@ if RUN_CONCEPT_DIST:
             os.path.join(FIGURES_DIR, f'concept_distribution_{stream_name}.png'),
             n_concepts=N_CONCEPTS[stream_name])
         
-        
+
 
 if args.summary:
     print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
