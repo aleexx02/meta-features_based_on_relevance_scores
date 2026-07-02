@@ -367,25 +367,31 @@ if RUN_VARIANCE:
 
 
 # ============================================================
-#  3. SHAP ANALYSIS
+#  3. SHAP -- all classifiers, per ABFS version (one grid per version/drift)
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
     print("3. SHAP ANALYSIS")
     print("="*60)
 
-    # SHAP for the same batch classifiers as the 1a sweep, excluding SVM
-    # (SVC has no predict_proba by default and is too slow under KernelExplainer).
-    # 1a is fully batch, so SHAP explains the exact models used for the numbers.
+    # batch sklearn classifiers, same as the 1a sweep, excluding SVM
+    # (SVC has no predict_proba by default and is slow under KernelExplainer)
     SHAP_CLFS = [(name, clf) for name, clf in BASE_CLFS if name != 'SVM']
 
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
         for mf_type, mf_label, mf_names, _ in MF_CONFIGS:
+            fname = os.path.join(FIGURES_DIR,
+                f'shap_all_clfs_{mf_type}_{drift_type}.png')
+            if os.path.exists(fname):
+                print(f"Exists: {fname}"); continue
+
             print(f"\nSHAP: {mf_label} - {drift_type} drift")
 
+            # pool all replications into one dataset
             all_X, all_y = [], []
             for rep_id, rs in enumerate(RANDOM_STATES):
-                _, _, _, mf_results = extract_stream_data(rs, drift_type, n_drifts, concept_sigmoid_spacing)
+                _, _, _, mf_results = extract_stream_data(
+                    rs, drift_type, n_drifts, concept_sigmoid_spacing)
                 all_X.append(mf_results[mf_type]['X'])
                 all_y.append(mf_results[mf_type]['y'])
 
@@ -394,40 +400,50 @@ if RUN_SHAP:
             X_all[np.isnan(X_all)] = 1
             X_all[np.isinf(X_all)] = 1
 
-            # shared background + evaluation samples across classifiers
+            # shared background + evaluation samples -> panels are comparable
             X_bg = shap.sample(X_all, 100)
             X_ev = shap.sample(X_all, 200)
 
-            for clf_name, clf_proto in SHAP_CLFS:
-                fname = os.path.join(FIGURES_DIR, f'shap_{mf_type}_{clf_name}_{drift_type}.png')
-                if os.path.exists(fname):
-                    print(f"  {clf_name}: exists, skipping"); continue
-                print(f"  Classifier: {clf_name}")
+            # dynamic grid: works for 3, 4 or 5 classifiers
+            n_clfs = len(SHAP_CLFS)
+            ncols  = 2
+            nrows  = int(np.ceil(n_clfs / ncols))
+            fig, axes = plt.subplots(nrows, ncols, figsize=(8 * ncols, 5 * nrows))
+            axes_flat = np.array(axes).flatten()
 
+            for clf_idx, (clf_name, clf_proto) in enumerate(SHAP_CLFS):
+                ax  = axes_flat[clf_idx]
                 clf = clone(clf_proto)
                 clf.fit(X_all, y_all)
 
-                explainer = shap.KernelExplainer(clf.predict_proba, X_bg)
+                explainer   = shap.KernelExplainer(clf.predict_proba, X_bg)
                 shap_values = explainer.shap_values(X_ev, nsamples=100)
 
-                shap_array = np.array(shap_values)
-                if shap_array.ndim == 3:          # (n_samples, n_features, n_classes)
-                    mean_abs_shap = np.mean(np.abs(shap_array), axis=(0, 2))
-                else:
-                    mean_abs_shap = np.mean(np.abs(shap_array), axis=0)
+                shap_array    = np.array(shap_values)
+                mean_abs_shap = (np.mean(np.abs(shap_array), axis=(0, 2))
+                                 if shap_array.ndim == 3
+                                 else np.mean(np.abs(shap_array), axis=0))
 
                 sorted_idx = np.argsort(mean_abs_shap)[::-1]
-                fig, ax = plt.subplots(figsize=(10, 4))
-                ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx], color='steelblue', alpha=0.8)
+                ax.bar(range(len(mf_names)), mean_abs_shap[sorted_idx],
+                       color='steelblue', alpha=0.8)
                 ax.set_xticks(range(len(mf_names)))
-                ax.set_xticklabels([mf_names[i] for i in sorted_idx], rotation=45, ha='right', fontsize=9)
-                ax.set_ylabel('Mean absolute SHAP value')
-                ax.set_title(f'SHAP feature importance - {mf_label} - {drift_type} drift - experiment 1a\n'
-                             f'({clf_name}, pooled over {N_REPLICATIONS} replications)')
-                fig.tight_layout()
-                fig.savefig(fname, dpi=150)
-                plt.close()
-                print(f"SHAP plot saved: {fname}")
+                ax.set_xticklabels([mf_names[i] for i in sorted_idx],
+                                   rotation=45, ha='right', fontsize=7)
+                ax.set_ylabel('Mean |SHAP|', fontsize=9)
+                ax.set_title(clf_name, fontsize=11)
+
+            # turn off any unused panels
+            for j in range(n_clfs, len(axes_flat)):
+                axes_flat[j].axis('off')
+
+            fig.suptitle(f'SHAP - {mf_label} - {drift_type} drift - '
+                         f'experiment 1a\n(pooled over '
+                         f'{N_REPLICATIONS} replications)', fontsize=12)
+            fig.tight_layout()
+            fig.savefig(fname, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f"SHAP plot saved: {fname}")
 
 
 # ============================================================
