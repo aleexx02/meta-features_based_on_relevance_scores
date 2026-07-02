@@ -105,6 +105,7 @@ parser.add_argument('--metrics',    action='store_true', help='Run metrics heatm
 parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
 parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
 parser.add_argument('--bars', action='store_true')
+parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--summary', action='store_true')
 
 args = parser.parse_args()
@@ -116,6 +117,7 @@ RUN_METRICS      = args.metrics
 RUN_STREAM_ANALYSIS = args.stream_analysis
 RUN_GAP          = args.gap
 RUN_BARS         = args.bars
+RUN_CONCEPT_DIST = args.concept_dist
 
 print(f"\nRunning analysis for Experiment 1c")
 print(f"Sanity check    : {RUN_SANITY_CHECK}")
@@ -462,6 +464,27 @@ def write_summary_csv(path, title, header, rows):
         writer.writerows(rows)
     print(f"  Saved: {path}")
 
+
+
+def plot_concept_distribution(concept_labels, title, out_path, n_concepts=None):
+    """Histogram of window counts per concept label."""
+    import numpy as np, matplotlib.pyplot as plt, os
+    if os.path.exists(out_path):
+        print(f"  Exists: {out_path}"); return
+    labels = np.asarray(concept_labels)
+    if n_concepts is None:
+        n_concepts = int(labels.max()) + 1
+    counts = np.bincount(labels, minlength=n_concepts)
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.bar(range(n_concepts), counts, color='steelblue', alpha=0.85)
+    ax.axhline(len(labels) / n_concepts, color='red', linestyle='--',
+               linewidth=1.0, label='uniform (balanced) level')
+    ax.set_xlabel('Concept label'); ax.set_ylabel('Number of windows')
+    ax.set_title(title); ax.legend(fontsize=8)
+    ax.grid(alpha=0.3, axis='y')
+    fig.tight_layout(); fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(); print(f"  Saved: {out_path}")
 
 
 # ============================================================
@@ -865,7 +888,7 @@ if RUN_STREAM_ANALYSIS:
 
 
 # ============================================================
-#  6. GAP HEATMAP -- ABFS raw v2.0 vs Komorniczak best-of-9,
+#  6. GAP HEATMAP - ABFS raw v2.0 vs Komorniczak best-of-9,
 #  one file per drift type (no chunk_size/n_informative grid here
 #  the way Exp2 has, so drift type is the unit instead).
 # ============================================================
@@ -981,6 +1004,21 @@ if RUN_BARS:
         fig.tight_layout()
         fig.savefig(fname, dpi=150, bbox_inches='tight')
         plt.close(); print(f"  Saved: {fname}")
+
+
+
+if RUN_CONCEPT_DIST:
+    print("\n" + "="*60); print("CONCEPT DISTRIBUTION"); print("="*60)
+    for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
+        _, _, _, mf_results = extract_stream_data(
+            RANDOM_STATES[0], drift_type, n_drifts, concept_sigmoid_spacing)
+        y = mf_results['raw']['y']   # concept labels for this stream
+        plot_concept_distribution(
+            y,
+            f'Concept distribution - {drift_type} drift ({n_concepts} concepts) - experiment 1c',
+            os.path.join(FIGURES_DIR, f'concept_distribution_{drift_type}.png'),
+            n_concepts=n_concepts)
+
 
 
 if args.summary:

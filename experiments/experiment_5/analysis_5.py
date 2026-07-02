@@ -137,6 +137,7 @@ parser.add_argument('--metrics',     action='store_true')
 parser.add_argument('--gap',         action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--bars', action='store_true')
+parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--summary', action='store_true')
 
 args = parser.parse_args()
@@ -148,6 +149,7 @@ RUN_METRICS     = args.metrics
 RUN_GAP         = args.gap
 RUN_STREAM_ANALYSIS = args.stream_analysis
 RUN_BARS        = args.bars
+RUN_CONCEPT_DIST = args.concept_dist
 RUN_SUMMARY     = args.summary
 
 print(f"\nRunning analysis for Experiment 5 (annotated real streams):")
@@ -365,6 +367,28 @@ def write_summary_csv(path, title, header, rows):
         writer.writerow(header)
         writer.writerows(rows)
     print(f"  Saved: {path}")
+
+
+
+def plot_concept_distribution(concept_labels, title, out_path, n_concepts=None):
+    """Histogram of window counts per concept label."""
+    import numpy as np, matplotlib.pyplot as plt, os
+    if os.path.exists(out_path):
+        print(f"  Exists: {out_path}"); return
+    labels = np.asarray(concept_labels)
+    if n_concepts is None:
+        n_concepts = int(labels.max()) + 1
+    counts = np.bincount(labels, minlength=n_concepts)
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.bar(range(n_concepts), counts, color='steelblue', alpha=0.85)
+    ax.axhline(len(labels) / n_concepts, color='red', linestyle='--',
+               linewidth=1.0, label='uniform (balanced) level')
+    ax.set_xlabel('Concept label'); ax.set_ylabel('Number of windows')
+    ax.set_title(title); ax.legend(fontsize=8)
+    ax.grid(alpha=0.3, axis='y')
+    fig.tight_layout(); fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(); print(f"  Saved: {out_path}")
 
 
 
@@ -888,7 +912,7 @@ if RUN_STREAM_ANALYSIS:
 
 
 #  ============================================================
-#  GAP HEATMAP -- one file PER STREAM.
+#  GAP HEATMAP - one file PER STREAM.
 #  Per classifier: best ABFS version (max BA over aggstats / raw /
 #  raw+temporal) minus best Komorniczak group (max BA over the 9
 #  groups). Computed independently per classifier, so each cell
@@ -1033,6 +1057,21 @@ if RUN_BARS:
         fig.savefig(fname, dpi=150, bbox_inches='tight')
         plt.close(); print(f"  Saved: {fname}")
 
+
+
+if RUN_CONCEPT_DIST:
+    print("\n" + "="*60); print("CONCEPT DISTRIBUTION"); print("="*60)
+    for stream_name in REAL_STREAMS:
+        cl = load('concept_labels', stream_name, optional=True)
+        if cl is None:
+            print(f"  {stream_name}: no concept_labels — skipping"); continue
+        plot_concept_distribution(
+            cl,
+            f'Concept distribution - {stream_name} ({N_CONCEPTS[stream_name]} concepts)',
+            os.path.join(FIGURES_DIR, f'concept_distribution_{stream_name}.png'),
+            n_concepts=N_CONCEPTS[stream_name])
+        
+        
 
 if args.summary:
     print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
