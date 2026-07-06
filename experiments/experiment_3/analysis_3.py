@@ -105,11 +105,13 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ============================================================
 SPECS        = exp3_specs()
 SPEC_BY_NAME = {s['name']: s for s in SPECS}
-REF_CHUNK_SIZE = 200   # per-cell plots use this chunk_size cell per (gen, drift)
 
-# (gen, drift) pairs, and the reference cell name for each
+# Per-cell plots (sanity/SHAP/stream_analysis/performance/metrics) are
+# generated for ALL chunk sizes, as in Experiment 2, so any cell can be
+# chosen for the body later without re-running. The filenames already
+# carry the chunk size, so nothing collides.
 GEN_DRIFT_PAIRS = sorted({(s['gen_name'], s['transition']) for s in SPECS})
-REF_CELLS = [f'{g}_chunk{REF_CHUNK_SIZE}_{d}' for (g, d) in GEN_DRIFT_PAIRS]
+REF_CELLS = [s['name'] for s in SPECS]   # every cell, all chunk sizes
 
 MEASURES = [
     'clustering', 'complexity', 'concept', 'general', 'info-theory',
