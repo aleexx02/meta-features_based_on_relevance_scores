@@ -58,7 +58,7 @@ from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw,
     extract_metafeatures_raw_temporal, MF_NAMES_AGGSTATS,
 )
-from streams.generate_synthetic_streams import exp4_specs, SEED, CHUNK_SIZES_EXP4 as CHUNK_SIZES
+from streams.generate_synthetic_streams import exp4_specs, SEED, EXP4_N_DRIFTS, CHUNK_SIZES_EXP4 as CHUNK_SIZES
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -105,13 +105,22 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ============================================================
 SPECS        = exp4_specs()
 SPEC_BY_NAME = {s['name']: s for s in SPECS}
-REF_CHUNK_SIZE = 200   # per-cell plots use this chunk_size...
-REF_N_DRIFTS   = 7     # ...and this n_drifts (recurrence present) per (gen, drift)
-from streams.generate_synthetic_streams import EXP4_N_DRIFTS
 
-# (gen, drift) pairs, and the reference cell name for each
+# Per-cell plots (sanity/SHAP/stream_analysis/performance/metrics) are
+# generated for EVERY cell, all chunk sizes and all n_drifts, as in
+# Experiment 2. Filenames already carry chunk_size and n_drifts, so
+# nothing collides and any cell can be chosen for the body later.
 GEN_DRIFT_PAIRS = sorted({(s['gen_name'], s['transition']) for s in SPECS})
-REF_CELLS = [f'{g}_chunk{REF_CHUNK_SIZE}_ndrift{REF_N_DRIFTS}_{d}' for (g, d) in GEN_DRIFT_PAIRS]
+REF_CELLS = [s['name'] for s in SPECS]  # all 48 cells
+
+# SHAP is expensive (KernelExplainer over 3 versions x 4 classifiers per
+# cell), so it is restricted to the recurrence cells that are candidates
+# for the report body: the highest-recurrence n_drifts (15, and 7 for
+# comparison) at the smaller chunk sizes, for both generators and drifts.
+SHAP_CELLS = [f'{g}_chunk{cs}_ndrift{nd}_{d}'
+              for (g, d) in GEN_DRIFT_PAIRS
+              for cs in [100, 200]
+              for nd in [7, 15]]
 
 MEASURES = [
     'clustering', 'complexity', 'concept', 'general', 'info-theory',
@@ -379,7 +388,7 @@ if args.performance:
 # ============================================================
 if args.shap:
     print("\n" + "="*60); print("SHAP"); print("="*60)
-    for cell in REF_CELLS:
+    for cell in SHAP_CELLS:
         print(f"\n  {cell}")
         y = load('concept_labels', cell)
         if y is None:
@@ -570,7 +579,7 @@ if args.gap:
 # ============================================================
 
 if args.grid:
-    print("\n" + "="*60); print("GRID: BA vs n_drifts (per classifier)"); print("="*60)
+    print("\n" + "="*60); print("GRID: BA vs n_drifts (one figure per ABFS version)"); print("="*60)
 
     def komor_best_per_clf(cell):
         best = None
@@ -584,43 +593,46 @@ if args.grid:
 
     for (gen, drift) in GEN_DRIFT_PAIRS:
         for cs in CHUNK_SIZES:
-            fname = os.path.join(FIGURES_DIR, f'ba_vs_ndrifts_{gen}_chunk{cs}_{drift}.png')
-            if os.path.exists(fname):
-                continue
-
-            xs = []
-            abfs_clf  = {name: [] for name in CLF_NAMES}
-            komor_clf = {name: [] for name in CLF_NAMES}
-
-            for nd in EXP4_N_DRIFTS:
-                cell = f'{gen}_chunk{cs}_ndrift{nd}_{drift}'
-                pr = load('preq_abfs_raw_ba', cell, optional=True)
-                kb = komor_best_per_clf(cell)
-                if pr is None or kb is None:
+            for version in ABFS_VERSIONS:
+                fname = os.path.join(FIGURES_DIR,
+                                     f'ba_vs_ndrifts_{version}_{gen}_chunk{cs}_{drift}.png')
+                if os.path.exists(fname):
                     continue
-                abfs_per_clf = np.mean(pr[:, -1, :], axis=0)
-                xs.append(nd)
+
+                xs = []
+                abfs_clf  = {name: [] for name in CLF_NAMES}
+                komor_clf = {name: [] for name in CLF_NAMES}
+
+                for nd in EXP4_N_DRIFTS:
+                    cell = f'{gen}_chunk{cs}_ndrift{nd}_{drift}'
+                    pr = load(f'preq_abfs_{version}_ba', cell, optional=True)
+                    kb = komor_best_per_clf(cell)
+                    if pr is None or kb is None:
+                        continue
+                    abfs_per_clf = np.mean(pr[:, -1, :], axis=0)
+                    xs.append(nd)
+                    for ci, name in enumerate(CLF_NAMES):
+                        abfs_clf[name].append(abfs_per_clf[ci])
+                        komor_clf[name].append(kb[ci])
+
+                if not xs:
+                    continue
+
+                fig, ax = plt.subplots(figsize=(8, 5))
                 for ci, name in enumerate(CLF_NAMES):
-                    abfs_clf[name].append(abfs_per_clf[ci])
-                    komor_clf[name].append(kb[ci])
-
-            if not xs:
-                continue
-
-            fig, ax = plt.subplots(figsize=(8, 5))
-            for ci, name in enumerate(CLF_NAMES):
-                color = CLF_COLORS.get(name, f'C{ci}')
-                ax.plot(xs, abfs_clf[name], 'o-', color=color,
-                        label=f'{name} ABFS', linewidth=1.5, markersize=5)
-                ax.plot(xs, komor_clf[name], 's--', color=color,
-                        label=f'{name} Komor', linewidth=1.5, markersize=5)
-            ax.set_xticks(EXP4_N_DRIFTS); ax.set_xlabel('n_drifts (recurrence amount)')
-            ax.set_ylabel('Final balanced accuracy (mean over reps)')
-            ax.set_title(f'BA vs n_drifts -- ABFS raw v2.0 vs Komorniczak -- {gen}, chunk_size={cs}, {drift}')
-            ax.legend(fontsize=8, ncol=2, bbox_to_anchor=(1.01, 1), loc='upper left')
-            ax.set_ylim(0, 1); ax.grid(alpha=0.3)
-            fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
-            plt.close(); print(f"  Saved: {fname}")
+                    color = CLF_COLORS.get(name, f'C{ci}')
+                    ax.plot(xs, abfs_clf[name], 'o-', color=color,
+                            label=f'{name} ABFS', linewidth=1.5, markersize=5)
+                    ax.plot(xs, komor_clf[name], 's--', color=color,
+                            label=f'{name} Komor', linewidth=1.5, markersize=5)
+                ax.set_xticks(EXP4_N_DRIFTS); ax.set_xlabel('n_drifts (recurrence amount)')
+                ax.set_ylabel('Final balanced accuracy (mean over reps)')
+                ax.set_title(f'BA vs n_drifts -- ABFS {ABFS_LABELS[version]} vs Komorniczak '
+                             f'-- {gen}, chunk_size={cs}, {drift}')
+                ax.legend(fontsize=8, ncol=2, bbox_to_anchor=(1.01, 1), loc='upper left')
+                ax.set_ylim(0, 1); ax.grid(alpha=0.3)
+                fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
+                plt.close(); print(f"  Saved: {fname}")
 
 
 if args.summary:
