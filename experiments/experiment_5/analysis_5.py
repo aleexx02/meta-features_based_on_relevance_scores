@@ -910,33 +910,26 @@ if RUN_STREAM_ANALYSIS:
 
 
 #  ============================================================
-#  GAP HEATMAP - one file PER STREAM.
-#  Per classifier: best ABFS version (max BA over aggstats / raw /
-#  raw+temporal) minus best Komorniczak group (max BA over the 9
-#  groups). Computed independently per classifier, so each cell
-#  compares each side's strongest option for that classifier -- no
-#  fixed group, not limited to raw v2.0. Matches the best-vs-best
-#  definition of Experiment 2.
+#  GAP HEATMAP - one file PER STREAM, 3 rows (one per ABFS version).
+#  Each cell (version, clf) is that version's final-window BA minus
+#  the best-of-9 Komorniczak group for that same classifier. best_komor
+#  is computed per classifier (max over the 9 groups), held fixed across
+#  the 3 rows so the rows are directly comparable -- a bluer row means a
+#  genuinely stronger version, not a weaker Komorniczak reference. Keeping
+#  the versions separate (rather than max-ing over them) makes the variant
+#  flip visible: aggstats positive where raw is negative on balanced INSECTS.
 # ============================================================
 if RUN_GAP:
     print("\n" + "="*60)
-    print("GAP HEATMAP - best ABFS version vs best Komorniczak group (per classifier)")
+    print("GAP HEATMAP - per ABFS version vs best Komorniczak group (per classifier)")
     print("="*60)
- 
+
     for stream_name in REAL_STREAMS:
         fname = os.path.join(FIGURES_DIR,
                              f'gap_heatmap_preq_exp5_{stream_name}.png')
         if os.path.exists(fname):
             print(f"  Exists: {fname}"); continue
- 
-        # best ABFS per classifier: element-wise max over the 3 versions
-        # at the final window
-        abfs_finals = []
-        for version in ABFS_VERSIONS:
-            data = load(f'preq_abfs_{version}_ba', stream_name, optional=True)
-            if data is not None:
-                abfs_finals.append(data[-1, :])
- 
+
         # best Komorniczak per classifier: element-wise max over the 9
         # groups at the final window
         komor_finals = []
@@ -944,46 +937,59 @@ if RUN_GAP:
             data = load(f'preq_komor_{measure}_ba', stream_name, optional=True)
             if data is not None:
                 komor_finals.append(data[-1, :])
- 
-        if not abfs_finals or not komor_finals:
-            print(f"  {stream_name}: missing data -- skipping.")
+
+        if not komor_finals:
+            print(f"  {stream_name}: missing Komorniczak data -- skipping.")
             continue
- 
-        best_abfs  = np.nanmax(np.vstack(abfs_finals),  axis=0)   # (N_CLFS,)
         best_komor = np.nanmax(np.vstack(komor_finals), axis=0)   # (N_CLFS,)
-        gap_row    = best_abfs - best_komor                       # (N_CLFS,)
- 
-        # provenance print: best of each side and the resulting gap
-        for j, clf in enumerate(CLF_NAMES):
-            print(f"    {stream_name:32s} {clf:4s} "
-                  f"ABFS {best_abfs[j]:.3f}  Komor {best_komor[j]:.3f}  "
-                  f"gap {gap_row[j]:+.3f}")
- 
-        vmax = np.nanmax(np.abs(gap_row)) if np.any(~np.isnan(gap_row)) else 1.0
- 
-        fig, ax = plt.subplots(figsize=(max(6, N_CLFS * 1.8), 2.8))
-        im = ax.imshow(gap_row.reshape(1, -1), vmin=-vmax, vmax=vmax,
+
+        # per-version gap rows: version final BA minus best_komor
+        gap_matrix = np.full((len(ABFS_VERSIONS), N_CLFS), np.nan)
+        for v_id, version in enumerate(ABFS_VERSIONS):
+            data = load(f'preq_abfs_{version}_ba', stream_name, optional=True)
+            if data is not None:
+                gap_matrix[v_id, :] = data[-1, :] - best_komor
+
+        if np.all(np.isnan(gap_matrix)):
+            print(f"  {stream_name}: missing ABFS data -- skipping.")
+            continue
+
+        # provenance print: per version, per classifier
+        for v_id, version in enumerate(ABFS_VERSIONS):
+            for j, clf in enumerate(CLF_NAMES):
+                val = gap_matrix[v_id, j]
+                if not np.isnan(val):
+                    print(f"    {stream_name:32s} {version:12s} {clf:4s} "
+                          f"Komor {best_komor[j]:.3f}  gap {val:+.3f}")
+
+        vmax = (np.nanmax(np.abs(gap_matrix))
+                if np.any(~np.isnan(gap_matrix)) else 1.0)
+
+        fig, ax = plt.subplots(
+            figsize=(max(6, N_CLFS * 1.8), 1.1 * len(ABFS_VERSIONS) + 1.6))
+        im = ax.imshow(gap_matrix, vmin=-vmax, vmax=vmax,
                        cmap='RdBu', aspect='auto')
-        for j in range(N_CLFS):
-            val = gap_row[j]
-            ax.text(j, 0, f'{val:+.3f}', ha='center', va='center', fontsize=12,
-                    color='white' if abs(val) > vmax * 0.6 else 'black')
+        for i in range(len(ABFS_VERSIONS)):
+            for j in range(N_CLFS):
+                val = gap_matrix[i, j]
+                if not np.isnan(val):
+                    ax.text(j, i, f'{val:+.3f}', ha='center', va='center',
+                            fontsize=11,
+                            color='white' if abs(val) > vmax * 0.6 else 'black')
         ax.set_xticks(range(N_CLFS))
         ax.set_xticklabels(CLF_NAMES, fontsize=11)
-        ax.set_yticks([0])
-        ax.set_yticklabels([stream_name], fontsize=10)
-        ax.tick_params(axis='x', length=0, pad=8)   # labels sit clear of the strip
+        ax.set_yticks(range(len(ABFS_VERSIONS)))
+        ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
         ax.set_xlabel('Classifier', fontsize=11, labelpad=8)
-        ax.set_title(f'Gap (best ABFS minus best Komorniczak) -- {stream_name}',
-                     fontsize=11, pad=10)
-        # vertical colorbar on the RIGHT -- no overlap with x-axis labels
-        cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
+        ax.set_title(f'Gap per ABFS version (version minus best Komorniczak) '
+                     f'-- {stream_name}', fontsize=11, pad=10)
+        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         cbar.set_label('Gap (BA)', fontsize=9)
-        fig.subplots_adjust(bottom=0.35)            # room for x labels
+        fig.tight_layout()
         fig.savefig(fname, dpi=150, bbox_inches='tight')
-        plt.close()
-        print(f"  Saved: {fname}")
+        plt.close(); print(f"  Saved: {fname}")
 
+        
 
 # ============================================================
 #  BARS - BA per ABFS version (best clf) + Komorniczak, per stream
