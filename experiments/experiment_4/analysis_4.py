@@ -80,6 +80,7 @@ parser.add_argument('--metrics',         action='store_true')
 parser.add_argument('--gap',             action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--grid',            action='store_true')
+parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--summary',         action='store_true')
 args = parser.parse_args()
 
@@ -121,6 +122,12 @@ SHAP_CELLS = [f'{g}_chunk{cs}_ndrift{nd}_{d}'
               for (g, d) in GEN_DRIFT_PAIRS
               for cs in [100, 200]
               for nd in [7, 15]]
+
+# class distribution: generate for the recurrence cells at chunk100
+CLASS_DIST_CELLS = [f'{g}_chunk100_ndrift{nd}_{d}'
+                    for g in ['sea', 'stagger']
+                    for nd in [7, 15]
+                    for d in ['sudden', 'gradual']]
 
 MEASURES = [
     'clustering', 'complexity', 'concept', 'general', 'info-theory',
@@ -265,6 +272,28 @@ def write_summary_csv(path, title, header, rows):
         writer.writerow(header)
         writer.writerows(rows)
     print(f"  Saved: {path}")
+
+
+
+def plot_concept_distribution(concept_labels, title, out_path, n_concepts=None):
+    """Histogram of window counts per concept label."""
+    import numpy as np, matplotlib.pyplot as plt, os
+    if os.path.exists(out_path):
+        print(f"  Exists: {out_path}"); return
+    labels = np.asarray(concept_labels)
+    if n_concepts is None:
+        n_concepts = int(labels.max()) + 1
+    counts = np.bincount(labels, minlength=n_concepts)
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.bar(range(n_concepts), counts, color='steelblue', alpha=0.85)
+    ax.axhline(len(labels) / n_concepts, color='red', linestyle='--',
+               linewidth=1.0, label='uniform (balanced) level')
+    ax.set_xlabel('Concept label'); ax.set_ylabel('Number of windows')
+    ax.set_title(title); ax.legend(fontsize=8)
+    ax.grid(alpha=0.3, axis='y')
+    fig.tight_layout(); fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(); print(f"  Saved: {out_path}")
 
 
 # ============================================================
@@ -475,7 +504,7 @@ if args.metrics:
 # ============================================================
 if args.stream_analysis:
     print("\n" + "="*60); print("STREAM ANALYSIS"); print("="*60)
-    for cell in REF_CELLS:
+    for cell in CLASS_DIST_CELLS:
         print(f"\n  {cell}")
         di, cd, le, cpc, spec = stream_diagnostics(cell)
         boundaries = boundaries_from_cpc(cpc)
@@ -634,6 +663,26 @@ if args.grid:
                 fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
                 plt.close(); print(f"  Saved: {fname}")
 
+if args.concept_dist:
+    print("\n" + "="*60); print("CONCEPT DISTRIBUTION"); print("="*60)
+
+    # high-recurrence cells show the cycling best; one per generator/drift
+    CONCEPT_DIST_CELLS = [f'{g}_chunk100_ndrift15_{d}'
+                          for g in ['sea', 'stagger']
+                          for d in ['sudden', 'gradual']]
+
+    for cell in CONCEPT_DIST_CELLS:
+        cl = load('concept_labels', cell, optional=True)
+        if cl is None:
+            print(f"  {cell}: no concept_labels — skipping"); continue
+        # distinct concept count for this cell (from the spec)
+        n_conc = next(s['n_concepts'] for s in SPECS if s['name'] == cell)
+        plot_concept_distribution(
+            cl,
+            f'Concept distribution - {cell} ({n_conc} concepts)',
+            os.path.join(FIGURES_DIR, f'concept_distribution_{cell}.png'),
+            n_concepts=n_conc)
+        
 
 if args.summary:
     print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
