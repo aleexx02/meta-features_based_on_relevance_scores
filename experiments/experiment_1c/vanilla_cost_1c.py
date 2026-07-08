@@ -13,8 +13,6 @@ from metafeatures.mf_extraction import extract_metafeatures_raw
 # ADJUST these imports to the real 1c config exposed by generate_synthetic_streams:
 from streams.generate_synthetic_streams import (
     get_exp2_concept_labels as get_concept_labels,   # 1c uses same labeler
-    EXP2_N_CHUNKS   as N_CHUNKS,
-    EXP2_N_FEATURES as N_FEATURES,
     EXP2_DRIFT_CONFIGS as DRIFT_CONFIGS,   # 1c baseline: use the drift configs
 )
 from pymfe.mfe import MFE
@@ -22,7 +20,10 @@ from pymfe.mfe import MFE
 WARMUP = 10
 CHUNK_SIZE_1C = 200          # 1c reference chunk size (adjust if different)
 N_INFORMATIVE_1C = 10        # 1c baseline n_informative (adjust)
- 
+N_FEATURES = 10
+N_CHUNKS = 5000
+
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
 RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c')
  
