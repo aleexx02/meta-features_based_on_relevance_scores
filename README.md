@@ -54,26 +54,32 @@ meta-features_based_on_relevance_scores/
 │   ├── experiment_1c/
 │   │   ├── analysis_1c.py
 │   │   ├── evaluate_concept_classification_1c.py
-│   │   └── komor_concept_classification_1c.py
+│   │   ├── komor_concept_classification_1c.py
+│   │   └── vanilla_cost_1c.py
 │   │
 │   ├── experiment_2/
 │   │   ├── analysis_2.py
-│   │   └── evaluate_concept_classification_2.py
+│   │   ├── evaluate_concept_classification_2.py
+│   │   └── vanilla_cost_2.py
 │   │
 │   ├── experiment_3/ # SEA, STAGGER, LED (sequential)
 │   │   ├── analysis_3.py
-│   │   └── evaluate_concept_classification_3.py
+│   │   ├── evaluate_concept_classification_3.py
+│   │   └── vanilla_cost_3.py
 │   │
 │   ├── experiment_4/ # recurring concepts (SEA, STAGGER)
 │   │   ├── analysis_4.py
-│   │   └── evaluate_concept_classification_4.py
+│   │   ├── evaluate_concept_classification_4.py
+│   │   └── vanilla_cost_4.py
 │   │
 │   ├── experiment_5/ # Real Streams: INSECTS + SPAM
 │   │   ├── analysis_5.py
-│   │   └── evaluate_concept_classification_5.py
+│   │   ├── evaluate_concept_classification_5.py
+│   │   └── vanilla_cost_5.py
 │   │
 │   ├── classifier_sweep_komor.py
-│   └── classifier_sweep_prequential.py
+│   ├── classifier_sweep_prequential.py
+│   └── vanilla_and_cost.py
 │
 ├── external/
 │   └── komorniczak/
