@@ -14,7 +14,7 @@ warnings.filterwarnings('ignore')
 sys.path.append('..')     # experiments/
 sys.path.append('../..')  # project root
 
-from vanilla_and_cost import ExperimentSpec, run_experiment, timed
+from vanilla_and_cost import ExperimentSpec, run_experiment
 
 from strlearn.streams import StreamGenerator
 from abfs.abfs_implementation import ABFS_match
