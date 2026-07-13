@@ -18,7 +18,8 @@ RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
  
 SPECS = {s['name']: s for s in exp4_specs()}
 CELLS = list(SPECS.keys())
-SEEDS = [SEED]
+np.random.seed(SEED)
+SEEDS = list(np.random.randint(100, 10000, 5))     # matches RANDOM_STATES in the evaluator
 WARMUP = 0
  
 def _rebuild(cell, seed):
@@ -85,4 +86,4 @@ def n_features_of(cell):
 if __name__ == '__main__':
     spec = ExperimentSpec('exp4', RESULTS_DIR, CELLS, SEEDS,
                           window_provider, cost_abfs, cost_komor, n_features_of)
-    run_experiment(spec, do_vanilla=False, do_cost=True)
+    run_experiment(spec, do_vanilla=True, do_cost=True)

@@ -18,7 +18,8 @@ RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
  
 SPECS = {s['name']: s for s in exp3_specs()}
 CELLS = list(SPECS.keys())
-SEEDS = [SEED]                      # exp3 per-cell display uses the base realization
+np.random.seed(SEED)
+SEEDS = list(np.random.randint(100, 10000, 5))     # matches RANDOM_STATES in the evaluator
 WARMUP = 0                          # exp3/4 use no warmup
  
 def _rebuild(cell, seed):
@@ -89,4 +90,4 @@ if __name__ == '__main__':
                           window_provider, cost_abfs, cost_komor, n_features_of,
                           cost_cells=['sea_chunk100_sudden',     # 3 features
                                       'led_chunk100_sudden'])    # 24 features
-    run_experiment(spec, do_vanilla=False, do_cost=True)
+    run_experiment(spec, do_vanilla=True, do_cost=True)
