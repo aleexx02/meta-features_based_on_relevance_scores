@@ -1,3 +1,5 @@
 experiment,tag,method,n_features,n_windows,time_s,ms_per_window,peak_mb
-exp3,sea_chunk100_sudden,abfs,3,5000,52.513,10.503,49.0
-exp3,sea_chunk100_sudden,komorniczak,3,5000,198.91,39.782,49.0
+exp3,sea_chunk100_sudden,abfs,3,5000,71.627,14.325,0.05
+exp3,sea_chunk100_sudden,komorniczak,3,5000,238.064,47.613,0.5
+exp3,led_chunk100_sudden,abfs,24,5000,724.769,144.954,0.96
+exp3,led_chunk100_sudden,komorniczak,24,5000,1094.883,218.977,0.66
