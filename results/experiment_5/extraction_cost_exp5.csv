@@ -1,3 +1,11 @@
 experiment,tag,method,n_features,n_windows,time_s,ms_per_window,peak_mb
-exp5,INSECTS-abrupt_balanced,abfs,33,529,119.393,225.695,15.2
-exp5,INSECTS-abrupt_balanced,komorniczak,33,529,128.331,242.592,14.9
+exp5,INSECTS-abrupt_balanced,abfs,33,529,128.757,243.397,15.29
+exp5,INSECTS-abrupt_balanced,komorniczak,33,529,132.262,250.023,15.03
+exp5,INSECTS-abrupt_imbalanced,abfs,33,3553,844.793,237.769,100.26
+exp5,INSECTS-abrupt_imbalanced,komorniczak,33,3553,906.426,255.116,100.21
+exp5,INSECTS-incgradual_balanced,abfs,33,242,57.709,238.465,7.2
+exp5,INSECTS-incgradual_balanced,komorniczak,33,242,61.778,255.28,7.16
+exp5,INSECTS-incgradual_imbalanced,abfs,33,1434,341.665,238.26,40.49
+exp5,INSECTS-incgradual_imbalanced,komorniczak,33,1434,367.707,256.42,40.44
+exp5,SPAM,abfs,499,94,285.391,3036.077,43.16
+exp5,SPAM,komorniczak,499,94,309.967,3297.52,54.75
