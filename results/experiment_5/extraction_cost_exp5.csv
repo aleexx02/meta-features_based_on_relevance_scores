@@ -1,0 +1,3 @@
+experiment,tag,method,n_features,n_windows,time_s,ms_per_window,peak_mb
+exp5,INSECTS-abrupt_balanced,abfs,33,529,119.393,225.695,15.2
+exp5,INSECTS-abrupt_balanced,komorniczak,33,529,128.331,242.592,14.9

@@ -1,0 +1,3 @@
+experiment,tag,method,n_features,n_windows,time_s,ms_per_window,peak_mb
+exp4,sea_chunk100_ndrift1_sudden,abfs,3,5000,89.145,17.829,78.1
+exp4,sea_chunk100_ndrift1_sudden,komorniczak,3,5000,241.291,48.258,78.1
