@@ -123,7 +123,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.base import clone as skclone
 from sklearn.decomposition import PCA
-import shap
+# import shap
 
 
 # ============================================================
@@ -140,6 +140,8 @@ parser.add_argument('--bars', action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary', action='store_true')
+parser.add_argument('--sparsity', action='store_true',
+                    help='SPAM relevance-spread check (effective dimensionality)')
 
 args = parser.parse_args()
 
@@ -622,6 +624,7 @@ if RUN_PERFORMANCE:
 #  shap_all_clfs_{version}_{stream}.png  x3
 # ============================================================
 if RUN_SHAP:
+    import shap
     print("\n" + "="*60)
     print("SHAP ANALYSIS")
     print("="*60)
@@ -1141,5 +1144,61 @@ if args.summary:
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp5.csv'),
                       'Experiment 5 summary (real streams)', header, rows)
     
-    
+
+
+
+if args.sparsity:
+    print("\n" + "="*60)
+    print("RELEVANCE SPREAD / EFFECTIVE DIMENSIONALITY")
+    print("="*60)
+
+    import strlearn as sl
+    from abfs.abfs_implementation import ABFS_match
+
+    for stream_name in REAL_STREAMS:
+        nf = N_FEATURES[stream_name]
+        stream_path = os.path.join(REAL_STREAM_DIR, f'{stream_name}.npy')
+        stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE, n_chunks=100000)
+        abfs = ABFS_match(n_features=nf, categorical_features=[],
+                          accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
+
+        all_scores = []
+        for _ in range(100000):
+            try:
+                X, y = stream.get_chunk()
+            except Exception:
+                break
+            if len(X) == 0:
+                break
+            for i in range(len(X)):
+                abfs.update(X[i], y[i])
+            all_scores.append(abfs.relevance_scores().copy())
+
+        R = np.array(all_scores)                 # (n_windows, n_features)
+        mean_rel = R.mean(axis=0)
+        srt = np.sort(mean_rel)[::-1]
+        std_rel = R.std(axis=0)                 # how much each feature's relevance VARIES
+        srt_v = np.sort(std_rel)[::-1]
+        cum_v = np.cumsum(srt_v) / srt_v.sum()
+        total = srt.sum()
+
+        print(f"\n  {stream_name}  (n_features = {nf})")
+        if total <= 0:
+            print("    all relevance scores are zero -- skipping")
+            continue
+        cum = np.cumsum(srt) / total
+        # how many features to reach 50/80/90/95% of total relevance
+        for share in [0.5, 0.8, 0.9, 0.95]:
+            k = int(np.searchsorted(cum, share) + 1)
+            print(f"    top {k:4d} features ({k/nf:5.1%} of them) carry {share:.0%} of total relevance")
+        # how many are non-negligible at all
+        for thr in [0.01, 0.05, 0.1]:
+            print(f"    features with mean relevance > {thr}: {(mean_rel > thr).sum()} / {nf}")
+
+
+        for share in [0.8, 0.9]:
+            k = int(np.searchsorted(cum_v, share) + 1)
+            print(f"    top {k:4d} features carry {share:.0%} of relevance VARIATION")
+
 print("\nAnalysis 5 complete.")
+
