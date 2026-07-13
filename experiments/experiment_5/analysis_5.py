@@ -1153,7 +1153,10 @@ if args.sparsity:
     print("="*60)
 
     import strlearn as sl
+    import csv
     from abfs.abfs_implementation import ABFS_match
+
+    rows = []
 
     for stream_name in REAL_STREAMS:
         nf = N_FEATURES[stream_name]
@@ -1176,29 +1179,55 @@ if args.sparsity:
 
         R = np.array(all_scores)                 # (n_windows, n_features)
         mean_rel = R.mean(axis=0)
-        srt = np.sort(mean_rel)[::-1]
-        std_rel = R.std(axis=0)                 # how much each feature's relevance VARIES
+        std_rel  = R.std(axis=0)
+
+        srt   = np.sort(mean_rel)[::-1]
         srt_v = np.sort(std_rel)[::-1]
-        cum_v = np.cumsum(srt_v) / srt_v.sum()
-        total = srt.sum()
+        total, total_v = srt.sum(), srt_v.sum()
 
         print(f"\n  {stream_name}  (n_features = {nf})")
         if total <= 0:
             print("    all relevance scores are zero -- skipping")
             continue
-        cum = np.cumsum(srt) / total
-        # how many features to reach 50/80/90/95% of total relevance
+
+        cum   = np.cumsum(srt)   / total
+        cum_v = np.cumsum(srt_v) / total_v
+
+        row = dict(stream=stream_name, n_features=nf)
+
         for share in [0.5, 0.8, 0.9, 0.95]:
             k = int(np.searchsorted(cum, share) + 1)
+            row[f'n_feat_{int(share*100)}pct_relevance'] = k
+            row[f'frac_feat_{int(share*100)}pct_relevance'] = round(k / nf, 3)
             print(f"    top {k:4d} features ({k/nf:5.1%} of them) carry {share:.0%} of total relevance")
-        # how many are non-negligible at all
-        for thr in [0.01, 0.05, 0.1]:
-            print(f"    features with mean relevance > {thr}: {(mean_rel > thr).sum()} / {nf}")
 
+        for thr in [0.01, 0.05, 0.1]:
+            c = int((mean_rel > thr).sum())
+            row[f'n_feat_meanrel_gt_{thr}'] = c
+            print(f"    features with mean relevance > {thr}: {c} / {nf}")
 
         for share in [0.8, 0.9]:
             k = int(np.searchsorted(cum_v, share) + 1)
+            row[f'n_feat_{int(share*100)}pct_variation'] = k
+            row[f'frac_feat_{int(share*100)}pct_variation'] = round(k / nf, 3)
             print(f"    top {k:4d} features carry {share:.0%} of relevance VARIATION")
 
+        rows.append(row)
+
+        # also save the full per-feature curves, for plotting later
+        np.save(os.path.join(RESULTS_DIR, f'relevance_mean_{stream_name}.npy'), mean_rel)
+        np.save(os.path.join(RESULTS_DIR, f'relevance_std_{stream_name}.npy'),  std_rel)
+
+    # summary CSV
+    if rows:
+        out = os.path.join(RESULTS_DIR, 'sparsity_analysis_exp5.csv')
+        # union of keys, in case some streams skipped a field
+        fields = list(dict.fromkeys(k for r in rows for k in r))
+        with open(out, 'w', newline='') as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader(); w.writerows(rows)
+        print(f"\n  Saved: {out}")
+
+        
 print("\nAnalysis 5 complete.")
 
