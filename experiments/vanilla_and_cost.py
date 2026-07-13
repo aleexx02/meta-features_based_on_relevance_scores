@@ -25,11 +25,12 @@ import os
 import time
 import tracemalloc
 import csv
+import gc
 import numpy as np
-
+ 
 from classifier_sweep_prequential import run_prequential_sweep
-
-
+ 
+ 
 # ------------------------------------------------------------------
 #  VANILLA FEATURES
 # ------------------------------------------------------------------
@@ -44,38 +45,52 @@ def vanilla_features_from_windows(windows):
     X[np.isnan(X)] = 1
     X[np.isinf(X)] = 1
     return X
-
-
+ 
+ 
 # ------------------------------------------------------------------
-#  COST TIMER
+#  COST TIMER — times a zero-arg closure, so the caller controls
+#  exactly what is inside the measured region.
 # ------------------------------------------------------------------
-def timed(fn, *args, **kwargs):
+def timed_closure(fn):
+    """fn: zero-arg callable that performs ONLY the work to be measured.
+    Returns (result, seconds, peak_MB).
+ 
+    peak_MB is peak PYTHON-heap allocation during fn (tracemalloc). It does
+    not include allocations made before fn was called (e.g. the stream), and
+    it does not capture C-level/numpy-internal allocations, so it is a
+    relative measure for comparing the two extractors, not an absolute RSS."""
+    gc.collect()                 # settle the heap before measuring
     tracemalloc.start()
     t0 = time.perf_counter()
-    out = fn(*args, **kwargs)
+    out = fn()
     dt = time.perf_counter() - t0
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
-    return out, dt, peak / 1e6  # MB
-
-
+    return out, dt, peak / 1e6   # MB
+ 
+ 
 # ------------------------------------------------------------------
-#  EXPERIMENT SPEC — the only thing that varies between experiments
+#  EXPERIMENT SPEC
 # ------------------------------------------------------------------
 class ExperimentSpec:
     """
     name            : 'exp2', 'exp3', ...
     results_dir     : absolute path to results/experiment_X/
-    cells           : list of tags (strings) to process
-    seeds           : list of replication seeds (1 for real streams)
+    cells           : list of tags to run the VANILLA baseline on
+    seeds           : replication seeds (1 seed for real streams)
     window_provider : fn(cell, seed) -> (windows, labels)
-                      windows already post-warmup; labels aligned per window.
-    cost_abfs       : fn(cell, seed) -> n_windows   (times ABFS extraction)
-    cost_komor      : fn(cell, seed) -> n_windows   (times Komor extraction)
-    n_features_of   : fn(cell) -> int               (for the cost table)
+    cost_abfs       : fn(cell, seed) -> zero-arg CLOSURE that extracts ABFS
+                      features and returns n_windows. Stream building must
+                      happen OUTSIDE the closure.
+    cost_komor      : fn(cell, seed) -> zero-arg CLOSURE, same contract.
+    n_features_of   : fn(cell) -> int
+    cost_cells      : which cells to time. Default: first cell only (cost is
+                      feature-count driven). For exp5 pass ALL streams, so
+                      SPAM's 500-feature cost is captured.
     """
     def __init__(self, name, results_dir, cells, seeds,
-                 window_provider, cost_abfs, cost_komor, n_features_of):
+                 window_provider, cost_abfs, cost_komor, n_features_of,
+                 cost_cells=None):
         self.name = name
         self.results_dir = results_dir
         self.cells = cells
@@ -84,56 +99,60 @@ class ExperimentSpec:
         self.cost_abfs = cost_abfs
         self.cost_komor = cost_komor
         self.n_features_of = n_features_of
-
-
+        self.cost_cells = cost_cells if cost_cells is not None else cells[:1]
+ 
+ 
 def _save(results_dir, array, prefix, tag):
     np.save(os.path.join(results_dir, f'{prefix}_{tag}.npy'), array)
-
-
+ 
+ 
 def _vanilla_done(results_dir, tag):
     return all(os.path.exists(os.path.join(results_dir, f'preq_vanilla_{m}_{tag}.npy'))
                for m in ('ba', 'f1', 'kappa'))
-
-
+ 
+ 
 # ------------------------------------------------------------------
-#  CORE RUNNER — identical for every experiment
+#  CORE RUNNER
 # ------------------------------------------------------------------
 def run_experiment(spec, do_vanilla=True, do_cost=True):
     os.makedirs(spec.results_dir, exist_ok=True)
-    cost_rows = []
-    cost_done = False
-
-    for cell in spec.cells:
-        # -------- VANILLA (all cells, all seeds) --------
-        if do_vanilla:
+ 
+    # ---------------- VANILLA ----------------
+    if do_vanilla:
+        for cell in spec.cells:
             if _vanilla_done(spec.results_dir, cell):
                 print(f"  [{spec.name}] vanilla exists: {cell}")
-            else:
-                ba_reps, f1_reps, k_reps = [], [], []
-                for seed in spec.seeds:
-                    windows, labels = spec.window_provider(cell, seed)
-                    Xv = vanilla_features_from_windows(windows)
-                    yv = np.asarray(labels)
-                    (m_ba, s_ba, t_ba, m_f1, s_f1, t_f1,
-                     m_k, s_k, t_k) = run_prequential_sweep(Xv, yv)
-                    ba_reps.append(t_ba); f1_reps.append(t_f1); k_reps.append(t_k)
-                # real streams have 1 seed -> shape (n_windows, n_clfs);
-                # synthetic have 5 -> (n_reps, n_windows, n_clfs). Match the
-                # convention the rest of each experiment already uses.
-                ba_out = np.array(ba_reps) if len(ba_reps) > 1 else ba_reps[0]
-                f1_out = np.array(f1_reps) if len(f1_reps) > 1 else f1_reps[0]
-                k_out  = np.array(k_reps)  if len(k_reps)  > 1 else k_reps[0]
-                _save(spec.results_dir, ba_out, 'preq_vanilla_ba',    cell)
-                _save(spec.results_dir, f1_out, 'preq_vanilla_f1',    cell)
-                _save(spec.results_dir, k_out,  'preq_vanilla_kappa', cell)
-                print(f"  [{spec.name}] vanilla saved: {cell}")
-
-        # -------- COST (one representative cell) --------
-        if do_cost and not cost_done:
+                continue
+            ba_reps, f1_reps, k_reps = [], [], []
+            for seed in spec.seeds:
+                windows, labels = spec.window_provider(cell, seed)
+                Xv = vanilla_features_from_windows(windows)
+                yv = np.asarray(labels)
+                (m_ba, s_ba, t_ba, m_f1, s_f1, t_f1,
+                 m_k, s_k, t_k) = run_prequential_sweep(Xv, yv)
+                ba_reps.append(t_ba); f1_reps.append(t_f1); k_reps.append(t_k)
+            ba_out = np.array(ba_reps) if len(ba_reps) > 1 else ba_reps[0]
+            f1_out = np.array(f1_reps) if len(f1_reps) > 1 else f1_reps[0]
+            k_out  = np.array(k_reps)  if len(k_reps)  > 1 else k_reps[0]
+            _save(spec.results_dir, ba_out, 'preq_vanilla_ba',    cell)
+            _save(spec.results_dir, f1_out, 'preq_vanilla_f1',    cell)
+            _save(spec.results_dir, k_out,  'preq_vanilla_kappa', cell)
+            print(f"  [{spec.name}] vanilla saved: {cell}")
+ 
+    # ---------------- COST ----------------
+    if do_cost:
+        cost_rows = []
+        for cell in spec.cost_cells:
             seed = spec.seeds[0]
-            n_win, t_abfs, mem_abfs = timed(spec.cost_abfs, cell, seed)
-            _,     t_kom,  mem_kom  = timed(spec.cost_komor, cell, seed)
             nf = spec.n_features_of(cell)
+ 
+            # build stream OUTSIDE the timer; get back a pure-extraction closure
+            abfs_fn  = spec.cost_abfs(cell, seed)
+            n_win, t_abfs, mem_abfs = timed_closure(abfs_fn)
+ 
+            komor_fn = spec.cost_komor(cell, seed)
+            _,     t_kom,  mem_kom  = timed_closure(komor_fn)
+ 
             for method, dt, mem in [('abfs', t_abfs, mem_abfs),
                                     ('komorniczak', t_kom, mem_kom)]:
                 cost_rows.append(dict(
@@ -141,13 +160,14 @@ def run_experiment(spec, do_vanilla=True, do_cost=True):
                     n_features=nf, n_windows=n_win,
                     time_s=round(dt, 3),
                     ms_per_window=round(1000 * dt / max(n_win, 1), 3),
-                    peak_mb=round(mem, 1)))
-            cost_done = True
-            print(f"  [{spec.name}] cost measured on: {cell}")
-
-    if do_cost and cost_rows:
-        path = os.path.join(spec.results_dir, f'extraction_cost_{spec.name}.csv')
-        with open(path, 'w', newline='') as f:
-            w = csv.DictWriter(f, fieldnames=list(cost_rows[0].keys()))
-            w.writeheader(); w.writerows(cost_rows)
-        print(f"  [{spec.name}] cost -> {path}")
+                    peak_mb=round(mem, 2)))
+            print(f"  [{spec.name}] cost: {cell} (n_features={nf})  "
+                  f"abfs {1000*t_abfs/max(n_win,1):.1f} ms/win, {mem_abfs:.1f} MB | "
+                  f"komor {1000*t_kom/max(n_win,1):.1f} ms/win, {mem_kom:.1f} MB")
+ 
+        if cost_rows:
+            path = os.path.join(spec.results_dir, f'extraction_cost_{spec.name}.csv')
+            with open(path, 'w', newline='') as f:
+                w = csv.DictWriter(f, fieldnames=list(cost_rows[0].keys()))
+                w.writeheader(); w.writerows(cost_rows)
+            print(f"  [{spec.name}] cost -> {path}")

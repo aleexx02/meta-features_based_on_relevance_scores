@@ -44,44 +44,59 @@ def window_provider(cell, seed):
 def cost_abfs(cell, seed):
     stream_path = os.path.join(REAL_STREAM_DIR, f'{cell}.npy')
     nf = N_FEATURES[cell]
-    stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE, n_chunks=100000)
-    abfs = ABFS_match(n_features=nf, categorical_features=[],
-                      accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
-    n = 0
-    for chunk_idx in range(100000):
-        try:
-            X_chunk, y_chunk = stream.get_chunk()
-        except Exception:
-            break
-        if len(X_chunk) == 0: break
-        for i in range(len(X_chunk)):
-            abfs.update(X_chunk[i], y_chunk[i])
-        _ = extract_metafeatures_raw(abfs.relevance_scores())
-        n += 1
-    return n
+ 
+    def _extract():
+        stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
+                                      n_chunks=100000)
+        abfs = ABFS_match(n_features=nf, categorical_features=[],
+                          accuracy_window_size=CHUNK_SIZE,
+                          class_window_size=CHUNK_SIZE)
+        n = 0
+        for _ in range(100000):
+            try:
+                X_chunk, y_chunk = stream.get_chunk()
+            except Exception:
+                break
+            if len(X_chunk) == 0:
+                break
+            for i in range(len(X_chunk)):
+                abfs.update(X_chunk[i], y_chunk[i])
+            _ = extract_metafeatures_raw(abfs.relevance_scores())
+            n += 1
+        return n
+ 
+    return _extract
  
 def cost_komor(cell, seed, measure='statistical'):
     stream_path = os.path.join(REAL_STREAM_DIR, f'{cell}.npy')
-    stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE, n_chunks=100000)
-    mfe = MFE(groups=[measure], suppress_warnings=True)
-    n = 0
-    for chunk_idx in range(100000):
-        try:
-            X_chunk, y_chunk = stream.get_chunk()
-        except Exception:
-            break
-        if len(X_chunk) == 0: break
-        try:
-            mfe.fit(X_chunk, y_chunk); mfe.extract(suppress_warnings=True)
-        except Exception:
-            pass
-        n += 1
-    return n
+ 
+    def _extract():
+        stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
+                                      n_chunks=100000)
+        mfe = MFE(groups=[measure], suppress_warnings=True)
+        n = 0
+        for _ in range(100000):
+            try:
+                X_chunk, y_chunk = stream.get_chunk()
+            except Exception:
+                break
+            if len(X_chunk) == 0:
+                break
+            try:
+                mfe.fit(X_chunk, y_chunk)
+                mfe.extract(suppress_warnings=True)
+            except Exception:
+                pass
+            n += 1
+        return n
+ 
+    return _extract
  
 def n_features_of(cell):
     return N_FEATURES[cell]
  
 if __name__ == '__main__':
     spec = ExperimentSpec('exp5', RESULTS_DIR, CELLS, SEEDS,
-                          window_provider, cost_abfs, cost_komor, n_features_of)
-    run_experiment(spec)
+                          window_provider, cost_abfs, cost_komor, n_features_of,
+                          cost_cells=CELLS)     # <-- ALL streams, incl. SPAM
+    run_experiment(spec, do_vanilla=False, do_cost=True)

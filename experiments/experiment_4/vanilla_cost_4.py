@@ -39,34 +39,45 @@ def window_provider(cell, seed):
  
 def cost_abfs(cell, seed):
     data, cpc, s = _rebuild(cell, seed)
-    cs = s['chunk_size']; nf = RIVER_N_FEATURES[s['gen_name']]
-    abfs = ABFS_match(n_features=nf, categorical_features=[],
-                      accuracy_window_size=cs, class_window_size=cs)
-    n = 0
-    for w in range(len(cpc)):
-        block = data[w*cs:(w+1)*cs]
-        if len(block) == 0: break
-        for row in block:
-            abfs.update(row[:-1], int(row[-1]))
-        _ = extract_metafeatures_raw(abfs.relevance_scores())
-        n += 1
-    return n
+    cs = s['chunk_size']
+    nf = RIVER_N_FEATURES[s['gen_name']]
+ 
+    def _extract():
+        abfs = ABFS_match(n_features=nf, categorical_features=[],
+                          accuracy_window_size=cs, class_window_size=cs)
+        n = 0
+        for w in range(len(cpc)):
+            block = data[w*cs:(w+1)*cs]
+            if len(block) == 0:
+                break
+            for row in block:
+                abfs.update(row[:-1], int(row[-1]))
+            _ = extract_metafeatures_raw(abfs.relevance_scores())
+            n += 1
+        return n
+ 
+    return _extract
  
 def cost_komor(cell, seed, measure='statistical'):
     data, cpc, s = _rebuild(cell, seed)
     cs = s['chunk_size']
-    mfe = MFE(groups=[measure], suppress_warnings=True)
-    n = 0
-    for w in range(len(cpc)):
-        block = data[w*cs:(w+1)*cs]
-        if len(block) == 0: break
-        try:
-            mfe.fit(block[:, :-1], block[:, -1].astype(int))
-            mfe.extract(suppress_warnings=True)
-        except Exception:
-            pass
-        n += 1
-    return n
+ 
+    def _extract():
+        mfe = MFE(groups=[measure], suppress_warnings=True)
+        n = 0
+        for w in range(len(cpc)):
+            block = data[w*cs:(w+1)*cs]
+            if len(block) == 0:
+                break
+            try:
+                mfe.fit(block[:, :-1], block[:, -1].astype(int))
+                mfe.extract(suppress_warnings=True)
+            except Exception:
+                pass
+            n += 1
+        return n
+ 
+    return _extract
  
 def n_features_of(cell):
     return RIVER_N_FEATURES[SPECS[cell]['gen_name']]
@@ -74,4 +85,4 @@ def n_features_of(cell):
 if __name__ == '__main__':
     spec = ExperimentSpec('exp4', RESULTS_DIR, CELLS, SEEDS,
                           window_provider, cost_abfs, cost_komor, n_features_of)
-    run_experiment(spec)
+    run_experiment(spec, do_vanilla=False, do_cost=True)

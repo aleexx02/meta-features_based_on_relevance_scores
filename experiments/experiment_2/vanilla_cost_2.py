@@ -86,16 +86,20 @@ def cost_abfs(cell, seed):
                   n_features=N_FEATURES, n_informative=ni, n_redundant=0,
                   n_repeated=0, concept_sigmoid_spacing=spacing, random_state=seed)
     stream = StreamGenerator(**config)
-    abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
-                      accuracy_window_size=cs, class_window_size=cs)
-    n = 0
-    stream.reset()
-    for Xc, yc in stream:
-        for i in range(len(Xc)):
-            abfs.update(Xc[i], yc[i])
-        _ = extract_metafeatures_raw(abfs.relevance_scores())
-        n += 1
-    return n
+ 
+    def _extract():
+        abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
+                          accuracy_window_size=cs, class_window_size=cs)
+        n = 0
+        stream.reset()
+        for Xc, yc in stream:
+            for i in range(len(Xc)):
+                abfs.update(Xc[i], yc[i])
+            _ = extract_metafeatures_raw(abfs.relevance_scores())
+            n += 1
+        return n
+ 
+    return _extract
 
 
 def cost_komor(cell, seed, measure='statistical'):
@@ -105,16 +109,21 @@ def cost_komor(cell, seed, measure='statistical'):
                   n_features=N_FEATURES, n_informative=ni, n_redundant=0,
                   n_repeated=0, concept_sigmoid_spacing=spacing, random_state=seed)
     stream = StreamGenerator(**config)
-    mfe = MFE(groups=[measure], suppress_warnings=True)
-    n = 0
-    stream.reset()
-    for Xc, yc in stream:
-        try:
-            mfe.fit(Xc, yc); mfe.extract(suppress_warnings=True)
-        except Exception:
-            pass
-        n += 1
-    return n
+ 
+    def _extract():
+        mfe = MFE(groups=[measure], suppress_warnings=True)
+        n = 0
+        stream.reset()
+        for Xc, yc in stream:
+            try:
+                mfe.fit(Xc, yc)
+                mfe.extract(suppress_warnings=True)
+            except Exception:
+                pass
+            n += 1
+        return n
+ 
+    return _extract
 
 
 def n_features_of(cell):
@@ -122,8 +131,6 @@ def n_features_of(cell):
 
 
 if __name__ == '__main__':
-    spec = ExperimentSpec(
-        name='exp2', results_dir=RESULTS_DIR, cells=CELLS, seeds=SEEDS,
-        window_provider=window_provider, cost_abfs=cost_abfs,
-        cost_komor=cost_komor, n_features_of=n_features_of)
-    run_experiment(spec)
+    spec = ExperimentSpec('exp2', RESULTS_DIR, CELLS, SEEDS,
+                          window_provider, cost_abfs, cost_komor, n_features_of)
+    run_experiment(spec, do_vanilla=False, do_cost=True)

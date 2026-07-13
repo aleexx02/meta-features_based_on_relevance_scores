@@ -65,32 +65,48 @@ def window_provider(cell, seed):
     return windows, labels
  
 def cost_abfs(cell, seed):
+    # stream built HERE, outside the timed closure — so tracemalloc measures
+    # only the extraction, not the stream array
     stream, _ = _build(CELL_CONFIG[cell], seed)
-    abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
-                      accuracy_window_size=CHUNK_SIZE_1C, class_window_size=CHUNK_SIZE_1C)
-    n = 0; stream.reset()
-    for Xc, yc in stream:
-        for i in range(len(Xc)):
-            abfs.update(Xc[i], yc[i])
-        _ = extract_metafeatures_raw(abfs.relevance_scores()); n += 1
-    return n
+
+    def _extract():
+        abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
+                          accuracy_window_size=CHUNK_SIZE_1C,
+                          class_window_size=CHUNK_SIZE_1C)
+        n = 0
+        stream.reset()
+        for Xc, yc in stream:
+            for i in range(len(Xc)):
+                abfs.update(Xc[i], yc[i])
+            _ = extract_metafeatures_raw(abfs.relevance_scores())
+            n += 1
+        return n
+
+    return _extract
  
 def cost_komor(cell, seed, measure='statistical'):
     stream, _ = _build(CELL_CONFIG[cell], seed)
-    mfe = MFE(groups=[measure], suppress_warnings=True)
-    n = 0; stream.reset()
-    for Xc, yc in stream:
-        try:
-            mfe.fit(Xc, yc); mfe.extract(suppress_warnings=True)
-        except Exception:
-            pass
-        n += 1
-    return n
+
+    def _extract():
+        mfe = MFE(groups=[measure], suppress_warnings=True)
+        n = 0
+        stream.reset()
+        for Xc, yc in stream:
+            try:
+                mfe.fit(Xc, yc)
+                mfe.extract(suppress_warnings=True)
+            except Exception:
+                pass
+            n += 1
+        return n
+
+    return _extract
  
+
 def n_features_of(cell):
     return N_FEATURES
  
 if __name__ == '__main__':
     spec = ExperimentSpec('exp1c', RESULTS_DIR, CELLS, SEEDS,
                           window_provider, cost_abfs, cost_komor, n_features_of)
-    run_experiment(spec)
+    run_experiment(spec, do_vanilla=False, do_cost=True)
