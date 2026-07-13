@@ -138,6 +138,7 @@ parser.add_argument('--gap',         action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--bars', action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
+parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary', action='store_true')
 
 args = parser.parse_args()
@@ -1075,6 +1076,46 @@ if RUN_CONCEPT_DIST:
             os.path.join(FIGURES_DIR, f'concept_distribution_{stream_name}.png'),
             n_concepts=N_CONCEPTS[stream_name])
         
+
+
+if args.vanilla:
+    print("\n" + "="*60)
+    print("VANILLA BASELINE COMPARISON")
+    print("="*60)
+
+    def best_final_ba(prefix, stream):
+        """Best classifier's final-window BA. Real streams have NO rep axis:
+        arrays are (n_windows, n_clfs), not (n_reps, n_windows, n_clfs)."""
+        d = load(prefix, stream, optional=True)
+        if d is None:
+            return None
+        return float(np.max(d[-1, :]))          # <-- no mean over reps
+
+    def vanilla_row(stream):
+        v = best_final_ba('preq_vanilla_ba', stream)
+        a = max([b for b in (best_final_ba(f'preq_abfs_{ver}_ba', stream)
+                             for ver in ABFS_VERSIONS) if b is not None], default=None)
+        k = max([b for b in (best_final_ba(f'preq_komor_{m}_ba', stream)
+                             for m in MEASURES) if b is not None], default=None)
+        return v, a, k
+
+    rows = []
+    for stream in REAL_STREAMS:
+        v, a, k = vanilla_row(stream)
+        if v is None:
+            print(f"  {stream}: no vanilla results -- skipping"); continue
+        rows.append((stream, v, a, k))
+        print(f"  {stream:25s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}  "
+              f"(baseline {1/N_CONCEPTS[stream]:.3f})")
+
+    import csv
+    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp5.csv')
+    with open(out, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['stream', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba', 'random_baseline'])
+        for s, v, a, k in rows:
+            w.writerow([s, round(v, 3), round(a, 3), round(k, 3), round(1/N_CONCEPTS[s], 3)])
+    print(f"\n  Saved: {out}")
 
 
 if args.summary:

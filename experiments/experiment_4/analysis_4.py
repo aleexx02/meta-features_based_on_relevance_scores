@@ -81,6 +81,7 @@ parser.add_argument('--gap',             action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--grid',            action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
+parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary',         action='store_true')
 args = parser.parse_args()
 
@@ -684,6 +685,46 @@ if args.concept_dist:
             n_concepts=n_conc)
         
 
+
+if args.vanilla:
+    print("\n" + "="*60)
+    print("VANILLA BASELINE COMPARISON")
+    print("="*60)
+
+    def best_final_ba(prefix, cell):
+        """Best classifier's final-window BA, mean over reps. None if missing."""
+        d = load(prefix, cell, optional=True)
+        if d is None:
+            return None
+        return float(np.max(np.mean(d[:, -1, :], axis=0)))
+
+    def vanilla_row(cell):
+        v = best_final_ba('preq_vanilla_ba', cell)
+        a = max([b for b in (best_final_ba(f'preq_abfs_{ver}_ba', cell)
+                             for ver in ABFS_VERSIONS) if b is not None], default=None)
+        k = max([b for b in (best_final_ba(f'preq_komor_{m}_ba', cell)
+                             for m in MEASURES) if b is not None], default=None)
+        return v, a, k
+
+    rows = []
+    for cell in REF_CELLS:              # or a chosen subset for the report table
+        v, a, k = vanilla_row(cell)
+        if v is None:
+            print(f"  {cell}: no vanilla results -- skipping"); continue
+        rows.append((cell, v, a, k))
+        print(f"  {cell:35s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
+
+    # write a CSV so the report table can be built from it
+    import csv
+    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp3.csv')
+    with open(out, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
+        for cell, v, a, k in rows:
+            w.writerow([cell, round(v, 3), round(a, 3), round(k, 3)])
+    print(f"\n  Saved: {out}")
+
+    
 if args.summary:
     print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
     from streams.generate_synthetic_streams import TOTAL_INSTANCES

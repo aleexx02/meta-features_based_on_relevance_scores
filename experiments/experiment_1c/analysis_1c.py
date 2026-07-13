@@ -106,6 +106,7 @@ parser.add_argument('--stream_analysis', action='store_true', help='Run stream a
 parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
 parser.add_argument('--bars', action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
+parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary', action='store_true')
 
 args = parser.parse_args()
@@ -1018,6 +1019,60 @@ if RUN_CONCEPT_DIST:
             f'Concept distribution - {drift_type} drift ({n_concepts} concepts) - experiment 1c',
             os.path.join(FIGURES_DIR, f'concept_distribution_{drift_type}.png'),
             n_concepts=n_concepts)
+
+
+
+if args.vanilla:
+    print("\n" + "="*60)
+    print("VANILLA BASELINE COMPARISON")
+    print("="*60)
+
+    def _load(prefix, cell):
+        p = os.path.join(RESULTS_DIR, f'{prefix}_{cell}.npy')
+        return np.load(p) if os.path.exists(p) else None
+
+    def best_abfs(cell):
+        """clf_ba_{version}_{drift}.npy -- shape (n_reps, n_windows, n_clfs)"""
+        best = None
+        for ver in ABFS_VERSIONS:
+            d = _load(f'clf_ba_{ver}', cell)
+            if d is None:
+                continue
+            b = float(np.max(np.mean(d[:, -1, :], axis=0)))   # best clf, final window
+            best = b if best is None else max(best, b)
+        return best
+
+    def best_komor(cell):
+        """clf_komor_concept_classif_ba_{drift}.npy
+        -- shape (n_measures, n_reps, n_windows, n_clfs): max over groups AND clfs."""
+        d = _load('clf_komor_concept_classif_ba', cell)
+        if d is None:
+            return None
+        per_group_clf = np.mean(d[:, :, -1, :], axis=1)   # (n_measures, n_clfs)
+        return float(np.max(per_group_clf))
+
+    def best_vanilla(cell):
+        d = _load('preq_vanilla_ba', cell)
+        if d is None:
+            return None
+        return float(np.max(np.mean(d[:, -1, :], axis=0)))
+
+    rows = []
+    for cell in ['sudden', 'gradual']:
+        v, a, k = best_vanilla(cell), best_abfs(cell), best_komor(cell)
+        if v is None:
+            print(f"  {cell}: no vanilla results -- skipping"); continue
+        rows.append((cell, v, a, k))
+        print(f"  {cell:10s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
+
+    import csv
+    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp1c.csv')
+    with open(out, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
+        for cell, v, a, k in rows:
+            w.writerow([cell, round(v, 3), round(a, 3), round(k, 3)])
+    print(f"\n  Saved: {out}")
 
 
 
