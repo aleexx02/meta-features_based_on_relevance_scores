@@ -716,7 +716,7 @@ if args.vanilla:
 
     # write a CSV so the report table can be built from it
     import csv
-    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp3.csv')
+    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp4.csv')
     with open(out, 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
