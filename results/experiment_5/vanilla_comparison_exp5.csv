@@ -1,0 +1,6 @@
+stream,vanilla_ba,abfs_best_ba,komor_best_ba,random_baseline
+INSECTS-abrupt_balanced,0.546,0.697,0.678,0.167
+INSECTS-abrupt_imbalanced,0.803,0.911,0.964,0.167
+INSECTS-incgradual_balanced,0.956,0.953,0.931,0.5
+INSECTS-incgradual_imbalanced,0.99,0.994,0.994,0.5
+SPAM,0.571,0.719,0.579,0.167
