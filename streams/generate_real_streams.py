@@ -98,11 +98,11 @@ USP_INSECTS = os.path.expanduser('~/usp_ds_repository/USP DS Repository/INSECTS'
 SPAM_DIR = os.path.expanduser('~/spam_data')  # adjust to wherever you extracted the .arff file
 
 OUT_STREAMS  = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams')
-OUT_GT       = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
+OUT_GT = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_gt')
 ANALYSIS_DIR = os.path.join(PROJECT_ROOT, 'data', 'real', 'annotated_streams_analysis')
 
 os.makedirs(OUT_STREAMS,  exist_ok=True)
-os.makedirs(OUT_GT,       exist_ok=True)
+os.makedirs(OUT_GT, exist_ok=True)
 os.makedirs(ANALYSIS_DIR, exist_ok=True)
 
 CHUNK_SIZE = 100
