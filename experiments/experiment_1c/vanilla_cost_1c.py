@@ -1,4 +1,4 @@
-#vanilla_cost_1c.py
+# vanilla_cost_1c.py
 
 import os, sys
 import numpy as np
