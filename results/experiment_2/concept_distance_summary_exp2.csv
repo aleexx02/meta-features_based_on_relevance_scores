@@ -1,0 +1,9 @@
+cell,drift,n_informative,n_concepts,l2_min,l2_max,l2_mean
+ninf3_sudden,sudden,3,21,0.0325,1.5177,0.8113
+ninf5_sudden,sudden,5,21,0.4963,2.3038,1.469
+ninf10_sudden,sudden,10,21,1.2287,3.2737,2.17
+ninf15_sudden,sudden,15,21,1.6263,3.9049,2.7038
+ninf3_gradual,gradual,3,25,0.0271,0.835,0.392
+ninf5_gradual,gradual,5,25,0.1405,1.8011,1.2025
+ninf10_gradual,gradual,10,25,0.2127,2.2951,1.5114
+ninf15_gradual,gradual,15,25,0.2961,3.1372,1.8827

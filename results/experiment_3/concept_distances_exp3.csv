@@ -1,0 +1,16 @@
+cell,concept_a,concept_b,l2
+sea_chunk100_sudden,0,1,0.02
+sea_chunk100_sudden,0,2,0.0306
+sea_chunk100_sudden,0,3,0.0197
+sea_chunk100_sudden,1,2,0.0214
+sea_chunk100_sudden,1,3,0.035
+sea_chunk100_sudden,2,3,0.0363
+stagger_chunk100_sudden,0,1,0.0023
+stagger_chunk100_sudden,0,2,0.0078
+stagger_chunk100_sudden,1,2,0.0061
+led_chunk100_sudden,0,1,0.4164
+led_chunk100_sudden,0,2,0.5556
+led_chunk100_sudden,0,3,0.7339
+led_chunk100_sudden,1,2,0.5583
+led_chunk100_sudden,1,3,0.6156
+led_chunk100_sudden,2,3,0.4752

@@ -1,0 +1,10 @@
+cell,concept_a,concept_b,l2
+sea_chunk100_ndrift15_sudden,0,1,0.0252
+sea_chunk100_ndrift15_sudden,0,2,0.0185
+sea_chunk100_ndrift15_sudden,0,3,0.0133
+sea_chunk100_ndrift15_sudden,1,2,0.0212
+sea_chunk100_ndrift15_sudden,1,3,0.0254
+sea_chunk100_ndrift15_sudden,2,3,0.0099
+stagger_chunk100_ndrift15_sudden,0,1,0.0055
+stagger_chunk100_ndrift15_sudden,0,2,0.0071
+stagger_chunk100_ndrift15_sudden,1,2,0.0073
