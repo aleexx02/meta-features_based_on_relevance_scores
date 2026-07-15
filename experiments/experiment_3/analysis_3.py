@@ -82,6 +82,7 @@ parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--grid',            action='store_true')
 parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary',         action='store_true')
+parser.add_argument('--concept_dist_features', action='store_true')
 args = parser.parse_args()
 
 EXP_TAG = 'exp3'
@@ -696,6 +697,61 @@ if args.summary:
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp3.csv'),
                       'Experiment 3 summary (SEA/STAGGER/LED)', header, rows)
+    
+
+
+if args.concept_dist_features:
+    print("\n" + "="*60)
+    print("CONCEPT SEPARATION IN FEATURE SPACE")
+    print("="*60)
+
+    rows_means, rows_dist = [], []
+
+    for cell in ['sea_chunk100_sudden', 'stagger_chunk100_sudden', 'led_chunk100_sudden']:
+        spec = SPEC_BY_NAME[cell]
+        data, cpc = spec['builder'](SEED)
+        cs = spec['chunk_size']
+        X = data[:, :-1]                     # features only
+
+        means, concs = [], []
+        for w in range(len(cpc)):
+            block = X[w*cs:(w+1)*cs]
+            if len(block) == 0:
+                break
+            means.append(block.mean(axis=0))
+            concs.append(int(cpc[w]))
+        means, concs = np.array(means), np.array(concs)
+
+        uniq = np.unique(concs)
+        cm = np.array([means[concs == c].mean(axis=0) for c in uniq])   # (n_concepts, n_features)
+
+        # pairwise L2
+        d = []
+        for i in range(len(uniq)):
+            for j in range(i+1, len(uniq)):
+                l2 = float(np.linalg.norm(cm[i] - cm[j]))
+                d.append(l2)
+                rows_dist.append(dict(cell=cell, concept_a=int(uniq[i]),
+                                      concept_b=int(uniq[j]), l2=round(l2, 4)))
+
+        print(f"\n  {cell}  (n_features={cm.shape[1]}, n_concepts={len(uniq)})")
+        for c, m in zip(uniq, cm):
+            print(f"    concept {int(c)}: {m.round(3)}")
+            rows_means.append(dict(cell=cell, concept=int(c),
+                                   **{f'f{k}': round(float(v), 4) for k, v in enumerate(m)}))
+        print(f"    L2  min={min(d):.4f}  max={max(d):.4f}  mean={np.mean(d):.4f}")
+
+    # write both CSVs
+    for rows, name in [(rows_means, 'concept_feature_means'),
+                       (rows_dist,  'concept_distances')]:
+        if not rows:
+            continue
+        out = os.path.join(RESULTS_DIR, f'{name}_{EXP_TAG}.csv')   # EXP_TAG = 'exp3' etc.
+        fields = list(dict.fromkeys(k for r in rows for k in r))
+        with open(out, 'w', newline='') as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader(); w.writerows(rows)
+        print(f"\n  Saved: {out}")
     
 
     

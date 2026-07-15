@@ -108,6 +108,7 @@ parser.add_argument('--bars', action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary', action='store_true')
+parser.add_argument('--concept_dist_features', action='store_true')
 
 args = parser.parse_args()
 
@@ -1109,3 +1110,68 @@ if args.summary:
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1c.csv'),
                       'Experiment 1c summary', header, rows)
+    
+
+if args.concept_dist_features:
+    print("\n" + "="*60)
+    print("CONCEPT SEPARATION IN FEATURE SPACE")
+    print("="*60)
+    import csv
+    from strlearn.streams import StreamGenerator
+
+    rows_means, rows_dist, rows_summary = [], [], []
+    SEED_CHECK = int(RANDOM_STATES[0])
+
+    for drift_type, n_drifts, spacing, n_concepts in DRIFT_CONFIGS:
+        cfg = dict(n_drifts=n_drifts, n_chunks=N_CHUNKS, chunk_size=CHUNK_SIZE,
+                   n_features=N_FEATURES, n_informative=N_FEATURES,
+                   n_redundant=0, n_repeated=0,
+                   concept_sigmoid_spacing=spacing, random_state=SEED_CHECK)
+        stream = StreamGenerator(**cfg)
+
+        # StreamGenerator is lazy -- iterate FIRST so concept_selector exists
+        stream.reset()
+        means = np.array([Xc.mean(axis=0) for Xc, yc in stream])
+
+        # labels, exactly as the evaluate script derives them
+        if drift_type == 'sudden':
+            cs_saved = stream.concept_selector.copy()
+            concept_labels_all = np.array([
+                int(np.bincount(cs_saved[i*CHUNK_SIZE:(i+1)*CHUNK_SIZE]).argmax())
+                for i in range(N_CHUNKS)])
+        else:
+            concept_labels_all = assign_labels_gradual(stream, N_CHUNKS, CHUNK_SIZE)
+
+        concs = np.array(concept_labels_all)
+        uniq = np.unique(concs)
+        cm = np.array([means[concs == c].mean(axis=0) for c in uniq])   # (n_concepts, n_features)
+
+        d = []
+        for i in range(len(uniq)):
+            for j in range(i+1, len(uniq)):
+                l2 = float(np.linalg.norm(cm[i] - cm[j]))
+                d.append(l2)
+                rows_dist.append(dict(cell=drift_type,
+                                      concept_a=int(uniq[i]), concept_b=int(uniq[j]),
+                                      l2=round(l2, 4)))
+
+        print(f"\n  {drift_type}  (n_features={cm.shape[1]}, n_concepts={len(uniq)})")
+        print(f"    L2  min={min(d):.4f}  max={max(d):.4f}  mean={np.mean(d):.4f}")
+
+        rows_summary.append(dict(cell=drift_type, n_concepts=len(uniq),
+                                 l2_min=round(min(d), 4), l2_max=round(max(d), 4),
+                                 l2_mean=round(float(np.mean(d)), 4)))
+
+        for c, m in zip(uniq, cm):
+            rows_means.append(dict(cell=drift_type, concept=int(c),
+                                   **{f'f{k}': round(float(v), 4) for k, v in enumerate(m)}))
+
+    for rows, name in [(rows_means,   'concept_feature_means'),
+                       (rows_dist,    'concept_distances'),
+                       (rows_summary, 'concept_distance_summary')]:
+        out = os.path.join(RESULTS_DIR, f'{name}_exp1c.csv')
+        fields = list(dict.fromkeys(k for r in rows for k in r))
+        with open(out, 'w', newline='') as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader(); w.writerows(rows)
+        print(f"  Saved: {out}")

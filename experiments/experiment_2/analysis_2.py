@@ -88,6 +88,7 @@ parser.add_argument('--grid',        action='store_true')
 parser.add_argument('--stream_analysis', action='store_true')
 parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary', action='store_true')
+parser.add_argument('--concept_dist_features', action='store_true')
 args = parser.parse_args()
 
 RUN_SANITY      = args.sanity
@@ -1044,5 +1045,65 @@ if args.summary:
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp2.csv'),
                       'Experiment 2 summary (config sensitivity)', header, rows)
+
+
+
+
+if args.concept_dist_features:
+    print("\n" + "="*60)
+    print("CONCEPT SEPARATION IN FEATURE SPACE")
+    print("="*60)
+
+    rows_means, rows_dist, rows_summary = [], [], []
+    SEED_CHECK = int(RANDOM_STATES[0])
+    CHUNK_CHECK = 100                      # concept distance is chunk-independent; fix one
+
+    for drift_type, n_drifts, spacing, n_concepts in DRIFT_CONFIGS:
+        for ninf in N_INFORMATIVES:
+            cell = f'ninf{ninf}_{drift_type}'
+            cfg = dict(n_drifts=n_drifts, n_chunks=N_CHUNKS, chunk_size=CHUNK_CHECK,
+                       n_features=N_FEATURES, n_informative=ninf,
+                       n_redundant=0, n_repeated=0,
+                       concept_sigmoid_spacing=spacing, random_state=SEED_CHECK)
+            stream = StreamGenerator(**cfg)
+
+            stream.reset()
+            means = np.array([Xc.mean(axis=0) for Xc, yc in stream])
+            concs = np.array(get_exp2_concept_labels(stream, drift_type, N_CHUNKS, CHUNK_CHECK))
+
+            uniq = np.unique(concs)
+            cm = np.array([means[concs == c].mean(axis=0) for c in uniq])
+
+            d = []
+            for i in range(len(uniq)):
+                for j in range(i+1, len(uniq)):
+                    l2 = float(np.linalg.norm(cm[i] - cm[j]))
+                    d.append(l2)
+                    rows_dist.append(dict(cell=cell, n_informative=ninf,
+                                          concept_a=int(uniq[i]), concept_b=int(uniq[j]),
+                                          l2=round(l2, 4)))
+
+            print(f"  {cell:22s}  n_concepts={len(uniq):2d}  "
+                  f"L2 min={min(d):.3f}  max={max(d):.3f}  mean={np.mean(d):.3f}")
+
+            rows_summary.append(dict(cell=cell, drift=drift_type, n_informative=ninf,
+                                     n_concepts=len(uniq),
+                                     l2_min=round(min(d), 4), l2_max=round(max(d), 4),
+                                     l2_mean=round(float(np.mean(d)), 4)))
+
+            for c, m in zip(uniq, cm):
+                rows_means.append(dict(cell=cell, n_informative=ninf, concept=int(c),
+                                       **{f'f{k}': round(float(v), 4) for k, v in enumerate(m)}))
+
+    for rows, name in [(rows_means,   'concept_feature_means'),
+                       (rows_dist,    'concept_distances'),
+                       (rows_summary, 'concept_distance_summary')]:
+        out = os.path.join(RESULTS_DIR, f'{name}_exp2.csv')
+        fields = list(dict.fromkeys(k for r in rows for k in r))
+        with open(out, 'w', newline='') as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader(); w.writerows(rows)
+        print(f"\n  Saved: {out}")
+
 
 print("\nAnalysis 2 complete.")
