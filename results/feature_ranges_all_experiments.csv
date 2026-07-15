@@ -1,0 +1,11 @@
+stream,n_features,min,max,mean,std,frac_nonzero
+"exp1c stream-learn (10f, 10inf)",10,-11.44,11.631,0.02,2.078,1.0
+"exp2 stream-learn (20f, 10inf)",20,-12.679,11.841,0.01,1.633,1.0
+exp3 sea,3,0.0,10.0,5.002,2.888,1.0
+exp3 stagger,3,0.0,2.0,1.0,0.817,0.666
+exp3 led,24,0.0,1.0,0.548,0.498,0.548
+exp5 INSECTS-abrupt_balanced,33,0.0,1.0,0.098,0.14,1.0
+exp5 INSECTS-abrupt_imbalanced,33,0.0,1.0,0.082,0.114,1.0
+exp5 INSECTS-incgradual_balanced,33,0.0,1.0,0.109,0.14,1.0
+exp5 INSECTS-incgradual_imbalanced,33,0.0,1.0,0.092,0.124,1.0
+exp5 SPAM,499,0.0,1.0,0.072,0.258,0.072
