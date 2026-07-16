@@ -503,6 +503,55 @@ Shared field values:
 
 ---
 
+
+
+## Output CSV files
+
+Per experiment, in `results/experiment_{N}/`:
+
+- **`summary_exp{N}.csv`** — the at-a-glance "who won each cell" table. One row per
+  drift type (1c), grid cell (2–4), or stream (5). Columns: cell/drift/stream id,
+  feature count, concept count, random baseline, best Komorniczak group + classifier
+  and its balanced accuracy, best ABFS version + classifier and its balanced accuracy,
+  and the ABFS−Komorniczak gap.
+
+- **`vanilla_comparison_exp{N}.csv`** — `cell, vanilla_ba, abfs_best_ba, komor_best_ba`.
+  Final balanced accuracy of the vanilla baseline (per-window feature mean+std, no labels)
+  against the best ABFS variant and best Komorniczak group, best classifier per side.
+  Source for the vanilla-baseline tables.
+
+- **`extraction_cost_exp{N}.csv`** — `experiment, tag, method, n_features, n_windows,
+  time_s, ms_per_window, peak_mb`. Wall-clock time and peak Python-heap memory for ABFS
+  vs Komorniczak extraction, one row per method per timed cell. Meaningful only for
+  Exp 3/4/5; for 1c/2 the timing is contaminated by lazy stream generation and is not
+  reported.
+
+- **`concept_feature_means_exp{N}.csv`** — `cell, concept, f0 … fK`. Per-concept average
+  of each raw feature: each concept's fingerprint in feature space.
+
+- **`concept_distances_exp{N}.csv`** — `cell, concept_a, concept_b, l2`. Pairwise
+  Euclidean distance between every pair of concept mean-vectors: how separable the
+  concepts are from raw feature values alone.
+
+- **`concept_distance_summary_exp{N}.csv`** — `cell, n_concepts, l2_min, l2_max, l2_mean`.
+  Min/max/mean of those pairwise distances per cell — the compact version quoted in the
+  text and the cross-generator separation table. (Exp 2 also has a summary over the
+  n_informative sweep.)
+
+Project-level:
+
+- **`feature_ranges_all_experiments.csv`** (from `experiments/feature_ranges.py`) —
+  measured raw-feature range, mean, and fraction of non-zero values (sparsity) per
+  generator/stream across all experiments. Grounds the per-stream descriptions and
+  separates the dimensionality-vs-sparsity confound.
+
+- **`sparsity_analysis_exp5.csv`** — the SPAM sparsity check: how the relevance-score
+  variation spreads across features (how many features account for 80% of it) on SPAM
+  vs INSECTS. Confirms SPAM is genuinely high-dimensional rather than sparse-in-disguise.
+
+---
+
+
 ## Key Findings
 
 --- CHECK THIS!!! ---

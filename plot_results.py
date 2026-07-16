@@ -113,10 +113,11 @@ def plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_
     clf_names = [name for name, _ in BASE_CLFS]
     n_clfs = len(BASE_CLFS)
 
-    # Komorniczak: average over replications and folds
-    rc_matrix = np.mean(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
-    rc_std_matrix = np.std(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
-    rc_median_matrix = np.median(rc_raw, axis=(1, 2))  # (n_measures, n_clfs)
+    # Komorniczak: final cumulative balanced accuracy at the last window, averaged over replications
+    rc_final = rc_raw[:, :, -1, :]                 # (n_measures, n_replications, n_clfs)
+    rc_matrix = np.mean(rc_final, axis=1)          # (n_measures, n_clfs)
+    rc_std_matrix = np.std(rc_final, axis=1)       # (n_measures, n_clfs)
+    rc_median_matrix = np.median(rc_final, axis=1) # (n_measures, n_clfs)
 
     # ABFS 
     abfs_configs = [('aggstats', 'Aggregate stats (v1.1)'), ('raw', 'Raw scores (v2.0)'), ('raw_temporal', 'Raw + temporal (v2.1)')]

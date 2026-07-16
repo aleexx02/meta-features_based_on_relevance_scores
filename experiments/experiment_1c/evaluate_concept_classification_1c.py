@@ -218,7 +218,23 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
         all_ba  = []
         all_f1  = []
         all_kap = []
+        out_file = os.path.join(
+            RESULTS_DIR,
+            f'clf_ba_{mf_type}_{drift_type}.npy'
+        )
 
+        if os.path.exists(out_file):
+            print(f"Loading existing results for {mf_type} ({drift_type})")
+
+            all_ba = np.load(out_file)
+
+            all_mean_ba[mf_type] = np.mean(all_ba[:, -1, :], axis=0)
+            all_std_ba[mf_type] = np.std(all_ba[:, -1, :], axis=0)
+            all_median_ba[mf_type] = np.median(all_ba[:, -1, :], axis=0)
+
+            continue
+
+        
         for rep_id, rs in enumerate(RANDOM_STATES):
             print(f"Rep {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
 
