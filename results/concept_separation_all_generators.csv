@@ -1,0 +1,16 @@
+experiment,cell,n_features,n_concepts,l2_min,l2_max,l2_mean,verdict,n_informative
+exp1c,gradual,10,25,0.2248,2.4612,1.5509,data moves (drift visible in P(X)),
+exp1c,sudden,10,21,0.8682,3.247,2.1509,data moves (drift visible in P(X)),
+exp2,ninf10_gradual,20,25,0.2127,2.2951,1.5114,data moves (drift visible in P(X)),10
+exp2,ninf10_sudden,20,21,1.2287,3.2737,2.17,data moves (drift visible in P(X)),10
+exp2,ninf15_gradual,20,25,0.2961,3.1372,1.8827,data moves (drift visible in P(X)),15
+exp2,ninf15_sudden,20,21,1.6263,3.9049,2.7038,data moves (drift visible in P(X)),15
+exp2,ninf3_gradual,20,25,0.0272,0.835,0.392,data moves partially,3
+exp2,ninf3_sudden,20,21,0.0325,1.5177,0.8113,data moves (drift visible in P(X)),3
+exp2,ninf5_gradual,20,25,0.1405,1.8011,1.2025,data moves (drift visible in P(X)),5
+exp2,ninf5_sudden,20,21,0.4962,2.3039,1.469,data moves (drift visible in P(X)),5
+exp3,led_chunk100_sudden,24,4,0.4164,0.7338,0.5591,data moves (drift visible in P(X)),
+exp3,sea_chunk100_sudden,3,4,0.0198,0.0363,0.0272,data does not move (drift in P(y|X) only),
+exp3,stagger_chunk100_sudden,3,3,0.0023,0.0078,0.0054,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift15_sudden,3,4,0.0098,0.0254,0.0189,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift15_sudden,3,3,0.0056,0.0073,0.0067,data does not move (drift in P(y|X) only),
