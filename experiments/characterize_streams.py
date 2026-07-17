@@ -48,28 +48,28 @@
 # your Exp 5 pipeline to write a concept_feature_means_exp5.csv in the same
 # format, then this script picks it up like any other. See build_exp5_hook().
 # ============================================================================
-
+ 
 import argparse
 import csv
 import glob
 import itertools
 import os
 import re
-
+ 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
+ 
 FEATURE_RE = re.compile(r"^f\d+$")
-
-
+ 
+ 
 # ============================================================================
 #  CORE -- everything here operates on a concept-mean matrix `cm` of shape
 #  (n_concepts, n_features). Nothing below knows or cares which generator it
 #  came from, which is what makes the three views generalise.
 # ============================================================================
-
+ 
 def pairwise_l2(cm):
     """Pairwise Euclidean distances between concept mean-vectors.
     Returns (D (n x n symmetric matrix), pairs [(i, j, l2), ...])."""
@@ -81,8 +81,8 @@ def pairwise_l2(cm):
         D[i, j] = D[j, i] = d
         pairs.append((i, j, d))
     return D, pairs
-
-
+ 
+ 
 def distance_summary(cm):
     """min / max / mean of the pairwise concept distances."""
     _, pairs = pairwise_l2(cm)
@@ -91,8 +91,8 @@ def distance_summary(cm):
                 l2_min=round(float(d.min()), 4),
                 l2_max=round(float(d.max()), 4),
                 l2_mean=round(float(d.mean()), 4))
-
-
+ 
+ 
 def movement_verdict(l2_mean):
     """Soft label for how much the raw data moves between concepts. The
     thresholds are illustrative, taken from the measured spread across this
@@ -103,12 +103,12 @@ def movement_verdict(l2_mean):
     if l2_mean < 0.5:
         return "data moves partially"
     return "data moves (drift visible in P(X))"
-
-
+ 
+ 
 # ============================================================================
 #  FIGURES
 # ============================================================================
-
+ 
 def plot_fingerprint(cm, concept_ids, title, out_path):
     """Per-concept feature means: concept (rows) x feature (cols)."""
     n_c, n_f = cm.shape
@@ -129,8 +129,8 @@ def plot_fingerprint(cm, concept_ids, title, out_path):
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
-
-
+ 
+ 
 def plot_distance_matrix(cm, concept_ids, title, out_path):
     """Heatmap of the pairwise concept-distance matrix."""
     D, _ = pairwise_l2(cm)
@@ -154,8 +154,8 @@ def plot_distance_matrix(cm, concept_ids, title, out_path):
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
-
-
+ 
+ 
 def plot_spread_curve(sweep_name, sweep_vals, summaries, title, out_path):
     """Concept separation vs a numeric sweep parameter (e.g. n_informative):
     mean pairwise L2 with a min-max band."""
@@ -175,19 +175,19 @@ def plot_spread_curve(sweep_name, sweep_vals, summaries, title, out_path):
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
-
-
+ 
+ 
 # ============================================================================
 #  ADAPTERS -- build a concept-mean matrix for each stream family
 # ============================================================================
-
+ 
 def concept_means_from_windows(windows, labels):
     """Build (concept_ids, cm) from raw data -- for real / on-the-fly streams.
-
+ 
     windows : list of per-window blocks. Either (n_inst x n_feat) instance
               blocks, or already-reduced per-window mean vectors (n_feat,).
     labels  : concept label per window (positional segment id for real streams).
-
+ 
     Returns (concept_ids, cm) where cm[k] is the mean feature vector of the
     windows carrying concept k -- the same quantity the synthetic
     concept_feature_means CSVs store, so the three views apply unchanged.
@@ -200,11 +200,11 @@ def concept_means_from_windows(windows, labels):
     ids = sorted(np.unique(labels).tolist())
     cm = np.array([per_win[labels == c].mean(axis=0) for c in ids])
     return ids, cm
-
-
+ 
+ 
 def load_concept_means_csv(path):
     """Read a concept_feature_means_exp{N}.csv.
-
+ 
     Returns dict: cell -> (concept_ids, cm, sweep) where sweep is a dict of any
     non-{cell, concept, f*} columns for that cell (e.g. {'n_informative': '15'}).
     """
@@ -222,33 +222,38 @@ def load_concept_means_csv(path):
     for cell, rs in grouped.items():
         rs = sorted(rs, key=lambda r: int(r["concept"]))
         ids = [int(r["concept"]) for r in rs]
-        cm = np.array([[float(r[c]) for c in fcols] for r in rs])
+        # feature columns actually populated for THIS cell -- generators within
+        # one file can differ in feature count (SEA/STAGGER 3 vs LED 24), which
+        # leaves the surplus f-columns empty on the low-dimensional cells.
+        cell_fcols = [c for c in fcols
+                      if all(str(r.get(c, "")).strip() != "" for r in rs)]
+        cm = np.array([[float(r[c]) for c in cell_fcols] for r in rs])
         out[cell] = (ids, cm, {c: rs[0][c] for c in sweep_cols})
     return out
-
-
+ 
+ 
 # ============================================================================
 #  DRIVER
 # ============================================================================
-
+ 
 def _num(x):
     try:
         return float(x)
     except (TypeError, ValueError):
         return None
-
-
+ 
+ 
 def _drift_of(cell):
     for k in ("sudden", "gradual", "abrupt", "incgradual"):
         if k in cell:
             return k
     return "all"
-
-
+ 
+ 
 def characterise_csv(path, all_cells=False, fig_dir_override=None):
     """Produce the three views for one concept_feature_means CSV and return the
     per-cell separation rows for the consolidated table.
-
+ 
     Figures go to the experiment's own results/experiment_X/figures/streams/
     (derived from the CSV's location) unless fig_dir_override is given."""
     exp = re.search(r"(exp\w+)", os.path.basename(path))
@@ -257,12 +262,12 @@ def characterise_csv(path, all_cells=False, fig_dir_override=None):
     if not cells:
         print(f"  [{exp}] empty / unreadable: {path}")
         return []
-
+ 
     fig_dir = fig_dir_override or os.path.join(
         os.path.dirname(os.path.abspath(path)), "figures", "streams")
     os.makedirs(fig_dir, exist_ok=True)
     rows = []
-
+ 
     # ---- fingerprint + distance matrix, per cell (or one representative) ----
     cell_names = sorted(cells)
     to_plot = cell_names if all_cells else [_representative(cell_names)]
@@ -280,7 +285,7 @@ def characterise_csv(path, all_cells=False, fig_dir_override=None):
     print(f"  [{exp}] {len(cell_names)} cell(s); "
           f"L2 mean {min(r['l2_mean'] for r in rows):.3f}"
           f"..{max(r['l2_mean'] for r in rows):.3f}  ->  {fig_dir}")
-
+ 
     # ---- spread curve, if a numeric sweep column exists ----
     sweep_cols = [c for c in rows[0] if c not in
                   ("experiment", "cell", "n_features", "n_concepts",
@@ -299,10 +304,10 @@ def characterise_csv(path, all_cells=False, fig_dir_override=None):
                     sc, vals, rs, f"{exp} / {name}",
                     os.path.join(fig_dir, f"spread_{exp}_{name}_{sc}.png"))
             print(f"  [{exp}] spread curve over '{sc}'")
-
+ 
     return rows
-
-
+ 
+ 
 def _representative(cell_names):
     """Pick one cell for the per-cell figures when --all-cells is off. Prefer a
     'sudden'/'abrupt' baseline-looking cell, else the first."""
@@ -314,12 +319,13 @@ def _representative(cell_names):
                     return h
             return hits[0]
     return sorted(cell_names)[0]
-
-
+ 
+ 
 def write_consolidated(rows, out_dir):
     """One row per cell across all generators -> feeds tab:concept_separation."""
     if not rows:
         return
+    os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "concept_separation_all_generators.csv")
     fields = list(dict.fromkeys(k for r in rows for k in r))
     with open(path, "w", newline="") as f:
@@ -333,22 +339,22 @@ def write_consolidated(rows, out_dir):
     for r in sorted(rows, key=lambda r: r["l2_mean"]):
         print(f"  {r['experiment']:10s} {r['cell'][:26]:26s} {r['n_features']:6d} "
               f"{r['n_concepts']:6d} {r['l2_mean']:8.3f}  {r['verdict']}")
-
-
+ 
+ 
 def build_exp5_hook():
     """HOOK for the real streams (Exp 5), which have no generator to introspect.
-
+ 
     They are not characterised automatically because loading them is specific to
     your Exp 5 pipeline. To include them, load each real stream, window it and
     label windows by positional concept exactly as Exp 5 does, then:
-
+ 
         ids, cm = concept_means_from_windows(windows, concept_labels)
-
+ 
     and append rows to a concept_feature_means_exp5.csv with columns
     `cell, concept, f0..fK` (one row per concept, one file covering all five
     streams with `cell` = stream name). Once that file exists under
     results/experiment_5/, this script picks it up like any other.
-
+ 
     Wire your real-stream loader in here (left unimplemented on purpose so the
     script makes no assumption about its signature):
     """
@@ -356,8 +362,8 @@ def build_exp5_hook():
         "Plug in the Exp 5 real-stream loader, then use "
         "concept_means_from_windows(windows, labels) and save "
         "concept_feature_means_exp5.csv. See the docstring above.")
-
-
+ 
+ 
 def main():
     ap = argparse.ArgumentParser(description="Characterise the stream generators.")
     ap.add_argument("--csv", nargs="*", default=None,
@@ -372,18 +378,18 @@ def main():
                     help="draw fingerprint+distance for every cell "
                          "(default: one representative per experiment)")
     args = ap.parse_args()
-
+ 
     here = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(here, ".."))
     table_dir = args.out or os.path.join(root, "results")
-
+ 
     paths = args.csv or sorted(glob.glob(os.path.join(
         root, "results", "experiment_*", "concept_feature_means_exp*.csv")))
     if not paths:
         print("No concept_feature_means_exp*.csv found. Run each experiment's "
               "--concept_dist_features first (Exp 5: see build_exp5_hook()).")
         return
-
+ 
     dest = args.figdir or "each experiment's results/experiment_X/figures/streams/"
     print(f"Characterising {len(paths)} generator file(s); figures -> {dest}\n")
     all_rows = []
@@ -391,7 +397,7 @@ def main():
         all_rows += characterise_csv(p, all_cells=args.all_cells,
                                      fig_dir_override=args.figdir)
     write_consolidated(all_rows, table_dir)
-
-
+ 
+ 
 if __name__ == "__main__":
     main()

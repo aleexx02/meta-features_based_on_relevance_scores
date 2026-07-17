@@ -66,7 +66,7 @@ def sl_stream(nf, ninf, cs):
 print("=== stream-learn (Experiments 1c, 2) ===")
 
 # Exp 1c: fixed config, all 10 features informative.
-record('exp1c stream-learn (10f, 10inf)', sl_stream(10, 10, 200), 10)
+record('exp1c stream-learn (10f 10inf)', sl_stream(10, 10, 200), 10)
 
 # Exp 2: sweep the full n_informative grid. The per-instance feature spread
 # (min/max/std) is set by n_informative, not by chunk_size, so we vary ninf and
@@ -74,7 +74,7 @@ record('exp1c stream-learn (10f, 10inf)', sl_stream(10, 10, 200), 10)
 # needs (previously only ninf=10 was measured).
 EXP2_N_INFORMATIVE = [3, 5, 10, 15]   # matches the Exp 2 grid used by evaluate_2
 for ninf in EXP2_N_INFORMATIVE:
-    record(f'exp2 stream-learn (20f, {ninf}inf)', sl_stream(20, ninf, 100), 20)
+    record(f'exp2 stream-learn (20f {ninf}inf)', sl_stream(20, ninf, 100), 20)
 
 
 # ---------------------------------------------------------------- river (3, 4)
