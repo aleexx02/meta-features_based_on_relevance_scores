@@ -1,14 +1,23 @@
 # feature_ranges.py
 # ==============================================================================
 # Measures the raw feature ranges (min/max/mean/std + sparsity) of every stream
-# used in the thesis, across all five experiments. Writes one CSV summarising
-# all of them.
+# CONFIGURATION used in the thesis, across all five experiments. Writes one CSV
+# summarising all of them.
 #
 # Purpose: the concept-distance numbers (concept_distances_expN.csv) are measured
 # on the RAW feature values, whose scale differs per generator. This script
 # documents those scales so the distances can be interpreted correctly, and it
 # also reports the fraction of non-zero entries (relevant to the SPAM
 # sparsity-vs-dimensionality question).
+#
+# COVERAGE NOTE. The raw feature scale is set by the generator and, for
+# stream-learn, by n_informative. It does NOT depend on chunk_size (which only
+# groups instances into windows), on drift type, or on recurrence (which only
+# change how concepts are scheduled, not the per-instance values). So:
+#   - Exp 2 needs a sweep over n_informative {3,5,10,15}  (added below);
+#     chunk_size does not multiply it.
+#   - Exp 3's three generators (SEA/STAGGER/LED) also cover Exp 4, which reuses
+#     SEA/STAGGER with identical value distributions -- no extra rows needed.
 #
 # Place in experiments/ and run ON THE CLUSTER (the real streams of Experiment 5
 # are pre-saved .npy files that only exist there).
@@ -55,18 +64,30 @@ def sl_stream(nf, ninf, cs):
 
 
 print("=== stream-learn (Experiments 1c, 2) ===")
+
+# Exp 1c: fixed config, all 10 features informative.
 record('exp1c stream-learn (10f, 10inf)', sl_stream(10, 10, 200), 10)
-record('exp2 stream-learn (20f, 10inf)',  sl_stream(20, 10, 100), 20)
+
+# Exp 2: sweep the full n_informative grid. The per-instance feature spread
+# (min/max/std) is set by n_informative, not by chunk_size, so we vary ninf and
+# hold chunk_size fixed. This is what gives the ninf=15 std that tab:ranges_exp2
+# needs (previously only ninf=10 was measured).
+EXP2_N_INFORMATIVE = [3, 5, 10, 15]   # matches the Exp 2 grid used by evaluate_2
+for ninf in EXP2_N_INFORMATIVE:
+    record(f'exp2 stream-learn (20f, {ninf}inf)', sl_stream(20, ninf, 100), 20)
 
 
 # ---------------------------------------------------------------- river (3, 4)
+# One row per generator: SEA/STAGGER/LED value distributions are fixed by the
+# generator and do not change with chunk_size, drift type or recurrence, so
+# these three rows characterise Experiments 3 AND 4.
 print("\n=== river (Experiments 3, 4) ===")
 from streams.generate_synthetic_streams import exp3_specs, SEED
 SPECS = {s['name']: s for s in exp3_specs()}
 for cell in ['sea_chunk100_sudden', 'stagger_chunk100_sudden', 'led_chunk100_sudden']:
     data, cpc = SPECS[cell]['builder'](SEED)
     gen = cell.split('_')[0]
-    record(f'exp3 {gen}', data[:, :-1], data.shape[1] - 1)
+    record(f'exp3/4 {gen}', data[:, :-1], data.shape[1] - 1)
 
 
 # ---------------------------------------------------------------- real (5)
