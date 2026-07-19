@@ -51,6 +51,7 @@
  
 import argparse
 import csv
+import sys
 import glob
 import itertools
 import os
@@ -341,27 +342,111 @@ def write_consolidated(rows, out_dir):
               f"{r['n_concepts']:6d} {r['l2_mean']:8.3f}  {r['verdict']}")
  
  
-def build_exp5_hook():
-    """HOOK for the real streams (Exp 5), which have no generator to introspect.
+# ============================================================================
+#  EXPERIMENT 5 -- real streams
+# ----------------------------------------------------------------------------
+# Real streams have no generator to introspect, so the concept-mean matrix is
+# built from the data itself. Concepts are POSITIONAL, exactly as Experiment 5
+# defines them: a window's concept label is the number of annotated drift
+# boundaries passed up to that window.
+#
+# Boundaries are looked up from streams/generate_real_streams.py under several
+# likely attribute names; if none is found the script falls back to the table
+# below and says so loudly. INSECTS boundaries come from Souza et al. (Table 2)
+# and MUST be filled in (or exposed by the module) -- they are stream-specific
+# and are not guessed here. SPAM uses the imposed instants from Yu et al.
+# ============================================================================
  
-    They are not characterised automatically because loading them is specific to
-    your Exp 5 pipeline. To include them, load each real stream, window it and
-    label windows by positional concept exactly as Exp 5 does, then:
+# Boundaries are read from the ground-truth files generate_real_streams.py
+# already writes: data/real/annotated_streams_gt/{stream}.npy holds the drift
+# CHUNK indices (raw instance change points // CHUNK_SIZE). That is the single
+# source of truth -- the change points themselves live inside that script's
+# __main__ block and are not importable, so nothing is hardcoded here.
+#
+# Note the saved features are min-max normalised to [0,1], so Exp 5 concept
+# distances are on a comparable scale across INSECTS and SPAM.
  
-        ids, cm = concept_means_from_windows(windows, concept_labels)
+REAL_CHUNK_SIZE = 100          # CHUNK_SIZE in generate_real_streams.py
  
-    and append rows to a concept_feature_means_exp5.csv with columns
-    `cell, concept, f0..fK` (one row per concept, one file covering all five
-    streams with `cell` = stream name). Once that file exists under
-    results/experiment_5/, this script picks it up like any other.
  
-    Wire your real-stream loader in here (left unimplemented on purpose so the
-    script makes no assumption about its signature):
-    """
-    raise NotImplementedError(
-        "Plug in the Exp 5 real-stream loader, then use "
-        "concept_means_from_windows(windows, labels) and save "
-        "concept_feature_means_exp5.csv. See the docstring above.")
+def build_exp5(root, chunk_size=REAL_CHUNK_SIZE):
+    """Write concept_feature_means / concept_distances / concept_distance_summary
+    _exp5.csv from the real streams, in the same format as the synthetic ones."""
+    if root not in sys.path:
+        sys.path.insert(0, root)          # repo root, so `streams.` resolves
+    import streams.generate_real_streams as grs
+ 
+    stream_dir = os.path.join(root, "data", "real", "annotated_streams")
+    gt_dir = os.path.join(root, "data", "real", "annotated_streams_gt")
+    out_dir = os.path.join(root, "results", "experiment_5")
+    os.makedirs(out_dir, exist_ok=True)
+ 
+    names = grs.REAL_STREAMS
+    names = list(names.keys()) if isinstance(names, dict) else list(names)
+ 
+    print("=" * 74)
+    print(f"BUILDING EXP 5 CONCEPT MEANS  (chunk_size={chunk_size})")
+    print("=" * 74)
+ 
+    rows_means, rows_dist, rows_summary = [], [], []
+    for name in names:
+        path = os.path.join(stream_dir, f"{name}.npy")
+        if not os.path.exists(path):
+            print(f"  MISSING stream: {path}")
+            continue
+        gt_path = os.path.join(gt_dir, f"{name}.npy")
+        if not os.path.exists(gt_path):
+            print(f"  !! {name}: missing ground truth {gt_path} -- SKIPPED. "
+                  f"Run generate_real_streams.py first.")
+            continue
+        drift_chunks = sorted(int(c) for c in np.load(gt_path).tolist())
+ 
+        data = np.load(path)
+        X = data[:, :-1].astype(float)
+        n_win = len(X) // chunk_size
+        if n_win == 0:
+            print(f"  !! {name}: fewer than one full window -- SKIPPED.")
+            continue
+ 
+        win_means, labels = [], []
+        for w in range(n_win):
+            start = w * chunk_size
+            win_means.append(X[start:start + chunk_size].mean(axis=0))
+            # positional concept = number of drift CHUNKS passed, matching
+            # evaluate_concept_classification_5.py / analysis_5.py
+            labels.append(int(np.searchsorted(drift_chunks, w, side="right")))
+ 
+        ids, cm = concept_means_from_windows(win_means, labels)
+        summ = distance_summary(cm)
+        print(f"  {name:32s} {cm.shape[1]:4d} feat  {len(ids):2d} concepts  "
+              f"L2 mean {summ['l2_mean']:.4f}   drift_chunks={drift_chunks}")
+ 
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                rows_dist.append(dict(cell=name, concept_a=int(ids[i]),
+                                      concept_b=int(ids[j]),
+                                      l2=round(float(np.linalg.norm(cm[i] - cm[j])), 4)))
+        rows_summary.append(dict(cell=name, **summ))
+        for c, m in zip(ids, cm):
+            rows_means.append(dict(cell=name, concept=int(c),
+                                   **{f"f{k}": round(float(v), 4)
+                                      for k, v in enumerate(m)}))
+ 
+    if not rows_means:
+        print("\n  Nothing built for Exp 5.")
+        return
+ 
+    for rows, base in ((rows_means, "concept_feature_means"),
+                       (rows_dist, "concept_distances"),
+                       (rows_summary, "concept_distance_summary")):
+        path = os.path.join(out_dir, f"{base}_exp5.csv")
+        fields = list(dict.fromkeys(k for r in rows for k in r))
+        with open(path, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
+        print(f"  -> {path}")
+    print()
  
  
 def main():
@@ -374,27 +459,43 @@ def main():
     ap.add_argument("--figdir", default=None,
                     help="override: put ALL figures in this one dir "
                          "(default: each experiment's figures/streams/)")
-    ap.add_argument("--all-cells", action="store_true",
-                    help="draw fingerprint+distance for every cell "
-                         "(default: one representative per experiment)")
+    ap.add_argument("--representative", action="store_true",
+                    help="draw only ONE representative cell per experiment "
+                         "(default: every cell in every CSV)")
+    ap.add_argument("--skip-exp5", action="store_true",
+                    help="do NOT rebuild the Exp 5 concept means from the real "
+                         "streams (they are rebuilt automatically by default)")
+    ap.add_argument("--chunk-size", type=int, default=REAL_CHUNK_SIZE,
+                    help="window size for the Exp 5 build (default 100)")
     args = ap.parse_args()
  
     here = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(here, ".."))
     table_dir = args.out or os.path.join(root, "results")
  
+    # Exp 5 has no --concept_dist_features flag of its own: the real streams
+    # are already on disk, so their concept means are built here, automatically,
+    # every run. Silently skipped if the streams/ground truth are not present
+    # (e.g. running off-cluster).
+    if not args.skip_exp5 and not args.csv:
+        try:
+            build_exp5(root, chunk_size=args.chunk_size)
+        except Exception as e:
+            print(f"  [exp5] skipped: {type(e).__name__}: {e}\n")
+ 
     paths = args.csv or sorted(glob.glob(os.path.join(
         root, "results", "experiment_*", "concept_feature_means_exp*.csv")))
     if not paths:
         print("No concept_feature_means_exp*.csv found. Run each experiment's "
-              "--concept_dist_features first (Exp 5: see build_exp5_hook()).")
+              "--concept_dist_features first (Exp 5 is built automatically "
+              "from the real streams, if they are on disk).")
         return
  
     dest = args.figdir or "each experiment's results/experiment_X/figures/streams/"
     print(f"Characterising {len(paths)} generator file(s); figures -> {dest}\n")
     all_rows = []
     for p in paths:
-        all_rows += characterise_csv(p, all_cells=args.all_cells,
+        all_rows += characterise_csv(p, all_cells=not args.representative,
                                      fig_dir_override=args.figdir)
     write_consolidated(all_rows, table_dir)
  

@@ -701,58 +701,106 @@ if args.summary:
 
 
 if args.concept_dist_features:
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("CONCEPT SEPARATION IN FEATURE SPACE")
-    print("="*60)
-
-    rows_means, rows_dist = [], []
-
-    for cell in ['sea_chunk100_sudden', 'stagger_chunk100_sudden', 'led_chunk100_sudden']:
-        spec = SPEC_BY_NAME[cell]
-        data, cpc = spec['builder'](SEED)
+    print("=" * 60)
+ 
+    KEEP_CHUNK_SIZE = 100
+    EXP = EXP_TAG
+ 
+    try:
+        from streams.generate_synthetic_streams import RANDOM_STATES as REP_SEEDS
+        REP_SEEDS = [int(s) for s in REP_SEEDS]
+        print(f"  seeds: RANDOM_STATES = {REP_SEEDS}")
+    except ImportError:
+        np.random.seed(SEED)
+        REP_SEEDS = [int(SEED)] + [int(s) for s in
+                                   np.random.randint(100, 10000, 4)]
+        print(f"  seeds: derived from SEED = {REP_SEEDS}  "
+              f"(module exports no RANDOM_STATES)")
+ 
+    rows_means, rows_dist, rows_summary = [], [], []
+ 
+    for spec in SPECS:
+        cell = spec['name']
         cs = spec['chunk_size']
-        X = data[:, :-1]                     # features only
-
-        means, concs = [], []
-        for w in range(len(cpc)):
-            block = X[w*cs:(w+1)*cs]
-            if len(block) == 0:
-                break
-            means.append(block.mean(axis=0))
-            concs.append(int(cpc[w]))
-        means, concs = np.array(means), np.array(concs)
-
-        uniq = np.unique(concs)
-        cm = np.array([means[concs == c].mean(axis=0) for c in uniq])   # (n_concepts, n_features)
-
-        # pairwise L2
-        d = []
-        for i in range(len(uniq)):
-            for j in range(i+1, len(uniq)):
-                l2 = float(np.linalg.norm(cm[i] - cm[j]))
-                d.append(l2)
-                rows_dist.append(dict(cell=cell, concept_a=int(uniq[i]),
-                                      concept_b=int(uniq[j]), l2=round(l2, 4)))
-
-        print(f"\n  {cell}  (n_features={cm.shape[1]}, n_concepts={len(uniq)})")
-        for c, m in zip(uniq, cm):
-            print(f"    concept {int(c)}: {m.round(3)}")
-            rows_means.append(dict(cell=cell, concept=int(c),
-                                   **{f'f{k}': round(float(v), 4) for k, v in enumerate(m)}))
-        print(f"    L2  min={min(d):.4f}  max={max(d):.4f}  mean={np.mean(d):.4f}")
-
-    # write both CSVs
-    for rows, name in [(rows_means, 'concept_feature_means'),
-                       (rows_dist,  'concept_distances')]:
-        if not rows:
+        if KEEP_CHUNK_SIZE is not None and cs != KEEP_CHUNK_SIZE:
             continue
-        out = os.path.join(RESULTS_DIR, f'{name}_{EXP_TAG}.csv')   # EXP_TAG = 'exp3' etc.
+ 
+        per_rep_pairs = []       # {(a,b): [l2 per rep]}
+        per_rep_stats = []       # (min, max, mean) per rep
+        cm_rep0, uniq_rep0 = None, None
+ 
+        for rep, seed in enumerate(REP_SEEDS):
+            data, cpc = spec['builder'](seed)
+            X = data[:, :-1].astype(float)
+ 
+            labels_all = np.asarray(cpc)          # concept label PER WINDOW
+            n_win = min(len(X) // cs, len(labels_all))
+            if n_win == 0:
+                continue
+ 
+            means = np.array([X[i * cs:(i + 1) * cs].mean(axis=0)
+                              for i in range(n_win)])
+            concs = labels_all[:n_win]
+            uniq = np.unique(concs)
+            cm = np.array([means[concs == c].mean(axis=0) for c in uniq])
+ 
+            if rep == 0:
+                cm_rep0, uniq_rep0 = cm, uniq
+ 
+            d = []
+            for i in range(len(uniq)):
+                for j in range(i + 1, len(uniq)):
+                    l2 = float(np.linalg.norm(cm[i] - cm[j]))
+                    d.append(l2)
+                    per_rep_pairs.setdefault((int(uniq[i]), int(uniq[j])),
+                                             []).append(l2)
+            if d:
+                per_rep_stats.append((min(d), max(d), float(np.mean(d))))
+ 
+        if not per_rep_stats:
+            print(f"  {cell}: no usable reps -- skipped")
+            continue
+ 
+        stats = np.array(per_rep_stats)           # (n_reps, 3)
+        l2_min, l2_max, l2_mean = stats.mean(axis=0)
+        l2_mean_std = float(stats[:, 2].std())
+ 
+        print(f"  {cell:34s} n_feat={cm_rep0.shape[1]:3d} "
+              f"n_conc={len(uniq_rep0):2d}  L2 mean={l2_mean:.4f} "
+              f"+/-{l2_mean_std:.4f}  (min={l2_min:.4f} max={l2_max:.4f}, "
+              f"{len(per_rep_stats)} reps)")
+ 
+        rows_summary.append(dict(cell=cell, n_concepts=len(uniq_rep0),
+                                 n_reps=len(per_rep_stats),
+                                 l2_min=round(float(l2_min), 4),
+                                 l2_max=round(float(l2_max), 4),
+                                 l2_mean=round(float(l2_mean), 4),
+                                 l2_mean_std=round(l2_mean_std, 4)))
+ 
+        for (a, b), vals in sorted(per_rep_pairs.items()):
+            rows_dist.append(dict(cell=cell, concept_a=a, concept_b=b,
+                                  l2=round(float(np.mean(vals)), 4),
+                                  l2_std=round(float(np.std(vals)), 4),
+                                  n_reps=len(vals)))
+ 
+
+        for c, m_ in zip(uniq_rep0, cm_rep0):
+            rows_means.append(dict(cell=cell, concept=int(c),
+                                   **{f'f{k}': round(float(v), 4)
+                                      for k, v in enumerate(m_)}))
+ 
+    for rows, name in [(rows_means,   'concept_feature_means'),
+                       (rows_dist,    'concept_distances'),
+                       (rows_summary, 'concept_distance_summary')]:
+        out = os.path.join(RESULTS_DIR, f'{name}_{EXP}.csv')
         fields = list(dict.fromkeys(k for r in rows for k in r))
         with open(out, 'w', newline='') as f:
             w = csv.DictWriter(f, fieldnames=fields)
-            w.writeheader(); w.writerows(rows)
-        print(f"\n  Saved: {out}")
-    
-
+            w.writeheader()
+            w.writerows(rows)
+        print(f"  Saved: {out}")
+ 
     
 print("\nAnalysis 3 complete.")
