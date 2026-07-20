@@ -110,7 +110,8 @@ def movement_verdict(l2_mean):
 #  FIGURES
 # ============================================================================
  
-def plot_fingerprint(cm, concept_ids, title, out_path, centre=True):
+def plot_fingerprint(cm, concept_ids, title, out_path, centre=True,
+                     max_features=60):
     """Per-concept feature means: concept (rows) x feature (cols).
  
     centre=True subtracts each feature's mean ACROSS concepts before plotting,
@@ -124,6 +125,16 @@ def plot_fingerprint(cm, concept_ids, title, out_path, centre=True):
     """
     n_c, n_f = cm.shape
     M = cm - cm.mean(axis=0, keepdims=True) if centre else cm
+    # Wide streams (SPAM has 499 features) are unreadable at one column per
+    # feature. Keep the most concept-discriminative ones -- those whose mean
+    # varies most across concepts -- which is the same top-N-by-variance
+    # reduction analysis_5.py uses for its per-feature relevance plots.
+    kept = None
+    if max_features and n_f > max_features:
+        kept = np.argsort(M.std(axis=0))[::-1][:max_features]
+        kept = np.sort(kept)
+        M = M[:, kept]
+        n_f = M.shape[1]
     vmax = float(np.abs(M).max()) or 1.0
     fig, ax = plt.subplots(figsize=(max(6, n_f * 0.35), max(3, n_c * 0.3)))
     im = ax.imshow(M, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
@@ -133,7 +144,11 @@ def plot_fingerprint(cm, concept_ids, title, out_path, centre=True):
     ax.set_yticklabels(concept_ids, fontsize=7)
     step = max(1, n_f // 40)
     ax.set_xticks(range(0, n_f, step))
-    ax.set_xticklabels(range(0, n_f, step), fontsize=6, rotation=90)
+    labels = (kept[::step] if kept is not None else range(0, n_f, step))
+    ax.set_xticklabels(labels, fontsize=6, rotation=90)
+    if kept is not None:
+        ax.set_xlabel(f"feature (top {n_f} of {cm.shape[1]} by variation "
+                      f"across concepts)")
     lab = ("deviation from per-feature mean" if centre else "mean feature value")
     ax.set_title(f"Concept fingerprints (per-concept feature means)\n{title}"
                  + (f"\nmax deviation {vmax:.3g}" if centre else ""),
