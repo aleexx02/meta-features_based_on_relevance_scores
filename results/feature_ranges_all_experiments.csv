@@ -1,5 +1,5 @@
 stream,n_features,min,max,mean,std,frac_nonzero
-exp1c stream-learn (10f 10inf),10,-11.44,11.631,0.02,2.078,1.0
+exp1 stream-learn (10f 10inf),10,-11.44,11.631,0.02,2.078,1.0
 exp2 stream-learn (20f 3inf),20,-7.638,7.534,-0.007,1.075,1.0
 exp2 stream-learn (20f 5inf),20,-8.933,8.673,0.006,1.187,1.0
 exp2 stream-learn (20f 10inf),20,-12.679,11.841,0.01,1.633,1.0
