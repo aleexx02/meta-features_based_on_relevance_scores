@@ -549,7 +549,7 @@ heatmap_comparison_komorniczak_ABFS_preq_exp4_{gen}_chunk{cs}_ndrift{nd}_{drift}
 | 18b | `vanilla_cost_5.py` | Vanilla baseline **and** the decisive cost measurement: pass `cost_cells=CELLS` so all five streams are timed, including SPAM at 499 features — the scaling point of the cost comparison. |
 
 Experiment 5 has **no** `--concept_dist_features` flag: `characterize_streams.py`
-computes its concept means from the saved arrays and ground truth instead.
+computes its concept means from the saved arrays and ground truth instead. Experiment 5's concept means are computed in characterize_streams.py rather than analysis_5.py, because real streams are read from disk rather than rebuilt from a generator — so the measurement doesn't need the per-cell knowledge the analysis scripts hold, and keeping it in one place avoids a fifth copy of the same computation.
 
 Output per stream (shape `(n_windows, n_clfs)` - no rep axis):
 ```
