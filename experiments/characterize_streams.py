@@ -8,7 +8,7 @@
 # (what a label-free vanilla baseline can see) versus what the meta-features must
 # recover.
 #
-# Three views, produced for every stream/cell:
+#  Three views, produced for every stream/cell:
 #
 #   1. Fingerprint heatmap   -- per-concept feature means (concept x feature).
 #                               Each row is a concept's signature in feature
@@ -372,12 +372,23 @@ REAL_CHUNK_SIZE = 100          # CHUNK_SIZE in generate_real_streams.py
 def build_exp5(root, chunk_size=REAL_CHUNK_SIZE):
     """Write concept_feature_means / concept_distances / concept_distance_summary
     _exp5.csv from the real streams, in the same format as the synthetic ones."""
-    if root not in sys.path:
-        sys.path.insert(0, root)          # repo root, so `streams.` resolves
-    import streams.generate_real_streams as grs
- 
     stream_dir = os.path.join(root, "data", "real", "annotated_streams")
     gt_dir = os.path.join(root, "data", "real", "annotated_streams_gt")
+ 
+    # Quietly skip when the real streams are absent (e.g. running locally
+    # rather than on the cluster) -- the synthetic experiments still run.
+    if not os.path.isdir(stream_dir) or not os.path.isdir(gt_dir):
+        print("  [exp5] real streams not found on disk -- skipping "
+              "(run generate_real_streams.py on the cluster first).\n")
+        return
+ 
+    if root not in sys.path:
+        sys.path.insert(0, root)          # repo root, so `streams.` resolves
+    try:
+        import streams.generate_real_streams as grs
+    except ImportError as e:
+        print(f"  [exp5] cannot import generate_real_streams ({e}) -- skipping.\n")
+        return
     out_dir = os.path.join(root, "results", "experiment_5")
     os.makedirs(out_dir, exist_ok=True)
  
