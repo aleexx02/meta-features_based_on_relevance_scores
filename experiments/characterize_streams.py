@@ -544,6 +544,11 @@ def main():
     ap.add_argument("--representative", action="store_true",
                     help="draw only ONE representative cell per experiment "
                          "(default: every cell in every CSV)")
+    ap.add_argument("--raw-fingerprints", action="store_true",
+                    help="plot absolute concept means instead of deviations from "
+                         "the per-feature mean across concepts (default: centred, "
+                         "which is what makes non-zero-centred generators such as "
+                         "SEA and STAGGER legible)")
     ap.add_argument("--skip-exp5", action="store_true",
                     help="do NOT rebuild the Exp 5 concept means from the real "
                          "streams (they are rebuilt automatically by default)")
