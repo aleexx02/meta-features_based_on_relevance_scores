@@ -1,38 +1,38 @@
-experiment,cell,n_features,n_concepts,l2_min,l2_max,l2_mean,verdict,n_informative
-exp1,gradual,10,25,0.2248,2.4612,1.5509,data moves (drift visible in P(X)),
-exp1,sudden,10,21,0.8682,3.247,2.1509,data moves (drift visible in P(X)),
-exp2,ninf10_gradual,20,25,0.1894,2.33,1.5053,data moves (drift visible in P(X)),10
-exp2,ninf10_sudden,20,21,1.2193,3.1975,2.1588,data moves (drift visible in P(X)),10
-exp2,ninf15_gradual,20,25,0.3132,3.1077,1.9966,data moves (drift visible in P(X)),15
-exp2,ninf15_sudden,20,21,1.1203,4.0176,2.6916,data moves (drift visible in P(X)),15
-exp2,ninf3_gradual,20,25,0.0219,0.8282,0.3902,data moves partially,3
-exp2,ninf3_sudden,20,21,0.0227,1.5824,0.7824,data moves (drift visible in P(X)),3
-exp2,ninf5_gradual,20,25,0.1922,1.8843,1.2247,data moves (drift visible in P(X)),5
-exp2,ninf5_sudden,20,21,0.5069,2.0627,1.44,data moves (drift visible in P(X)),5
-exp3,led_chunk100_gradual,24,4,0.3958,0.6603,0.5859,data moves (drift visible in P(X)),
-exp3,led_chunk100_sudden,24,4,0.4164,0.7338,0.5591,data moves (drift visible in P(X)),
-exp3,sea_chunk100_gradual,3,4,0.0094,0.0249,0.0186,data does not move (drift in P(y|X) only),
-exp3,sea_chunk100_sudden,3,4,0.0198,0.0363,0.0272,data does not move (drift in P(y|X) only),
-exp3,stagger_chunk100_gradual,3,3,0.0017,0.003,0.0022,data does not move (drift in P(y|X) only),
-exp3,stagger_chunk100_sudden,3,3,0.0023,0.0078,0.0054,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift15_gradual,3,4,0.0035,0.0244,0.0169,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift15_sudden,3,4,0.0098,0.0254,0.0189,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift1_gradual,3,2,0.0122,0.0122,0.0122,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift1_sudden,3,2,0.0118,0.0118,0.0118,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift3_gradual,3,4,0.0094,0.0249,0.0186,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift3_sudden,3,4,0.0198,0.0363,0.0272,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift7_gradual,3,4,0.0104,0.022,0.0153,data does not move (drift in P(y|X) only),
-exp4,sea_chunk100_ndrift7_sudden,3,4,0.0109,0.0306,0.0201,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift15_gradual,3,3,0.0021,0.0047,0.0033,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift15_sudden,3,3,0.0056,0.0073,0.0067,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift1_gradual,3,2,0.0029,0.0029,0.0029,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift1_sudden,3,2,0.0017,0.0017,0.0017,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift3_gradual,3,3,0.0017,0.003,0.0022,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift3_sudden,3,3,0.0023,0.0078,0.0054,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift7_gradual,3,3,0.0012,0.0027,0.0021,data does not move (drift in P(y|X) only),
-exp4,stagger_chunk100_ndrift7_sudden,3,3,0.0029,0.0085,0.0061,data does not move (drift in P(y|X) only),
-exp5,INSECTS-abrupt_balanced,33,6,0.0098,0.1418,0.0812,data moves partially,
-exp5,INSECTS-abrupt_imbalanced,33,6,0.0232,0.1085,0.0684,data moves partially,
-exp5,INSECTS-incgradual_balanced,33,2,0.1183,0.1183,0.1183,data moves partially,
-exp5,INSECTS-incgradual_imbalanced,33,2,0.1434,0.1434,0.1434,data moves partially,
-exp5,SPAM,499,6,0.6986,3.3063,2.2586,data moves (drift visible in P(X)),
+experiment,cell,n_features,n_concepts,l2_min,l2_max,l2_mean,l2_mean_std,n_reps,verdict,n_informative
+exp1,gradual,10,25,0.2229,2.6882,1.5532,0.0919,5,data moves (drift visible in P(X)),
+exp1,sudden,10,21,0.9986,3.2634,2.1512,0.0755,5,data moves (drift visible in P(X)),
+exp2,ninf10_gradual,20,25,0.2324,2.5364,1.5281,0.1035,5,data moves (drift visible in P(X)),10
+exp2,ninf10_sudden,20,21,1.2079,3.1955,2.1667,0.0646,5,data moves (drift visible in P(X)),10
+exp2,ninf15_gradual,20,25,0.2827,3.1654,1.989,0.0849,5,data moves (drift visible in P(X)),15
+exp2,ninf15_sudden,20,21,1.5588,3.9597,2.7209,0.0671,5,data moves (drift visible in P(X)),15
+exp2,ninf3_gradual,20,25,0.0647,1.1492,0.6395,0.1599,5,data moves (drift visible in P(X)),3
+exp2,ninf3_sudden,20,21,0.0244,1.5765,0.8771,0.0583,5,data moves (drift visible in P(X)),3
+exp2,ninf5_gradual,20,25,0.1442,1.9871,1.0895,0.0862,5,data moves (drift visible in P(X)),5
+exp2,ninf5_sudden,20,21,0.6158,2.331,1.4532,0.0422,5,data moves (drift visible in P(X)),5
+exp3,led_chunk100_gradual,24,4,0.3993,0.7032,0.5963,0.0166,5,data moves (drift visible in P(X)),
+exp3,led_chunk100_sudden,24,4,0.4079,0.747,0.6043,0.0403,5,data moves (drift visible in P(X)),
+exp3,sea_chunk100_gradual,3,4,0.0087,0.0245,0.0177,0.0017,5,data does not move (drift in P(y|X) only),
+exp3,sea_chunk100_sudden,3,4,0.0104,0.0279,0.0191,0.0042,5,data does not move (drift in P(y|X) only),
+exp3,stagger_chunk100_gradual,3,3,0.0029,0.0051,0.004,0.0011,5,data does not move (drift in P(y|X) only),
+exp3,stagger_chunk100_sudden,3,3,0.0033,0.0074,0.0054,0.0012,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift15_gradual,3,4,0.0093,0.0295,0.0199,0.004,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift15_sudden,3,4,0.0084,0.0286,0.0188,0.005,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift1_gradual,3,2,0.0086,0.0086,0.0086,0.0051,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift1_sudden,3,2,0.0097,0.0097,0.0097,0.0044,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift3_gradual,3,4,0.0087,0.0245,0.0177,0.0017,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift3_sudden,3,4,0.0104,0.0279,0.0191,0.0042,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift7_gradual,3,4,0.008,0.0244,0.0174,0.0012,5,data does not move (drift in P(y|X) only),
+exp4,sea_chunk100_ndrift7_sudden,3,4,0.0098,0.0295,0.0204,0.0021,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift15_gradual,3,3,0.0031,0.006,0.0043,0.0012,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift15_sudden,3,3,0.0041,0.0062,0.0053,0.0016,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift1_gradual,3,2,0.0035,0.0035,0.0035,0.0011,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift1_sudden,3,2,0.0037,0.0037,0.0037,0.0017,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift3_gradual,3,3,0.0029,0.0051,0.004,0.0011,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift3_sudden,3,3,0.0033,0.0074,0.0054,0.0012,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift7_gradual,3,3,0.0029,0.0049,0.0039,0.0014,5,data does not move (drift in P(y|X) only),
+exp4,stagger_chunk100_ndrift7_sudden,3,3,0.0029,0.0057,0.0045,0.0015,5,data does not move (drift in P(y|X) only),
+exp5,INSECTS-abrupt_balanced,33,6,0.0098,0.1418,0.0813,nan,1,data moves partially,
+exp5,INSECTS-abrupt_imbalanced,33,6,0.0233,0.1085,0.0683,nan,1,data moves partially,
+exp5,INSECTS-incgradual_balanced,33,2,0.1183,0.1183,0.1183,nan,1,data moves partially,
+exp5,INSECTS-incgradual_imbalanced,33,2,0.1435,0.1435,0.1435,nan,1,data moves partially,
+exp5,SPAM,499,6,0.6986,3.3063,2.2586,nan,1,data moves (drift visible in P(X)),
