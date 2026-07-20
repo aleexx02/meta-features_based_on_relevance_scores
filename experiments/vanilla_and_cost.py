@@ -1,6 +1,6 @@
 # vanilla_and_cost.py
 # ==============================================================================
-# SHARED add-on used by ALL experiments (1c, 2, 3, 4, 5). Adds two things
+# SHARED add-on used by ALL experiments (1, 2, 3, 4, 5). Adds two things
 # without re-running the expensive ABFS / Komorniczak extraction:
 #
 #   1. VANILLA BASELINE — trivial meta-features: per-feature mean + std of each

@@ -24,7 +24,7 @@
 #                               parameter.
 #
 # Expected pattern across this work's generators:
-#   stream-learn (1c, 2) : data moves a lot        (L2 ~ 0.8 .. 2.7)  P(X) shifts
+#   stream-learn (1, 2) : data moves a lot        (L2 ~ 0.8 .. 2.7)  P(X) shifts
 #   river SEA / STAGGER  : data barely moves        (L2 ~ 0.002 .. 0.04)
 #   river LED            : data moves partially     (L2 ~ 0.42 .. 0.73)
 #   real INSECTS / SPAM  : genuine movement

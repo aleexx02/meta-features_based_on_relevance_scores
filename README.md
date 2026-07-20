@@ -61,13 +61,9 @@ meta-features_based_on_relevance_scores/
 ├── experiments/
 │   ├── experiment_0/
 │   │   ├── comparison.py
-│   │   └── replication_check_1a.py
+│   │   └── replication_check.py
 │   │
-│   ├── experiment_1a/                    # legacy, not in the report
-│   │   ├── analysis_1a.py
-│   │   └── evaluate_concept_classification_1a.py
-│   │
-│   ├── experiment_1c/                    # = report Experiment 1
+│   ├── experiment_1/
 │   │   ├── analysis_1c.py
 │   │   ├── evaluate_concept_classification_1c.py
 │   │   ├── komor_concept_classification_1c.py
@@ -436,37 +432,32 @@ Reproduces and checks the original Komorniczak pipeline before building on it. P
 **1.** `external/komorniczak/E1_extract_synthetic.py`
 **2.** `external/komorniczak/E2_clf_synthetic.py`
 **3.** `experiments/experiment_0/comparison.py`
-**4.** `experiments/experiment_0/replication_check_1a.py`
+**4.** `experiments/experiment_0/replication_check.py`
 
 | # | Script | Purpose |
 |---|--------|---------|
 | 1 | `external/komorniczak/E1_extract_synthetic.py` | Run their original pipeline: generate their synthetic streams and extract the 9 groups of statistical (pymfe) meta-features. Saved to `external/komorniczak/results/synthetic/`. Source for step 7. |
 | 2 | `external/komorniczak/E2_clf_synthetic.py` | Run their original classification (their CV protocol) on those meta-features, reproducing their published results. |
 | 3 | `experiments/experiment_0/comparison.py` | Compare our output against theirs to confirm the reproduction matches. |
-| 4 | `experiments/experiment_0/replication_check_1a.py` | Explicit replication check against their reference numbers (e.g. Figure 12 benchmark). |
+| 4 | `experiments/experiment_0/replication_check.py` | Explicit replication check against their reference numbers (e.g. Figure 12 benchmark). |
 
 
-### Experiment 1a: Batch CV *(legacy — not in the report)*
-Kept for provenance. The reported results begin at the prequential protocol.
-
-**5.** `experiments/experiment_1a/evaluate_concept_classification_1a.py`
-**6.** `experiments/experiment_1a/analysis_1a.py --sanity --variance --shap --metrics`
 
 
 ### Experiment 1 (code: `experiment_1c/`): Prequential
 Prequential (test-then-train) evaluation, the definitive protocol. Order matters: the Komorniczak side (7) must exist before our side (8), and the analysis (9) needs both.
 
-**7.** `experiments/experiment_1c/komor_concept_classification_1c.py`
-**8.** `experiments/experiment_1c/evaluate_concept_classification_1c.py`
-**9.** `experiments/experiment_1c/analysis_1c.py --sanity --performance --shap --metrics --stream_analysis --gap --bars --concept_dist --vanilla --summary --concept_dist_features`
-**9b.** `experiments/experiment_1c/vanilla_cost_1c.py`
+**5.** `experiments/experiment_1c/komor_concept_classification_1c.py`
+**6.** `experiments/experiment_1c/evaluate_concept_classification_1c.py`
+**7.** `experiments/experiment_1c/analysis_1c.py --sanity --performance --shap --metrics --stream_analysis --gap --bars --concept_dist --vanilla --summary --concept_dist_features`
+**8.** `experiments/experiment_1c/vanilla_cost_1c.py`
 
 | # | Script | Purpose |
 |---|--------|---------|
-| 7 | `komor_concept_classification_1c.py` | **Baseline side.** Load Komorniczak's pre-extracted meta-features (from step 1) and evaluate them under our prequential protocol, skipping the first 10 warm-up windows to align with ABFS. Saves `clf_komor_concept_classif_{ba,f1,kappa}_{drift}.npy`. Does *not* generate streams. |
-| 8 | `evaluate_concept_classification_1c.py` | **ABFS side.** Extract our 3 meta-feature versions (aggstats / raw / raw+temporal) from the streams and evaluate them with the same prequential protocol and warm-up. Saves `clf_ba_{version}_{drift}.npy`. |
-| 9 | `analysis_1c.py` | Combine both sides and produce the material: performance per classifier, relevance-score stream analysis, gap heatmaps (best ABFS − best Komorniczak), and the summary / vanilla / concept-distance CSVs. |
-| 9b | `vanilla_cost_1c.py` | Vanilla-baseline trajectories (and the cost timing, which is not reported for this experiment — see the cost caveat above). |
+| 5 | `komor_concept_classification_1c.py` | **Baseline side.** Load Komorniczak's pre-extracted meta-features (from step 1) and evaluate them under our prequential protocol, skipping the first 10 warm-up windows to align with ABFS. Saves `clf_komor_concept_classif_{ba,f1,kappa}_{drift}.npy`. Does *not* generate streams. |
+| 6 | `evaluate_concept_classification_1c.py` | **ABFS side.** Extract our 3 meta-feature versions (aggstats / raw / raw+temporal) from the streams and evaluate them with the same prequential protocol and warm-up. Saves `clf_ba_{version}_{drift}.npy`. |
+| 7 | `analysis_1c.py` | Combine both sides and produce the material: performance per classifier, relevance-score stream analysis, gap heatmaps (best ABFS − best Komorniczak), and the summary / vanilla / concept-distance CSVs. |
+| 8 | `vanilla_cost_1c.py` | Vanilla-baseline trajectories (and the cost timing, which is not reported for this experiment — see the cost caveat above). |
 
 **Note on balanced accuracy.** Both sides report the **final cumulative BA at
 the last window, averaged over the 5 replications**. An earlier version of
@@ -479,14 +470,14 @@ Any new comparison figure must use the final-window definition.
 ### Experiment 2: Stream Configuration Sensitivity
 chunk_size $\in$ {100,200,500,1000} $\times$ n_informative $\in$ {3,5,10,15}, $\times$ 2 drift $\times$ 5 reps.
 
-**10.** `experiments/experiment_2/evaluate_concept_classification_2.py`
-**11.** `experiments/experiment_2/analysis_2.py --sanity --performance --shap --metrics --grid --stream_analysis --vanilla --summary --concept_dist_features`
-**11b.** `experiments/experiment_2/vanilla_cost_2.py`
+**9.** `experiments/experiment_2/evaluate_concept_classification_2.py`
+**10.** `experiments/experiment_2/analysis_2.py --sanity --performance --shap --metrics --grid --stream_analysis --vanilla --summary --concept_dist_features`
+**11.** `experiments/experiment_2/vanilla_cost_2.py`
 
 | # | Script | Purpose |
 |---|--------|---------|
-| 10 | `evaluate_concept_classification_2.py` | Evaluate ABFS (3 versions) and Komorniczak (9 measures) across the chunk_size $\times$ n_informative grid, both drift types, 5 reps. |
-| 11 | `analysis_2.py` | `--grid` produces the gap heatmaps (per ABFS version) and the chunk_size / n_informative sensitivity curves. `--concept_dist_features` sweeps `n_informative` and records the `n_informative` column that drives the spread curve. |
+| 9 | `evaluate_concept_classification_2.py` | Evaluate ABFS (3 versions) and Komorniczak (9 measures) across the chunk_size $\times$ n_informative grid, both drift types, 5 reps. |
+| 10 | `analysis_2.py` | `--grid` produces the gap heatmaps (per ABFS version) and the chunk_size / n_informative sensitivity curves. `--concept_dist_features` sweeps `n_informative` and records the `n_informative` column that drives the spread curve. |
 
 
 ### Experiment 3: SEA / STAGGER / LED (chunk_size sweep)
@@ -494,7 +485,7 @@ chunk_size $\in$ {100,200,500,1000} $\times$ n_informative $\in$ {3,5,10,15}, $\
 
 **12.** `experiments/experiment_3/evaluate_concept_classification_3.py`
 **13.** `experiments/experiment_3/analysis_3.py --sanity --performance --shap --metrics --stream_analysis --gap --grid --vanilla --summary --concept_dist_features`
-**13b.** `experiments/experiment_3/vanilla_cost_3.py`
+**14.** `experiments/experiment_3/vanilla_cost_3.py`
 
 | # | Script | Purpose |
 |---|--------|---------|
@@ -514,14 +505,14 @@ heatmap_comparison_komorniczak_ABFS_preq_exp3_{gen}_chunk{cs}_{drift}.png
 ### Experiment 4: Recurring concepts (chunk_size $\times$ n_drifts grid)
 **Purpose:** concepts recur; characterize ABFS vs Komorniczak across window size and drift frequency / recurrence amount.
 
-**14.** `experiments/experiment_4/evaluate_concept_classification_4.py`
-**15.** `experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics --stream_analysis --gap --grid --vanilla --summary --concept_dist_features`
-**15b.** `experiments/experiment_4/vanilla_cost_4.py`
+**15.** `experiments/experiment_4/evaluate_concept_classification_4.py`
+**16.** `experiments/experiment_4/analysis_4.py --sanity --performance --shap --metrics --stream_analysis --gap --grid --vanilla --summary --concept_dist_features`
+**17.** `experiments/experiment_4/vanilla_cost_4.py`
 
 | # | Script | Purpose |
 |---|--------|---------|
-| 14 | `evaluate_concept_classification_4.py` | Grid is generator $\times$ drift $\times$ chunk_size $\times$ n_drifts (48 cells); pymfe cache in `external/komorniczak/results/synthetic_recurring/`. Large grid: 48 cells $\times$ 5 reps $\times$ 12 feature sets (3 ABFS versions + 9 Komorniczak measures). |
-| 15 | `analysis_4.py` | `--gap` chunk_size $\times$ n_drifts gap heatmaps per ABFS version (per generator $\times$ drift); `--grid` BA-vs-n_drifts curves per classifier at each chunk_size. |
+| 15 | `evaluate_concept_classification_4.py` | Grid is generator $\times$ drift $\times$ chunk_size $\times$ n_drifts (48 cells); pymfe cache in `external/komorniczak/results/synthetic_recurring/`. Large grid: 48 cells $\times$ 5 reps $\times$ 12 feature sets (3 ABFS versions + 9 Komorniczak measures). |
+| 16 | `analysis_4.py` | `--gap` chunk_size $\times$ n_drifts gap heatmaps per ABFS version (per generator $\times$ drift); `--grid` BA-vs-n_drifts curves per classifier at each chunk_size. |
 
 
 Output per cell (shape `(n_reps, n_windows, n_clfs)`):
@@ -536,17 +527,17 @@ heatmap_comparison_komorniczak_ABFS_preq_exp4_{gen}_chunk{cs}_ndrift{nd}_{drift}
 ### Experiment 5: real streams (INSECTS + SPAM)
 **Purpose:** test on real, externally annotated streams where drift is not engineered.
 
-**16.** `streams/generate_real_streams.py`
-**17.** `experiments/experiment_5/evaluate_concept_classification_5.py`
-**18.** `experiments/experiment_5/analysis_5.py --sanity --performance --shap --metrics --stream_analysis --gap --bars --vanilla --summary`
-**18b.** `experiments/experiment_5/vanilla_cost_5.py`
+**18.** `streams/generate_real_streams.py`
+**19.** `experiments/experiment_5/evaluate_concept_classification_5.py`
+**20.** `experiments/experiment_5/analysis_5.py --sanity --performance --shap --metrics --stream_analysis --gap --bars --vanilla --summary`
+**21.** `experiments/experiment_5/vanilla_cost_5.py`
 
 | # | Script | Purpose |
 |---|--------|---------|
-| 16 | `generate_real_streams.py` | Build the real streams (INSECTS variants + SPAM) into the format used by the pipeline, plus the drift ground truth. |
-| 17 | `evaluate_concept_classification_5.py` | Iterates `REAL_STREAMS`; ABFS (3 versions) + Komorniczak (9 measures); pymfe cache in `external/komorniczak/results/real/`. |
-| 18 | `analysis_5.py` | SPAM (499 feat) caps per-feature plots to the top 20 by relevance-score variance (PCA never capped). |
-| 18b | `vanilla_cost_5.py` | Vanilla baseline **and** the decisive cost measurement: pass `cost_cells=CELLS` so all five streams are timed, including SPAM at 499 features — the scaling point of the cost comparison. |
+| 18 | `generate_real_streams.py` | Build the real streams (INSECTS variants + SPAM) into the format used by the pipeline, plus the drift ground truth. |
+| 19 | `evaluate_concept_classification_5.py` | Iterates `REAL_STREAMS`; ABFS (3 versions) + Komorniczak (9 measures); pymfe cache in `external/komorniczak/results/real/`. |
+| 20 | `analysis_5.py` | SPAM (499 feat) caps per-feature plots to the top 20 by relevance-score variance (PCA never capped). |
+| 21 | `vanilla_cost_5.py` | Vanilla baseline **and** the decisive cost measurement: pass `cost_cells=CELLS` so all five streams are timed, including SPAM at 499 features — the scaling point of the cost comparison. |
 
 Experiment 5 has **no** `--concept_dist_features` flag: `characterize_streams.py`
 computes its concept means from the saved arrays and ground truth instead. Experiment 5's concept means are computed in characterize_streams.py rather than analysis_5.py, because real streams are read from disk rather than rebuilt from a generator — so the measurement doesn't need the per-cell knowledge the analysis scripts hold, and keeping it in one place avoids a fifth copy of the same computation.
@@ -561,8 +552,8 @@ heatmap_comparison_komorniczak_ABFS_preq_exp5_{stream}.png
 
 ### Cross-cutting (after all experiments)
 
-**19.** `python experiments/feature_ranges.py`
-**20.** `python experiments/characterize_streams.py`
+**22.** `python experiments/feature_ranges.py`
+**23.** `python experiments/characterize_streams.py`
 
 ---
 

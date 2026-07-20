@@ -5,9 +5,9 @@
 #
 # This module is the prequential equivalent of
 # classifier_sweep_komor.py. It is used by:
-#   - evaluate_concept_classification_1c.py: to run the sweep
+#   - evaluate_concept_classification_1.py: to run the sweep
 #     on our ABFS-based meta-features
-#   - komor_concept_classification_1c.py: to run the sweep on
+#   - komor_concept_classification_1.py: to run the sweep on
 #     their pre-extracted meta-features
 #
 # By using the same protocol in both scripts, any difference

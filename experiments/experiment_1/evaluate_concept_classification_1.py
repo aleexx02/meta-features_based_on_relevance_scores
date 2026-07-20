@@ -1,7 +1,7 @@
-# evaluate_concept_classification_1c.py
+# evaluate_concept_classification_1.py
 
 # ============================================================
-# Experiment 1c: Prequential evaluation of ABFS-based
+# Experiment 1: Prequential evaluation of ABFS-based
 # meta-features using River classifiers (test-then-train).
 #
 # Same streams, same concept labelling as 1a/1b.
@@ -12,10 +12,10 @@
 # per window per classifier per replication.
 #
 # Output: ABFS classifier-sweep results (clf_ba/f1/kappa_*.npy) and
-# the comparison heatmap -> results/experiment_1c/. This script never
-# touches Komorniczak's features; that happens in komor_concept_classification_1c.py.
+# the comparison heatmap -> results/experiment_1/. This script never
+# touches Komorniczak's features; that happens in komor_concept_classification_1.py.
 
-# It generates 18 .npy files in results/experiment_1c (9 per drift type):
+# It generates 18 .npy files in results/experiment_1 (9 per drift type):
 #   clf_ba_aggstats_sudden.npy, clf_ba_aggstats_gradual.npy
 #   clf_ba_raw_sudden.npy, clf_ba_raw_gradual.npy
 #   clf_ba_raw_temporal_sudden.npy, clf_ba_raw_temporal_gradual.npy
@@ -24,10 +24,10 @@
 # Each file has shape (n_replications, n_windows, n_clfs)
 # where n_windows = N_CHUNKS - WARMUP_WINDOWS = 4990
 
-# And 2 figures in results/experiment_1c/figures (1 per drift type):
+# And 2 figures in results/experiment_1/figures (1 per drift type):
 #   heatmap_comparison_komorniczak_ABFS_sudden.png
 #   heatmap_comparison_komorniczak_ABFS_gradual.png
-# Note: run komor_concept_classification_1c.py first to generate
+# Note: run komor_concept_classification_1.py first to generate
 # the Komorniczak baseline files needed for the comparison plots.
 # ============================================================
 
@@ -52,8 +52,8 @@ from plot_results import plot_heatmap_balanced_accuracy_comparison_exp1
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c')
-FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c', 'figures')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1')
+FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1', 'figures')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(FIGURES_DIR, exist_ok=True)
@@ -278,6 +278,6 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
     if os.path.exists(rc_path):
         rc_raw = np.load(rc_path)  # shape: (n_measures, n_replications, n_windows, n_clfs)
         plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,drift_type, n_concepts, FIGURES_DIR,
-            exp_label='1c',filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
+            exp_label='1',filename=f'heatmap_comparison_komorniczak_ABFS_{drift_type}.png')
     else:
-        print(f"\nWarning: {rc_path} not found - run komor_concept_classification_1c.py first.")
+        print(f"\nWarning: {rc_path} not found - run komor_concept_classification_1.py first.")

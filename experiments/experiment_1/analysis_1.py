@@ -1,12 +1,12 @@
-# analysis_1c.py
+# analysis_1.py
 # ============================================================
-# Analysis of Experiment 1c results (prequential evaluation).
+# Analysis of Experiment 1 results (prequential evaluation).
 #
 # Usage:
-#   python analysis_1c.py --sanity --performance --shap --metrics --stream_analysis
+#   python analysis_1.py --sanity --performance --shap --metrics --stream_analysis
 #
 # Loads pre-computed results (.npy files) from
-# results/experiment_1c/ and produces:
+# results/experiment_1/ and produces:
 #
 #   1. Sanity check plots (per replication x drift type):
 #      - Relevance scores over time
@@ -46,7 +46,7 @@
 #        classifier. Same "raw v2.0 vs Komorniczak best" comparison
 #        used in analysis_2.py / analysis_3.py; the unit here is
 #        drift type rather than a chunk_size x n_informative grid cell
-#        (Exp2) or a stream (Exp3), since 1c doesn't sweep those.
+#        (Exp2) or a stream (Exp3), since 1 doesn't sweep those.
 #
 
 # SHAP classifiers (sklearn-compatible proxies):
@@ -55,13 +55,13 @@
 #   HT  -- DecisionTreeClassifier
 #   MLP -- MLPClassifier
 
-# Inputs (from results/experiment_1c/):
+# Inputs (from results/experiment_1/):
 #   clf_ba_*.npy, clf_f1_*.npy, clf_kappa_*.npy
 #   clf_komor_concept_classif_ba_*.npy, etc.
 # Each file has shape (n_replications, n_windows, n_clfs)
 # Komorniczak files: (n_measures, n_replications, n_windows, n_clfs)
 #
-# Outputs saved to results/experiment_1c/figures/analysis/
+# Outputs saved to results/experiment_1/figures/analysis/
 # ============================================================
 
 import argparse
@@ -97,7 +97,7 @@ from plot_results import print_sanity_check_summary
 # ============================================================
 #  ARGUMENT PARSING
 # ============================================================
-parser = argparse.ArgumentParser(description='Analysis for Experiment 1c.')
+parser = argparse.ArgumentParser(description='Analysis for Experiment 1.')
 parser.add_argument('--sanity',     action='store_true', help='Run sanity check plots')
 parser.add_argument('--performance', action='store_true', help='Run performance trajectory plots')
 parser.add_argument('--shap',       action='store_true', help='Run SHAP analysis')
@@ -121,7 +121,7 @@ RUN_GAP          = args.gap
 RUN_BARS         = args.bars
 RUN_CONCEPT_DIST = args.concept_dist
 
-print(f"\nRunning analysis for Experiment 1c")
+print(f"\nRunning analysis for Experiment 1")
 print(f"Sanity check    : {RUN_SANITY_CHECK}")
 print(f"Performance     : {RUN_PERFORMANCE}")
 print(f"SHAP            : {RUN_SHAP}")
@@ -134,8 +134,8 @@ print(f"Gap             : {RUN_GAP}")
 # ============================================================
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
-RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c')
-FIGURES_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c', 'figures', 'analysis')
+RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1')
+FIGURES_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1', 'figures', 'analysis')
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 # ============================================================
@@ -394,7 +394,7 @@ def extract_stream_diagnostics(rs, drift_type, n_drifts, concept_sigmoid_spacing
     delta_relevance = []
     prev_mean, wt_prev = None, None
     # underlying StreamGenerator target is binary by default in this
-    # project's Exp1c config (no n_classes override is set anywhere
+    # project's Exp1 config (no n_classes override is set anywhere
     # above) -- not re-verified against the actual stream output here
     n_classes = 2
 
@@ -516,7 +516,7 @@ if RUN_SANITY_CHECK:
             ax.set_xlabel('Time (x100 instances)')
             ax.set_ylabel('Relevance score')
             ax.set_title(f'ABFS relevance scores - {drift_type} drift '
-                f'(seed={rs}) - experiment [1c]')
+                f'(seed={rs}) - experiment [1]')
             ax.legend(ncol=5, fontsize=8)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR,
@@ -544,7 +544,7 @@ if RUN_SANITY_CHECK:
                     axes[k].set_xlabel('Window')
                     axes[k].set_ylabel('Value')
                 fig.suptitle(f'Meta-features ({mf_type}) - {drift_type} drift '
-                    f'(seed={rs}) - experiment [1c]', fontsize=11)
+                    f'(seed={rs}) - experiment [1]', fontsize=11)
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR,
                     f'metafeatures_{mf_type}_{drift_type}_rep{rep_id}.png')
@@ -568,7 +568,7 @@ if RUN_SANITY_CHECK:
                 ax.set_ylabel(
                     f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}% variance)')
                 ax.set_title(f'PCA ({mf_type}) - {drift_type} drift '
-                    f'(seed={rs}) - experiment [1c]')
+                    f'(seed={rs}) - experiment [1]')
                 ax.legend(ncol=4, fontsize=8)
                 fig.tight_layout()
                 fname = os.path.join(FIGURES_DIR,
@@ -638,7 +638,7 @@ if RUN_PERFORMANCE:
             ax.set_xlabel('Window')
             ax.set_ylabel('Cumulative balanced accuracy')
             ax.set_title(f'Performance trajectory - {mf_label} - '
-                f'{drift_type} drift ({n_concepts} concepts) - experiment [1c]')
+                f'{drift_type} drift ({n_concepts} concepts) - experiment [1]')
             ax.legend(fontsize=9, ncol=3)
             ax.set_xlim(0, n_windows)
             ax.set_ylim(0, 1)
@@ -707,7 +707,7 @@ if RUN_SHAP:
                 ax.set_title(clf_name, fontsize=11)
 
             fig.suptitle(f'SHAP - {mf_label} - {drift_type} drift - '
-                         f'experiment [1c]\n(averaged over '
+                         f'experiment [1]\n(averaged over '
                          f'{N_REPLICATIONS} replications)', fontsize=12)
             fig.tight_layout()
             fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -770,7 +770,7 @@ if RUN_METRICS:
             row_labels    = [r[0] for r in all_rows]
 
             # print summary
-            print(f"\n{metric_label} - {drift_type} drift - experiment [1c]")
+            print(f"\n{metric_label} - {drift_type} drift - experiment [1]")
             print(f"{'Meta-features':<25s}", end='')
             for name in clf_names:
                 print(f"{name:>10s}", end='')
@@ -801,7 +801,7 @@ if RUN_METRICS:
             ax.set_yticks(range(len(all_rows)))
             ax.set_yticklabels(row_labels, fontsize=9)
             ax.set_title(f'{metric_label} - {drift_type} drift '
-                f'({n_concepts} concepts) - experiment [1c]', fontsize=10)
+                f'({n_concepts} concepts) - experiment [1]', fontsize=10)
             plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
             fig.tight_layout()
             fname = os.path.join(FIGURES_DIR,
@@ -857,7 +857,7 @@ if RUN_STREAM_ANALYSIS:
                 ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
                 ax1.set_title(f'Drift vs ABFS dynamics - {drift_type} drift '
-                    f'(seed={rs}) - experiment [1c]')
+                    f'(seed={rs}) - experiment [1]')
 
                 fig.tight_layout()
                 fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -879,7 +879,7 @@ if RUN_STREAM_ANALYSIS:
                 ax.set_xlabel('Chunk')
                 ax.set_ylabel('Proportion')
                 ax.set_title(f'Class distribution over time - {drift_type} drift '
-                    f'(seed={rs}) - experiment [1c]')
+                    f'(seed={rs}) - experiment [1]')
                 ax.legend(ncol=4, fontsize=8)
                 fig.tight_layout()
                 fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -929,7 +929,7 @@ if RUN_GAP:
             ax.set_yticks([0]); ax.set_yticklabels([f'{drift_type} drift'], fontsize=10)
             ax.set_xlabel('Classifier', fontsize=11)
             ax.set_title(f'Gap ({ABFS_LABELS[version]} minus Komorniczak best) -- '
-                         f'{drift_type} drift -- experiment [1c]', fontsize=11)
+                         f'{drift_type} drift -- experiment [1]', fontsize=11)
             cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, aspect=6)
             cbar.set_label('Gap (BA)', fontsize=9)
             fig.subplots_adjust(bottom=0.35)
@@ -1000,7 +1000,7 @@ if RUN_BARS:
         ax.set_xticklabels([f'{d} drift' for d in drifts], fontsize=10)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 1c: BA per ABFS version vs Komorniczak (best classifier)')
+        ax.set_title('Exp 1: BA per ABFS version vs Komorniczak (best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1017,7 +1017,7 @@ if RUN_CONCEPT_DIST:
         y = mf_results['raw']['y']   # concept labels for this stream
         plot_concept_distribution(
             y,
-            f'Concept distribution - {drift_type} drift ({n_concepts} concepts) - experiment 1c',
+            f'Concept distribution - {drift_type} drift ({n_concepts} concepts) - experiment 1',
             os.path.join(FIGURES_DIR, f'concept_distribution_{drift_type}.png'),
             n_concepts=n_concepts)
 
@@ -1067,7 +1067,7 @@ if args.vanilla:
         print(f"  {cell:10s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
 
     import csv
-    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp1c.csv')
+    out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp1.csv')
     with open(out, 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
@@ -1108,8 +1108,8 @@ if args.summary:
     header = ['drift', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1c.csv'),
-                      'Experiment 1c summary', header, rows)
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1.csv'),
+                      'Experiment 1 summary', header, rows)
     
 
 if args.concept_dist_features:

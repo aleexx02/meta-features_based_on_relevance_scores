@@ -1,17 +1,19 @@
+# komor_concept_classification_1.py
+
 # Evaluation of Komorniczak et al. meta-features using our
-# prequential evaluation protocol (Experiment 1c).
+# prequential evaluation protocol (Experiment 1).
 #
 # Loads their pre-extracted statistical meta-features
 # (produced by E1_extract_synthetic.py) and evaluates them
 # using the same prequential (test-then-train) protocol as
-# evaluate_concept_classification_1c.py. The first
+# evaluate_concept_classification_1.py. The first
 # WARMUP_WINDOWS windows are skipped to align with our
 # ABFS-based meta-features.
 #
 # Unlike replication_check_1a.py, this is NOT a replication
 # of their original results — the protocol differs (prequential
 # vs their CV-based E2). The purpose is to provide a fair
-# within-1c comparison: their features vs our features under
+# within-1 comparison: their features vs our features under
 # the same prequential protocol.
 
 # Metrics computed: balanced accuracy, macro F1, Cohen's Kappa.
@@ -22,7 +24,7 @@
 #   1. Load their .npy files from the results/ folder
 #   2. Extract meta-feature vectors and concept labels
 #   3. Run the classifier sweep for prequential evaluation
-#   4. Save the raw results (balanced accuracy, F1, Kappa) for each replication, window, and classifier in results/experiment_1c
+#   4. Save the raw results (balanced accuracy, F1, Kappa) for each replication, window, and classifier in results/experiment_1
 
 # RUN: their meta-features evaluated with our prequential protocol
 # COMPARISON: their meta-features (prequential) vs our meta-features (prequential)
@@ -31,9 +33,9 @@
 # Input: Komorniczak's raw pre-extracted meta-features, written once by
 #          E1_extract_synthetic.py (external/komorniczak/results/synthetic/),
 #          not regenerated here.
-# Output: classifier-sweep results (clf_komor_concept_classif_*.npy) -> results/experiment_1c/
+# Output: classifier-sweep results (clf_komor_concept_classif_*.npy) -> results/experiment_1/
 
-# It generates 6 .npy files in results/experiment_1c (3 per drift type):
+# It generates 6 .npy files in results/experiment_1 (3 per drift type):
 #   clf_komor_concept_classif_ba_sudden.npy
 #   clf_komor_concept_classif_f1_sudden.npy
 #   clf_komor_concept_classif_kappa_sudden.npy
@@ -55,7 +57,7 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1c')
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results', 'experiment_1')
 THEIR_RESULTS_PATH = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'synthetic')
 
 os.makedirs(RESULTS_DIR, exist_ok=True)

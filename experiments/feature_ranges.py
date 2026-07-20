@@ -46,7 +46,7 @@ def record(label, X, n_features):
           f"nonzero {r['frac_nonzero']:.3f}")
 
 
-# ---------------------------------------------------------------- stream-learn (1c, 2)
+# ---------------------------------------------------------------- stream-learn (1, 2)
 from strlearn.streams import StreamGenerator
 from streams.generate_synthetic_streams import (
     EXP2_N_CHUNKS, EXP2_DRIFT_CONFIGS, EXP2_N_FEATURES)
@@ -63,10 +63,10 @@ def sl_stream(nf, ninf, cs):
     return np.vstack([Xc for Xc, yc in s])
 
 
-print("=== stream-learn (Experiments 1c, 2) ===")
+print("=== stream-learn (Experiments 1, 2) ===")
 
-# Exp 1c: fixed config, all 10 features informative.
-record('exp1c stream-learn (10f 10inf)', sl_stream(10, 10, 200), 10)
+# Exp 1: fixed config, all 10 features informative.
+record('exp1 stream-learn (10f 10inf)', sl_stream(10, 10, 200), 10)
 
 # Exp 2: sweep the full n_informative grid. The per-instance feature spread
 # (min/max/std) is set by n_informative, not by chunk_size, so we vary ninf and
