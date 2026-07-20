@@ -1,0 +1,17 @@
+cell,n_concepts,n_reps,l2_min,l2_max,l2_mean,l2_mean_std
+sea_chunk100_ndrift1_sudden,2,5,0.0097,0.0097,0.0097,0.0044
+sea_chunk100_ndrift3_sudden,4,5,0.0104,0.0279,0.0191,0.0042
+sea_chunk100_ndrift7_sudden,4,5,0.0098,0.0295,0.0204,0.0021
+sea_chunk100_ndrift15_sudden,4,5,0.0084,0.0286,0.0188,0.005
+sea_chunk100_ndrift1_gradual,2,5,0.0086,0.0086,0.0086,0.0051
+sea_chunk100_ndrift3_gradual,4,5,0.0087,0.0245,0.0177,0.0017
+sea_chunk100_ndrift7_gradual,4,5,0.008,0.0244,0.0174,0.0012
+sea_chunk100_ndrift15_gradual,4,5,0.0093,0.0295,0.0199,0.004
+stagger_chunk100_ndrift1_sudden,2,5,0.0037,0.0037,0.0037,0.0017
+stagger_chunk100_ndrift3_sudden,3,5,0.0033,0.0074,0.0054,0.0012
+stagger_chunk100_ndrift7_sudden,3,5,0.0029,0.0057,0.0045,0.0015
+stagger_chunk100_ndrift15_sudden,3,5,0.0041,0.0062,0.0053,0.0016
+stagger_chunk100_ndrift1_gradual,2,5,0.0035,0.0035,0.0035,0.0011
+stagger_chunk100_ndrift3_gradual,3,5,0.0029,0.0051,0.004,0.0011
+stagger_chunk100_ndrift7_gradual,3,5,0.0029,0.0049,0.0039,0.0014
+stagger_chunk100_ndrift15_gradual,3,5,0.0031,0.006,0.0043,0.0012
