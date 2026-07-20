@@ -8,7 +8,7 @@
 # (what a label-free vanilla baseline can see) versus what the meta-features must
 # recover.
 #
-#  Three views, produced for every stream/cell:
+# Three views, produced for every stream/cell:
 #
 #   1. Fingerprint heatmap   -- per-concept feature means (concept x feature).
 #                               Each row is a concept's signature in feature
@@ -24,7 +24,7 @@
 #                               parameter.
 #
 # Expected pattern across this work's generators:
-#   stream-learn (1, 2) : data moves a lot        (L2 ~ 0.8 .. 2.7)  P(X) shifts
+#   stream-learn (1c, 2) : data moves a lot        (L2 ~ 0.8 .. 2.7)  P(X) shifts
 #   river SEA / STAGGER  : data barely moves        (L2 ~ 0.002 .. 0.04)
 #   river LED            : data moves partially     (L2 ~ 0.42 .. 0.73)
 #   real INSECTS / SPAM  : genuine movement
@@ -110,12 +110,23 @@ def movement_verdict(l2_mean):
 #  FIGURES
 # ============================================================================
  
-def plot_fingerprint(cm, concept_ids, title, out_path):
-    """Per-concept feature means: concept (rows) x feature (cols)."""
+def plot_fingerprint(cm, concept_ids, title, out_path, centre=True):
+    """Per-concept feature means: concept (rows) x feature (cols).
+ 
+    centre=True subtracts each feature's mean ACROSS concepts before plotting,
+    so the colour shows how each concept deviates from the average concept.
+    This is essential for generators whose features are not centred on zero
+    (SEA on [0,10], STAGGER on [0,2], LED on [0,1]): plotting raw means there
+    puts every cell at the top of a symmetric colour scale and the plot comes
+    out a uniform block, hiding the very variation it is meant to show.
+    The colourbar range is what carries the magnitude -- a centred SEA plot
+    shows structure, but at +/-0.02 against LED's +/-0.3.
+    """
     n_c, n_f = cm.shape
-    vmax = float(np.abs(cm).max()) or 1.0
+    M = cm - cm.mean(axis=0, keepdims=True) if centre else cm
+    vmax = float(np.abs(M).max()) or 1.0
     fig, ax = plt.subplots(figsize=(max(6, n_f * 0.35), max(3, n_c * 0.3)))
-    im = ax.imshow(cm, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
+    im = ax.imshow(M, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
     ax.set_xlabel("feature")
     ax.set_ylabel("concept")
     ax.set_yticks(range(n_c))
@@ -123,10 +134,12 @@ def plot_fingerprint(cm, concept_ids, title, out_path):
     step = max(1, n_f // 40)
     ax.set_xticks(range(0, n_f, step))
     ax.set_xticklabels(range(0, n_f, step), fontsize=6, rotation=90)
-    ax.set_title(f"Concept fingerprints (per-concept feature means)\n{title}",
+    lab = ("deviation from per-feature mean" if centre else "mean feature value")
+    ax.set_title(f"Concept fingerprints (per-concept feature means)\n{title}"
+                 + (f"\nmax deviation {vmax:.3g}" if centre else ""),
                  fontsize=10)
     cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02)
-    cbar.set_label("mean feature value", fontsize=8)
+    cbar.set_label(lab, fontsize=8)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
@@ -251,7 +264,8 @@ def _drift_of(cell):
     return "all"
  
  
-def characterise_csv(path, all_cells=False, fig_dir_override=None):
+def characterise_csv(path, all_cells=False, fig_dir_override=None,
+                     centre_fp=True):
     """Produce the three views for one concept_feature_means CSV and return the
     per-cell separation rows for the consolidated table.
  
@@ -269,28 +283,85 @@ def characterise_csv(path, all_cells=False, fig_dir_override=None):
     os.makedirs(fig_dir, exist_ok=True)
     rows = []
  
+    # ---- prefer the replication-AVERAGED distances when they exist ---------
+    # The fingerprint CSV holds replication 0 only (a cross-rep average of
+    # concept means is meaningless -- see the header note), so distances
+    # recomputed from it are rep-0 values. concept_distance_summary_expN.csv
+    # carries the properly rep-averaged min/max/mean, so the figures and the
+    # consolidated table agree with the numbers quoted in the report.
+    summary_path = os.path.join(os.path.dirname(os.path.abspath(path)),
+                                f"concept_distance_summary_{exp}.csv")
+    averaged = {}
+    if os.path.exists(summary_path):
+        with open(summary_path, newline="") as fh:
+            for r in csv.DictReader(fh):
+                try:
+                    averaged[r["cell"]] = dict(
+                        l2_min=float(r["l2_min"]), l2_max=float(r["l2_max"]),
+                        l2_mean=float(r["l2_mean"]),
+                        l2_mean_std=float(r.get("l2_mean_std") or "nan"),
+                        n_reps=int(r.get("n_reps") or 1))
+                except (KeyError, ValueError):
+                    continue
+        if averaged:
+            print(f"  [{exp}] using replication-averaged distances from "
+                  f"{os.path.basename(summary_path)}")
+ 
     # ---- fingerprint + distance matrix, per cell (or one representative) ----
     cell_names = sorted(cells)
     to_plot = cell_names if all_cells else [_representative(cell_names)]
     for cell in cell_names:
         ids, cm, sweep = cells[cell]
         summ = distance_summary(cm)
+        if cell in averaged:                     # rep-averaged overrides rep-0
+            summ.update(averaged[cell])
         rows.append(dict(experiment=exp, cell=cell,
                          n_features=cm.shape[1], **summ,
                          verdict=movement_verdict(summ["l2_mean"]), **sweep))
         if cell in to_plot:
             plot_fingerprint(cm, ids, f"{exp} / {cell}",
-                             os.path.join(fig_dir, f"fingerprint_{exp}_{cell}.png"))
+                             os.path.join(fig_dir, f"fingerprint_{exp}_{cell}.png"),
+                             centre=centre_fp)
             plot_distance_matrix(cm, ids, f"{exp} / {cell}",
                                  os.path.join(fig_dir, f"distance_{exp}_{cell}.png"))
     print(f"  [{exp}] {len(cell_names)} cell(s); "
           f"L2 mean {min(r['l2_mean'] for r in rows):.3f}"
           f"..{max(r['l2_mean'] for r in rows):.3f}  ->  {fig_dir}")
  
+    # ---- prefer the replication-AVERAGED distances when available ----------
+    # The fingerprint CSV holds replication 0 only, so distances recomputed from
+    # it are a single draw. concept_distance_summary_expN.csv holds the values
+    # averaged over all replications. On noisy cells the two differ materially
+    # (exp2 ninf3_gradual: 0.39 from rep 0 against 0.64 averaged), so the table
+    # and the spread curve use the averaged numbers whenever the summary exists.
+    summ_path = os.path.join(
+        os.path.dirname(os.path.abspath(path)),
+        os.path.basename(path).replace("concept_feature_means",
+                                       "concept_distance_summary"))
+    if os.path.exists(summ_path):
+        with open(summ_path, newline="") as fh:
+            by_cell = {r["cell"]: r for r in csv.DictReader(fh)}
+        n_over = 0
+        for r in rows:
+            src = by_cell.get(r["cell"])
+            if not src:
+                continue
+            for k in ("l2_min", "l2_max", "l2_mean", "l2_mean_std"):
+                if src.get(k) not in (None, ""):
+                    r[k] = float(src[k])
+            if src.get("n_reps") not in (None, ""):
+                r["n_reps"] = int(src["n_reps"])
+            r["verdict"] = movement_verdict(r["l2_mean"])
+            n_over += 1
+        if n_over:
+            print(f"  [{exp}] using replication-averaged distances "
+                  f"for {n_over} cell(s)")
+ 
     # ---- spread curve, if a numeric sweep column exists ----
     sweep_cols = [c for c in rows[0] if c not in
                   ("experiment", "cell", "n_features", "n_concepts",
-                   "l2_min", "l2_max", "l2_mean", "verdict")]
+                   "l2_min", "l2_max", "l2_mean", "verdict",
+                   "l2_mean_std", "n_reps")]   # stats, not sweep axes
     for sc in sweep_cols:
         if all(_num(r.get(sc)) is not None for r in rows):
             # one curve per drift family so sudden/gradual don't get mixed
@@ -507,7 +578,8 @@ def main():
     all_rows = []
     for p in paths:
         all_rows += characterise_csv(p, all_cells=not args.representative,
-                                     fig_dir_override=args.figdir)
+                                     fig_dir_override=args.figdir,
+                                     centre_fp=not args.raw_fingerprints)
     write_consolidated(all_rows, table_dir)
  
  
