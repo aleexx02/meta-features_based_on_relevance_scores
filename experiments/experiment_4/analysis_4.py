@@ -763,6 +763,9 @@ if args.concept_dist_features:
     KEEP_CHUNK_SIZE = 100
     EXP = EXP_TAG
  
+    # Replication seeds. Prefer the project's own list so the characterisation
+    # describes the same streams that were evaluated; fall back to a derived
+    # list if the module does not export one.
     try:
         from streams.generate_synthetic_streams import RANDOM_STATES as REP_SEEDS
         REP_SEEDS = [int(s) for s in REP_SEEDS]
@@ -782,7 +785,7 @@ if args.concept_dist_features:
         if KEEP_CHUNK_SIZE is not None and cs != KEEP_CHUNK_SIZE:
             continue
  
-        per_rep_pairs = []       # {(a,b): [l2 per rep]}
+        per_rep_pairs = {}       # (a, b) -> [l2 per rep]
         per_rep_stats = []       # (min, max, mean) per rep
         cm_rep0, uniq_rep0 = None, None
  
@@ -802,7 +805,7 @@ if args.concept_dist_features:
             cm = np.array([means[concs == c].mean(axis=0) for c in uniq])
  
             if rep == 0:
-                cm_rep0, uniq_rep0 = cm, uniq
+                cm_rep0, uniq_rep0 = cm, uniq   # fingerprints: rep 0, see note
  
             d = []
             for i in range(len(uniq)):
@@ -840,7 +843,9 @@ if args.concept_dist_features:
                                   l2_std=round(float(np.std(vals)), 4),
                                   n_reps=len(vals)))
  
-
+        # Fingerprints come from rep 0 only, on purpose: for stream-learn the
+        # concept layout differs per seed, so a cross-rep average would not be
+        # a meaningful fingerprint. The distances above are the averaged part.
         for c, m_ in zip(uniq_rep0, cm_rep0):
             rows_means.append(dict(cell=cell, concept=int(c),
                                    **{f'f{k}': round(float(v), 4)
