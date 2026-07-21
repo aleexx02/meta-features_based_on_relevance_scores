@@ -1,6 +1,0 @@
-stream,n_features,n_feat_50pct_relevance,frac_feat_50pct_relevance,n_feat_80pct_relevance,frac_feat_80pct_relevance,n_feat_90pct_relevance,frac_feat_90pct_relevance,n_feat_95pct_relevance,frac_feat_95pct_relevance,n_feat_meanrel_gt_0.01,n_feat_meanrel_gt_0.05,n_feat_meanrel_gt_0.1,n_feat_80pct_variation,frac_feat_80pct_variation,n_feat_90pct_variation,frac_feat_90pct_variation
-INSECTS-abrupt_balanced,33,10,0.303,20,0.606,25,0.758,28,0.848,31,10,1,22,0.667,27,0.818
-INSECTS-abrupt_imbalanced,33,11,0.333,20,0.606,25,0.758,27,0.818,31,16,2,23,0.697,27,0.818
-INSECTS-incgradual_balanced,33,9,0.273,18,0.545,23,0.697,27,0.818,29,8,0,20,0.606,25,0.758
-INSECTS-incgradual_imbalanced,33,8,0.242,18,0.545,23,0.697,26,0.788,27,5,0,22,0.667,27,0.818
-SPAM,499,77,0.154,205,0.411,283,0.567,341,0.683,365,102,42,251,0.503,330,0.661

@@ -1,3 +1,0 @@
-experiment,tag,method,n_features,n_windows,time_s,ms_per_window,peak_mb
-exp1,sudden,abfs,10,5000,567.213,113.443,0.14
-exp1,sudden,komorniczak,10,5000,463.739,92.748,0.61
