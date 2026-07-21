@@ -4,7 +4,9 @@ import os, sys
 import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
-sys.path.append('..'); sys.path.append('../..')
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_HERE, '..'))        # experiments/
+sys.path.insert(0, os.path.join(_HERE, '..', '..'))  # repo root
  
 from vanilla_and_cost import ExperimentSpec, run_experiment
 from abfs.abfs_implementation import ABFS_match
