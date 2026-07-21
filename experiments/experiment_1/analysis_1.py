@@ -1116,96 +1116,130 @@ if args.concept_dist_features:
     print("\n" + "=" * 60)
     print("CONCEPT SEPARATION IN FEATURE SPACE")
     print("=" * 60)
+
     import csv
     from strlearn.streams import StreamGenerator
- 
+
     rows_means, rows_dist, rows_summary = [], [], []
     print(f"  seeds: {list(RANDOM_STATES)}")
- 
+
     for drift_type, n_drifts, spacing, n_concepts in DRIFT_CONFIGS:
- 
-        per_rep_pairs = {}       # (a, b) -> [l2 per rep]
-        per_rep_stats = []       # (min, max, mean) per rep
+
+        per_rep_pairs = {}   # (a, b) -> [L2 per rep]
         cm_rep0, uniq_rep0 = None, None
- 
+
         for rep, seed in enumerate(RANDOM_STATES):
-            cfg = dict(n_drifts=n_drifts, n_chunks=N_CHUNKS,
-                       chunk_size=CHUNK_SIZE, n_features=N_FEATURES,
-                       n_informative=N_FEATURES, n_redundant=0, n_repeated=0,
-                       concept_sigmoid_spacing=spacing,
-                       random_state=int(seed))
+            cfg = dict(
+                n_drifts=n_drifts,
+                n_chunks=N_CHUNKS,
+                chunk_size=CHUNK_SIZE,
+                n_features=N_FEATURES,
+                n_informative=N_FEATURES,
+                n_redundant=0,
+                n_repeated=0,
+                concept_sigmoid_spacing=spacing,
+                random_state=int(seed)
+            )
+
             stream = StreamGenerator(**cfg)
- 
-            # StreamGenerator is lazy -- iterate FIRST so concept_selector exists
+
+            # StreamGenerator is lazy, iterate first so concept_selector exists
             stream.reset()
             means = np.array([Xc.mean(axis=0) for Xc, yc in stream])
- 
+
             # labels, exactly as the evaluate script derives them
             if drift_type == 'sudden':
                 cs_saved = stream.concept_selector.copy()
                 concept_labels_all = np.array([
                     int(np.bincount(
-                        cs_saved[i * CHUNK_SIZE:(i + 1) * CHUNK_SIZE]).argmax())
-                    for i in range(N_CHUNKS)])
+                        cs_saved[i * CHUNK_SIZE:(i + 1) * CHUNK_SIZE]
+                    ).argmax())
+                    for i in range(N_CHUNKS)
+                ])
             else:
                 concept_labels_all = assign_labels_gradual(
-                    stream, N_CHUNKS, CHUNK_SIZE)
- 
+                    stream, N_CHUNKS, CHUNK_SIZE
+                )
+
             concs = np.asarray(concept_labels_all)
             uniq = np.unique(concs)
+
+            # mean feature vector for each concept in this replication
             cm = np.array([means[concs == c].mean(axis=0) for c in uniq])
- 
+
             if rep == 0:
                 cm_rep0, uniq_rep0 = cm, uniq
- 
+
+            # collect pairwise distances for this replication
             d = []
             for i in range(len(uniq)):
                 for j in range(i + 1, len(uniq)):
                     l2 = float(np.linalg.norm(cm[i] - cm[j]))
                     d.append(l2)
-                    per_rep_pairs.setdefault((int(uniq[i]), int(uniq[j])),
-                                             []).append(l2)
+                    per_rep_pairs.setdefault((int(uniq[i]), int(uniq[j])), []).append(l2)
+
             if d:
-                per_rep_stats.append((min(d), max(d), float(np.mean(d))))
-            print(f"    {drift_type} rep{rep} (seed={seed}): "
-                  f"n_conc={len(uniq)}  L2 mean={np.mean(d):.4f}")
- 
-        if not per_rep_stats:
+                print(f"    {drift_type} rep{rep} (seed={seed}): "
+                      f"n_conc={len(uniq)}  L2 mean={np.mean(d):.4f}")
+
+        if not per_rep_pairs:
             print(f"  {drift_type}: no usable reps -- skipped")
             continue
- 
-        stats = np.array(per_rep_stats)
-        l2_min, l2_max, l2_mean = stats.mean(axis=0)
-        l2_mean_std = float(stats[:, 2].std())
- 
+
+        # ---------------------------------------------------------
+        # Summary statistics computed from the SAME pairwise values
+        # written to concept_distances_exp{N}.csv
+        # ---------------------------------------------------------
+        pair_means = np.array(
+            [np.mean(vals) for vals in per_rep_pairs.values()],
+            dtype=float
+        )
+
+        l2_min = float(np.min(pair_means))
+        l2_max = float(np.max(pair_means))
+        l2_mean = float(np.mean(pair_means))
+        l2_mean_std = float(np.std(pair_means))
+
         print(f"\n  {drift_type}  (n_features={cm_rep0.shape[1]}, "
-              f"n_concepts={len(uniq_rep0)}, {len(per_rep_stats)} reps)")
+              f"n_concepts={len(uniq_rep0)}, {len(RANDOM_STATES)} reps)")
         print(f"    L2  min={l2_min:.4f}  max={l2_max:.4f}  "
               f"mean={l2_mean:.4f} +/-{l2_mean_std:.4f}\n")
- 
-        rows_summary.append(dict(cell=drift_type, n_concepts=len(uniq_rep0),
-                                 n_reps=len(per_rep_stats),
-                                 l2_min=round(float(l2_min), 4),
-                                 l2_max=round(float(l2_max), 4),
-                                 l2_mean=round(float(l2_mean), 4),
-                                 l2_mean_std=round(l2_mean_std, 4)))
- 
+
+        rows_summary.append(dict(
+            cell=drift_type,
+            n_concepts=len(uniq_rep0),
+            n_reps=len(RANDOM_STATES),
+            l2_min=round(l2_min, 4),
+            l2_max=round(l2_max, 4),
+            l2_mean=round(l2_mean, 4),
+            l2_mean_std=round(l2_mean_std, 4)
+        ))
+
+        # detailed pairwise distances
         for (a, b), vals in sorted(per_rep_pairs.items()):
-            rows_dist.append(dict(cell=drift_type, concept_a=a, concept_b=b,
-                                  l2=round(float(np.mean(vals)), 4),
-                                  l2_std=round(float(np.std(vals)), 4),
-                                  n_reps=len(vals)))
- 
-        # rep 0 only -- see header note on why fingerprints are not averaged
+            rows_dist.append(dict(
+                cell=drift_type,
+                concept_a=a,
+                concept_b=b,
+                l2=round(float(np.mean(vals)), 4),
+                l2_std=round(float(np.std(vals)), 4),
+                n_reps=len(vals)
+            ))
+
+        # rep 0 only -- concept mean-vectors for visualization / inspection
         for c, m in zip(uniq_rep0, cm_rep0):
-            rows_means.append(dict(cell=drift_type, concept=int(c),
-                                   **{f'f{k}': round(float(v), 4)
-                                      for k, v in enumerate(m)}))
- 
-    for rows, name in [(rows_means,   'concept_feature_means'),
-                       (rows_dist,    'concept_distances'),
-                       (rows_summary, 'concept_distance_summary')]:
-        out = os.path.join(RESULTS_DIR, f'{name}_exp1.csv')   # analysis_2: _exp2
+            rows_means.append(dict(
+                cell=drift_type,
+                concept=int(c),
+                **{f'f{k}': round(float(v), 4) for k, v in enumerate(m)}
+            ))
+
+    for rows, name in [
+        (rows_means, 'concept_feature_means'),
+        (rows_dist, 'concept_distances'),
+        (rows_summary, 'concept_distance_summary')
+    ]:
+        out = os.path.join(RESULTS_DIR, f'{name}_exp1.csv')
         fields = list(dict.fromkeys(k for r in rows for k in r))
         with open(out, 'w', newline='') as f:
             w = csv.DictWriter(f, fieldnames=fields)

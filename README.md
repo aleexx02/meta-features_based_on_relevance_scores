@@ -658,11 +658,13 @@ Per experiment, in `results/experiment_{N}/`:
 
 - **`concept_distances_exp{N}.csv`** — `cell, [n_informative,] concept_a, concept_b,
   l2, l2_std, n_reps`. Pairwise Euclidean distance between every pair of concept
-  mean-vectors, averaged across replications with its spread.
+  mean-vectors, averaged across replications. Average over repetitions of the pairwise distance between concepts a and b. For each drift cell, this file stores the pairwise Euclidean distance between every pair of concept mean-vectors. For each concept pair (a, b), l2 is the mean across replications of the Euclidean distance between the corresponding concept centroids, and l2_std is the standard deviation across replications.
+  **Interpretation:** This is the detailed diagnostic table used to inspect which concept pairs are closest or farthest apart in feature space.
 
 - **`concept_distance_summary_exp{N}.csv`** — `cell, [n_informative,] n_concepts,
   n_reps, l2_min, l2_max, l2_mean, l2_mean_std`. The compact per-cell version quoted
-  in the text and consolidated into the cross-generator separation table.
+  in the text and consolidated into the cross-generator separation table. For each drift cell, this file summarizes the distribution of the pairwise mean distances found in `concept_distances_exp{N}.csv`.
+  **Interpretation:** This is the compact version quoted in the text and used in the cross-generator separation table. It is directly derived from the detailed pairwise distance file, so the summary values are guaranteed to correspond to actual pairwise distances.
 
 Project-level, in `results/`:
 
