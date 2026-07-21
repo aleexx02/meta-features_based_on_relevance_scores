@@ -46,6 +46,31 @@ def record(label, X, n_features):
           f"nonzero {r['frac_nonzero']:.3f}")
 
 
+
+def write_dict_csv(path, rows):
+    """Write dict rows as spreadsheet-friendly CSV:
+    semicolon separator and comma decimal separator.
+    """
+    if not rows:
+        return
+
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    fields = list(dict.fromkeys(k for r in rows for k in r))
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(fields)
+        for r in rows:
+            writer.writerow([fmt(r.get(k, "")) for k in fields])
+
+    print(f"Saved: {path}")
+
+
+
+
 # ---------------------------------------------------------------- stream-learn (1, 2)
 from strlearn.streams import StreamGenerator
 from streams.generate_synthetic_streams import (
@@ -120,8 +145,5 @@ for name in REAL_STREAMS:
 out_dir = os.path.join(PROJECT_ROOT, 'results')
 os.makedirs(out_dir, exist_ok=True)
 out = os.path.join(out_dir, 'feature_ranges_all_experiments.csv')
-with open(out, 'w', newline='') as f:
-    w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-    w.writeheader()
-    w.writerows(rows)
+write_dict_csv(out, rows)
 print(f"\nSaved: {out}")

@@ -232,32 +232,37 @@ def concept_means_from_windows(windows, labels):
  
  
 def load_concept_means_csv(path):
-    """Read a concept_feature_means_exp{N}.csv.
- 
-    Returns dict: cell -> (concept_ids, cm, sweep) where sweep is a dict of any
-    non-{cell, concept, f*} columns for that cell (e.g. {'n_informative': '15'}).
+    """Read a concept_feature_means_exp{N}.csv written in either:
+    - comma-separated / dot-decimal format, or
+    - semicolon-separated / comma-decimal format.
     """
-    with open(path, newline="") as f:
-        rows = list(csv.DictReader(f))
-    if not rows:
+    # Try European spreadsheet format first
+    try:
+        import pandas as pd
+        df = pd.read_csv(path, sep=";", decimal=",")
+    except Exception:
+        # fallback to the old format
+        df = pd.read_csv(path)
+
+    if df.empty:
         return {}
-    fcols = sorted((c for c in rows[0] if FEATURE_RE.match(c)),
+
+    fcols = sorted((c for c in df.columns if FEATURE_RE.match(c)),
                    key=lambda c: int(c[1:]))
-    sweep_cols = [c for c in rows[0] if c not in ("cell", "concept") and c not in fcols]
-    grouped = {}
-    for r in rows:
-        grouped.setdefault(r["cell"], []).append(r)
+
+    sweep_cols = [c for c in df.columns if c not in ("cell", "concept") and c not in fcols]
+
     out = {}
-    for cell, rs in grouped.items():
-        rs = sorted(rs, key=lambda r: int(r["concept"]))
-        ids = [int(r["concept"]) for r in rs]
-        # feature columns actually populated for THIS cell -- generators within
-        # one file can differ in feature count (SEA/STAGGER 3 vs LED 24), which
-        # leaves the surplus f-columns empty on the low-dimensional cells.
-        cell_fcols = [c for c in fcols
-                      if all(str(r.get(c, "")).strip() != "" for r in rs)]
-        cm = np.array([[float(r[c]) for c in cell_fcols] for r in rs])
-        out[cell] = (ids, cm, {c: rs[0][c] for c in sweep_cols})
+    for cell, g in df.groupby("cell"):
+        g = g.sort_values("concept")
+        ids = g["concept"].astype(int).tolist()
+
+        cell_fcols = [c for c in fcols if g[c].notna().all()]
+        cm = g[cell_fcols].astype(float).to_numpy()
+
+        sweep = {c: g.iloc[0][c] for c in sweep_cols}
+        out[cell] = (ids, cm, sweep)
+
     return out
  
  
@@ -308,16 +313,25 @@ def characterise_csv(path, all_cells=False, fig_dir_override=None,
                                 f"concept_distance_summary_{exp}.csv")
     averaged = {}
     if os.path.exists(summary_path):
-        with open(summary_path, newline="") as fh:
-            for r in csv.DictReader(fh):
-                try:
-                    averaged[r["cell"]] = dict(
-                        l2_min=float(r["l2_min"]), l2_max=float(r["l2_max"]),
-                        l2_mean=float(r["l2_mean"]),
-                        l2_mean_std=float(r.get("l2_mean_std") or "nan"),
-                        n_reps=int(r.get("n_reps") or 1))
-                except (KeyError, ValueError):
-                    continue
+        try:
+            import pandas as pd
+            summ_df = pd.read_csv(summary_path, sep=";", decimal=",")
+        except Exception:
+            summ_df = pd.read_csv(summary_path)
+
+        for _, r in summ_df.iterrows():
+            try:
+                averaged[str(r["cell"])] = dict(
+                    l2_min=float(r["l2_min"]),
+                    l2_max=float(r["l2_max"]),
+                    l2_mean=float(r["l2_mean"]),
+                    l2_mean_std=float(r.get("l2_mean_std", np.nan)),
+                    n_reps=int(r.get("n_reps", 1))
+                )
+            except (KeyError, ValueError, TypeError):
+                continue
+
+
         if averaged:
             print(f"  [{exp}] using replication-averaged distances from "
                   f"{os.path.basename(summary_path)}")
@@ -354,23 +368,30 @@ def characterise_csv(path, all_cells=False, fig_dir_override=None,
         os.path.basename(path).replace("concept_feature_means",
                                        "concept_distance_summary"))
     if os.path.exists(summ_path):
-        with open(summ_path, newline="") as fh:
-            by_cell = {r["cell"]: r for r in csv.DictReader(fh)}
+        try:
+            import pandas as pd
+            summ_df = pd.read_csv(summ_path, sep=";", decimal=",")
+        except Exception:
+            summ_df = pd.read_csv(summ_path)
+
+        by_cell = {str(r["cell"]): r for _, r in summ_df.iterrows()}
+
         n_over = 0
         for r in rows:
             src = by_cell.get(r["cell"])
-            if not src:
+            if src is None:
                 continue
             for k in ("l2_min", "l2_max", "l2_mean", "l2_mean_std"):
-                if src.get(k) not in (None, ""):
+                if k in src and src[k] not in (None, ""):
                     r[k] = float(src[k])
-            if src.get("n_reps") not in (None, ""):
+            if "n_reps" in src and src["n_reps"] not in (None, ""):
                 r["n_reps"] = int(src["n_reps"])
             r["verdict"] = movement_verdict(r["l2_mean"])
             n_over += 1
+
         if n_over:
             print(f"  [{exp}] using replication-averaged distances "
-                  f"for {n_over} cell(s)")
+                f"for {n_over} cell(s)")
  
     # ---- spread curve, if a numeric sweep column exists ----
     sweep_cols = [c for c in rows[0] if c not in
@@ -412,15 +433,24 @@ def write_consolidated(rows, out_dir):
     """One row per cell across all generators -> feeds tab:concept_separation."""
     if not rows:
         return
+
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "concept_separation_all_generators.csv")
+
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
     fields = list(dict.fromkeys(k for r in rows for k in r))
     with open(path, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
-        w.writeheader()
-        w.writerows(rows)
+        w = csv.writer(f, delimiter=";")
+        w.writerow(fields)
+        for r in rows:
+            w.writerow([fmt(r.get(k, "")) for k in fields])
+
     print(f"\n  Consolidated separation table -> {path}")
-    # compact printout
+
     print(f"\n  {'experiment':10s} {'cell':26s} {'n_feat':>6s} {'n_conc':>6s} "
           f"{'L2 mean':>8s}  verdict")
     for r in sorted(rows, key=lambda r: r["l2_mean"]):
@@ -534,16 +564,23 @@ def build_exp5(root, chunk_size=REAL_CHUNK_SIZE):
         return
  
     for rows, base in ((rows_means, "concept_feature_means"),
-                       (rows_dist, "concept_distances"),
-                       (rows_summary, "concept_distance_summary")):
+                   (rows_dist, "concept_distances"),
+                   (rows_summary, "concept_distance_summary")):
         path = os.path.join(out_dir, f"{base}_exp5.csv")
+
+        def fmt(v):
+            if isinstance(v, float):
+                return f"{v:.4f}".replace(".", ",")
+            return v
+
         fields = list(dict.fromkeys(k for r in rows for k in r))
         with open(path, "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=fields)
-            w.writeheader()
-            w.writerows(rows)
+            w = csv.writer(f, delimiter=";")
+            w.writerow(fields)
+            for r in rows:
+                w.writerow([fmt(r.get(k, "")) for k in fields])
+
         print(f"  -> {path}")
-    print()
  
  
 def main():

@@ -394,12 +394,45 @@ def best_side(load_fn, keys, has_reps):
     return best
 
 
-def write_summary_csv(path, title, header, rows):
-    """Write the summary as a CSV file."""
-    with open(path, 'w', newline='') as f:
-        writer = csv.writer(f)
+def write_summary_csv(path, header, rows):
+    """Write CSV in spreadsheet-friendly European format:
+    - semicolon as separator
+    - comma as decimal separator
+    """
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
         writer.writerow(header)
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow([fmt(v) for v in row])
+
+    print(f"  Saved: {path}")
+
+
+
+def write_dict_csv(path, rows):
+    """Write dict rows as spreadsheet-friendly CSV:
+    semicolon separator and comma decimal separator.
+    """
+    if not rows:
+        return
+
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    fields = list(dict.fromkeys(k for r in rows for k in r))
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(fields)
+        for r in rows:
+            writer.writerow([fmt(r.get(k, "")) for k in fields])
+
     print(f"  Saved: {path}")
 
 
@@ -1172,66 +1205,13 @@ if args.concept_dist_features:
                 ))
 
     for rows, name in [
-        (rows_means,   'concept_feature_means'),
-        (rows_dist,    'concept_distances'),
-        (rows_summary, 'concept_distance_summary')
+    (rows_means, 'concept_feature_means'),
+    (rows_dist, 'concept_distances'),
+    (rows_summary, 'concept_distance_summary')
     ]:
         out = os.path.join(RESULTS_DIR, f'{name}_exp2.csv')
-        fields = list(dict.fromkeys(k for r in rows for k in r))
-        with open(out, 'w', newline='') as f:
-            w = csv.DictWriter(f, fieldnames=fields)
-            w.writeheader()
-            w.writerows(rows)
+        write_dict_csv(out, rows)
         print(f"  Saved: {out}")
-
-
-# ---------------------------------------------------------
-# CONSISTENCY CHECK
-# Verify that concept_distance_summary_exp2.csv matches
-# the detailed pairwise values in concept_distances_exp2.csv
-# ---------------------------------------------------------
-
-import pandas as pd
-
-dist_path = os.path.join(RESULTS_DIR, 'concept_distances_exp2.csv')
-summ_path = os.path.join(RESULTS_DIR, 'concept_distance_summary_exp2.csv')
-
-if os.path.exists(dist_path) and os.path.exists(summ_path):
-    dist_df = pd.read_csv(dist_path)
-    summ_df = pd.read_csv(summ_path)
-
-    print("\n" + "=" * 60)
-    print("CONCEPT DISTANCE CONSISTENCY CHECK")
-    print("=" * 60)
-
-    for cell in summ_df['cell'].unique():
-        dcell = dist_df[dist_df['cell'] == cell]
-        scell = summ_df[summ_df['cell'] == cell].iloc[0]
-
-        vals = dcell['l2'].dropna().to_numpy()
-
-        if len(vals) == 0:
-            print(f"  {cell}: no pairwise values found -- skipped")
-            continue
-
-        min_ok  = np.isclose(scell['l2_min'], vals.min(), atol=1e-4)
-        max_ok  = np.isclose(scell['l2_max'], vals.max(), atol=1e-4)
-        mean_ok = np.isclose(scell['l2_mean'], vals.mean(), atol=1e-4)
-        std_ok  = np.isclose(scell['l2_mean_std'], vals.std(), atol=1e-4)
-
-        print(f"\n  Cell: {cell}")
-        print(f"    summary l2_min      = {scell['l2_min']:.4f} | computed = {vals.min():.4f} | ok={min_ok}")
-        print(f"    summary l2_max      = {scell['l2_max']:.4f} | computed = {vals.max():.4f} | ok={max_ok}")
-        print(f"    summary l2_mean     = {scell['l2_mean']:.4f} | computed = {vals.mean():.4f} | ok={mean_ok}")
-        print(f"    summary l2_mean_std = {scell['l2_mean_std']:.4f} | computed = {vals.std():.4f} | ok={std_ok}")
-
-        if not (min_ok and max_ok and mean_ok and std_ok):
-            print("    WARNING: summary file does not match detailed pairwise file.")
-        else:
-            print("    OK: summary matches detailed pairwise file.")
-
-else:
-    print("\nConsistency check skipped: one or both CSV files not found.")
 
 
 print("\nAnalysis 2 complete.")

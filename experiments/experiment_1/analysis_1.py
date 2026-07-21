@@ -458,12 +458,45 @@ def best_side(load_fn, keys, has_reps):
     return best
 
 
-def write_summary_csv(path, title, header, rows):
-    """Write the summary as a CSV file."""
-    with open(path, 'w', newline='') as f:
-        writer = csv.writer(f)
+def write_summary_csv(path, header, rows):
+    """Write CSV in spreadsheet-friendly European format:
+    - semicolon as separator
+    - comma as decimal separator
+    """
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
         writer.writerow(header)
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow([fmt(v) for v in row])
+
+    print(f"  Saved: {path}")
+
+
+
+def write_dict_csv(path, rows):
+    """Write dict rows as spreadsheet-friendly CSV:
+    semicolon separator and comma decimal separator.
+    """
+    if not rows:
+        return
+
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    fields = list(dict.fromkeys(k for r in rows for k in r))
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(fields)
+        for r in rows:
+            writer.writerow([fmt(r.get(k, "")) for k in fields])
+
     print(f"  Saved: {path}")
 
 
@@ -1235,14 +1268,10 @@ if args.concept_dist_features:
             ))
 
     for rows, name in [
-        (rows_means, 'concept_feature_means'),
-        (rows_dist, 'concept_distances'),
-        (rows_summary, 'concept_distance_summary')
+    (rows_means, 'concept_feature_means'),
+    (rows_dist, 'concept_distances'),
+    (rows_summary, 'concept_distance_summary')
     ]:
         out = os.path.join(RESULTS_DIR, f'{name}_exp1.csv')
-        fields = list(dict.fromkeys(k for r in rows for k in r))
-        with open(out, 'w', newline='') as f:
-            w = csv.DictWriter(f, fieldnames=fields)
-            w.writeheader()
-            w.writerows(rows)
+        write_dict_csv(out, rows)
         print(f"  Saved: {out}")
