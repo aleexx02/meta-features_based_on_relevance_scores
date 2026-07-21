@@ -22,6 +22,14 @@ np.random.seed(SEED)
 SEEDS = list(np.random.randint(100, 10000, 5))     # matches RANDOM_STATES in the evaluator
 WARMUP = 0                          # exp3/4 use no warmup
  
+
+COST_CELLS = [
+    'sea_chunk100_sudden',
+    'stagger_chunk100_sudden',      
+    'led_chunk100_sudden',
+]
+
+
 def _rebuild(cell, seed):
     s = SPECS[cell]
     data, cpc = s['builder'](seed)  # builder closure from exp3_specs()
@@ -88,6 +96,5 @@ def n_features_of(cell):
 if __name__ == '__main__':
     spec = ExperimentSpec('exp3', RESULTS_DIR, CELLS, SEEDS,
                           window_provider, cost_abfs, cost_komor, n_features_of,
-                          cost_cells=['sea_chunk100_sudden',     # 3 features
-                                      'led_chunk100_sudden'])    # 24 features
+                          cost_cells=COST_CELLS)
     run_experiment(spec, do_vanilla=True, do_cost=True)

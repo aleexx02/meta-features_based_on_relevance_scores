@@ -21,7 +21,14 @@ CELLS = list(SPECS.keys())
 np.random.seed(SEED)
 SEEDS = list(np.random.randint(100, 10000, 5))     # matches RANDOM_STATES in the evaluator
 WARMUP = 0
- 
+
+
+COST_CELLS = [
+    'sea_chunk100_ndrift1_sudden',
+    'stagger_chunk100_ndrift1_sudden',   # <-- add
+]
+
+
 def _rebuild(cell, seed):
     s = SPECS[cell]
     data, cpc = s['builder'](seed)
@@ -85,5 +92,5 @@ def n_features_of(cell):
  
 if __name__ == '__main__':
     spec = ExperimentSpec('exp4', RESULTS_DIR, CELLS, SEEDS,
-                          window_provider, cost_abfs, cost_komor, n_features_of)
+                          window_provider, cost_abfs, cost_komor, n_features_of, cost_cells=COST_CELLS)
     run_experiment(spec, do_vanilla=True, do_cost=True)
