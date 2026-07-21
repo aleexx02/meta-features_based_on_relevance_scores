@@ -1134,7 +1134,7 @@ if args.concept_dist_features:
             l2_mean = float(np.mean(pair_means))
             l2_mean_std = float(np.std(pair_means))
 
-            print(f"  {cell:18s} n_feat={cm_rep0.shape3d} "
+            print(f"  {cell:18s} n_feat={cm_rep0.shape[1]} "
                   f"n_conc={len(uniq_rep0):2d}  L2 mean={l2_mean:.4f} "
                   f"+/-{l2_mean_std:.4f}  (min={l2_min:.4f} max={l2_max:.4f}, "
                   f"{len(RANDOM_STATES)} reps)\n")
