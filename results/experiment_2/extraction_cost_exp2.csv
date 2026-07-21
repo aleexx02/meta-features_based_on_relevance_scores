@@ -1,0 +1,3 @@
+experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
+exp2;chunk100_ninf3_sudden;abfs;20;5000;608,2540;121,6510;6720,1100
+exp2;chunk100_ninf3_sudden;komorniczak;20;5000;801,2620;160,2520;6720,0500
