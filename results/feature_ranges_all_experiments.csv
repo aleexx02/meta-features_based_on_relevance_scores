@@ -1,0 +1,14 @@
+stream;n_features;min;max;mean;std;frac_nonzero
+exp1 stream-learn (10f 10inf);10;-11,4400;11,6310;0,0200;2,0780;1,0000
+exp2 stream-learn (20f 3inf);20;-7,6380;7,5340;-0,0070;1,0750;1,0000
+exp2 stream-learn (20f 5inf);20;-8,9330;8,6730;0,0060;1,1870;1,0000
+exp2 stream-learn (20f 10inf);20;-12,6790;11,8410;0,0100;1,6330;1,0000
+exp2 stream-learn (20f 15inf);20;-14,5870;15,0030;0,0090;2,1780;1,0000
+exp3/4 sea;3;0,0000;10,0000;5,0020;2,8880;1,0000
+exp3/4 stagger;3;0,0000;2,0000;1,0000;0,8170;0,6660
+exp3/4 led;24;0,0000;1,0000;0,5480;0,4980;0,5480
+exp5 INSECTS-abrupt_balanced;33;0,0000;1,0000;0,0980;0,1400;1,0000
+exp5 INSECTS-abrupt_imbalanced;33;0,0000;1,0000;0,0820;0,1140;1,0000
+exp5 INSECTS-incgradual_balanced;33;0,0000;1,0000;0,1090;0,1400;1,0000
+exp5 INSECTS-incgradual_imbalanced;33;0,0000;1,0000;0,0920;0,1240;1,0000
+exp5 SPAM;499;0,0000;1,0000;0,0720;0,2580;0,0720

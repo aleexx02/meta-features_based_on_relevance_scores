@@ -1,0 +1,7 @@
+cell;n_concepts;n_reps;l2_min;l2_max;l2_mean;l2_mean_std
+sea_chunk100_sudden;4;5;0,0160;0,0228;0,0191;0,0024
+sea_chunk100_gradual;4;5;0,0161;0,0199;0,0177;0,0012
+stagger_chunk100_sudden;3;5;0,0048;0,0063;0,0054;0,0006
+stagger_chunk100_gradual;3;5;0,0032;0,0046;0,0040;0,0006
+led_chunk100_sudden;4;5;0,4383;0,7355;0,6043;0,0965
+led_chunk100_gradual;4;5;0,4164;0,7005;0,5963;0,0982
