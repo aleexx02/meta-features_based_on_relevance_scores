@@ -750,12 +750,17 @@ if args.vanilla:
 
     # write a CSV so the report table can be built from it
     import csv
+    rows_csv = []
+    for cell, v, a, k in rows:
+        rows_csv.append(dict(
+            cell=cell,
+            vanilla_ba=v,
+            abfs_best_ba=a,
+            komor_best_ba=k
+        ))
+
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp4.csv')
-    with open(out, 'w', newline='') as f:
-        w = csv.writer(f)
-        w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
-        for cell, v, a, k in rows:
-            w.writerow([cell, round(v, 3), round(a, 3), round(k, 3)])
+    write_dict_csv(out, rows_csv)
     print(f"\n  Saved: {out}")
 
     
@@ -784,8 +789,7 @@ if args.summary:
               'n_conc', 'recurs', 'baseline', 'n_inst', 'inst/seg',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp4.csv'),
-                      'Experiment 4 summary (recurring SEA/STAGGER)', header, rows)
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp4.csv'), header, rows)
 
 
 if args.concept_dist_features:

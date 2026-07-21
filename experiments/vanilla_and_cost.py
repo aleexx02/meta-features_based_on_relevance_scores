@@ -31,6 +31,27 @@ import numpy as np
 from classifier_sweep_prequential import run_prequential_sweep
  
  
+
+def write_dict_csv(path, rows):
+    if not rows:
+        return
+
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    fields = list(dict.fromkeys(k for r in rows for k in r))
+
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(fields)
+        for r in rows:
+            writer.writerow([fmt(r.get(k, "")) for k in fields])
+
+    print(f"  Saved: {path}")
+
+    
 # ------------------------------------------------------------------
 #  VANILLA FEATURES
 # ------------------------------------------------------------------
@@ -166,8 +187,9 @@ def run_experiment(spec, do_vanilla=True, do_cost=True):
                   f"komor {1000*t_kom/max(n_win,1):.1f} ms/win, {mem_kom:.1f} MB")
  
         if cost_rows:
-            path = os.path.join(spec.results_dir, f'extraction_cost_{spec.name}.csv')
-            with open(path, 'w', newline='') as f:
-                w = csv.DictWriter(f, fieldnames=list(cost_rows[0].keys()))
-                w.writeheader(); w.writerows(cost_rows)
+            path = os.path.join(
+                spec.results_dir,
+                f'extraction_cost_{spec.name}.csv'
+            )
+            write_dict_csv(path, cost_rows)
             print(f"  [{spec.name}] cost -> {path}")

@@ -361,12 +361,43 @@ def best_side(load_fn, keys, has_reps):
     return best
 
 
-def write_summary_csv(path, title, header, rows):
-    """Write the summary as a CSV file."""
-    with open(path, 'w', newline='') as f:
-        writer = csv.writer(f)
+def write_summary_csv(path, header, rows):
+    """Write summary CSV in spreadsheet-friendly format:
+    semicolon separator and comma decimal separator.
+    """
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
         writer.writerow(header)
-        writer.writerows(rows)
+        for row in rows:
+            writer.writerow([fmt(v) for v in row])
+
+    print(f"  Saved: {path}")
+
+
+def write_dict_csv(path, rows):
+    """Write dict rows as spreadsheet-friendly CSV:
+    semicolon separator and comma decimal separator.
+    """
+    if not rows:
+        return
+
+    def fmt(v):
+        if isinstance(v, float):
+            return f"{v:.4f}".replace(".", ",")
+        return v
+
+    fields = list(dict.fromkeys(k for r in rows for k in r))
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(fields)
+        for r in rows:
+            writer.writerow([fmt(r.get(k, "")) for k in fields])
+
     print(f"  Saved: {path}")
 
 
@@ -1106,19 +1137,20 @@ if args.vanilla:
     for stream in REAL_STREAMS:
         v, a, k = vanilla_row(stream)
         if v is None:
-            print(f"  {stream}: no vanilla results -- skipping"); continue
-        rows.append((stream, v, a, k))
+            print(f"  {stream}: no vanilla results -- skipping")
+            continue
+        rows.append(dict(
+            stream=stream,
+            vanilla_ba=v,
+            abfs_best_ba=a,
+            komor_best_ba=k,
+            random_baseline=1.0 / N_CONCEPTS[stream]
+        ))
         print(f"  {stream:25s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}  "
               f"(baseline {1/N_CONCEPTS[stream]:.3f})")
 
-    import csv
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp5.csv')
-    with open(out, 'w', newline='') as f:
-        w = csv.writer(f)
-        w.writerow(['stream', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba', 'random_baseline'])
-        for s, v, a, k in rows:
-            w.writerow([s, round(v, 3), round(a, 3), round(k, 3), round(1/N_CONCEPTS[s], 3)])
-    print(f"\n  Saved: {out}")
+    write_dict_csv(out, rows)
 
 
 if args.summary:
@@ -1130,20 +1162,31 @@ if args.summary:
         ab = best_side(loadf, [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS], has_reps=False)
         if kb[0] is None or ab[0] is None:
             continue
+
         rb = 1.0 / N_CONCEPTS[s]
         n_drifts_real = len(load_gt(s))
         cl = load('concept_labels', s, optional=True)
         n_win = len(cl) if cl is not None else '-'
-        rows.append([s, N_FEATURES[s], N_CONCEPTS[s], n_drifts_real, n_win, f'{rb:.3f}',
-                     f'{kb[0]} / {kb[1]}', f'{kb[2]:.3f}',
-                     f'{ab[0]} / {ab[1]}', f'{ab[2]:.3f}',
-                     f'{ab[2]-kb[2]:+.3f}'])
+
+        rows.append([
+            s,
+            N_FEATURES[s],
+            N_CONCEPTS[s],
+            n_drifts_real,
+            n_win,
+            rb,
+            f'{kb[0]} / {kb[1]}',
+            kb[2],
+            f'{ab[0]} / {ab[1]}',
+            ab[2],
+            ab[2] - kb[2]
+        ])
+
     header = ['stream', 'n_feat', 'n_conc', 'n_drifts', 'n_win', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp5.csv'),
-                      'Experiment 5 summary (real streams)', header, rows)
-    
+
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp5.csv'), header, rows)    
 
 
 
@@ -1221,11 +1264,7 @@ if args.sparsity:
     # summary CSV
     if rows:
         out = os.path.join(RESULTS_DIR, 'sparsity_analysis_exp5.csv')
-        # union of keys, in case some streams skipped a field
-        fields = list(dict.fromkeys(k for r in rows for k in r))
-        with open(out, 'w', newline='') as f:
-            w = csv.DictWriter(f, fieldnames=fields)
-            w.writeheader(); w.writerows(rows)
+        write_dict_csv(out, rows)
         print(f"\n  Saved: {out}")
 
         

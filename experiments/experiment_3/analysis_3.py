@@ -695,12 +695,17 @@ if args.vanilla:
 
     # write a CSV so the report table can be built from it
     import csv
+    rows_csv = []
+    for cell, v, a, k in rows:
+        rows_csv.append(dict(
+            cell=cell,
+            vanilla_ba=v,
+            abfs_best_ba=a,
+            komor_best_ba=k
+        ))
+
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp3.csv')
-    with open(out, 'w', newline='') as f:
-        w = csv.writer(f)
-        w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
-        for cell, v, a, k in rows:
-            w.writerow([cell, round(v, 3), round(a, 3), round(k, 3)])
+    write_dict_csv(out, rows_csv)
     print(f"\n  Saved: {out}")
 
 
@@ -718,18 +723,27 @@ if args.summary:
             continue
         n_seg = len(spec['order'])
         rb = 1.0 / spec['n_concepts']
-        rows.append([spec['gen_name'], spec['n_features'], spec['transition'],
-                     spec['chunk_size'], n_seg, spec['n_concepts'], f'{rb:.3f}',
-                     TOTAL_INSTANCES, TOTAL_INSTANCES // n_seg,
-                     f'{kb[0]} / {kb[1]}', f'{kb[2]:.3f}',
-                     f'{ab[0]} / {ab[1]}', f'{ab[2]:.3f}',
-                     f'{ab[2]-kb[2]:+.3f}'])
+        rows.append([
+            spec['gen_name'],
+            spec['n_features'],
+            spec['transition'],
+            spec['chunk_size'],
+            n_seg,
+            spec['n_concepts'],
+            rb,
+            TOTAL_INSTANCES,
+            TOTAL_INSTANCES // n_seg,
+            f'{kb[0]} / {kb[1]}',
+            kb[2],
+            f'{ab[0]} / {ab[1]}',
+            ab[2],
+            ab[2] - kb[2]
+        ])
     header = ['generator', 'n_feat', 'drift', 'chunk', 'n_seg', 'n_conc', 'baseline',
               'n_inst', 'inst/seg',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp3.csv'),
-                      'Experiment 3 summary (SEA/STAGGER/LED)', header, rows)
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp3.csv'), header, rows)
     
 
 

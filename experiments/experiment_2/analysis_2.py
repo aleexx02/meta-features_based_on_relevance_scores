@@ -1046,12 +1046,17 @@ if args.vanilla:
         print(f"  {cell:35s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
 
     import csv
+    rows_csv = []
+    for cell, v, a, k in rows:
+        rows_csv.append(dict(
+            cell=cell,
+            vanilla_ba=v,
+            abfs_best_ba=a,
+            komor_best_ba=k
+        ))
+
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp2.csv')
-    with open(out, 'w', newline='') as f:
-        w = csv.writer(f)
-        w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
-        for cell, v, a, k in rows:
-            w.writerow([cell, round(v, 3), round(a, 3), round(k, 3)])
+    write_dict_csv(out, rows_csv)
     print(f"\n  Saved: {out}")
 
 
@@ -1068,16 +1073,23 @@ if args.summary:
                 if kb[0] is None or ab[0] is None:
                     continue
                 rb = 1.0 / n_concepts
-                rows.append([drift_type, chunk_size, n_informative, N_FEATURES,
-                             n_concepts, f'{rb:.3f}',
-                             f'{kb[0]} / {kb[1]}', f'{kb[2]:.3f}',
-                             f'{ab[0]} / {ab[1]}', f'{ab[2]:.3f}',
-                             f'{ab[2]-kb[2]:+.3f}'])
+                rows.append([
+                    drift_type,
+                    chunk_size,
+                    n_informative,
+                    N_FEATURES,
+                    n_concepts,
+                    rb,
+                    f'{kb[0]} / {kb[1]}',
+                    kb[2],
+                    f'{ab[0]} / {ab[1]}',
+                    ab[2],
+                    ab[2] - kb[2]
+                ])
     header = ['drift', 'chunk', 'n_inform', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp2.csv'),
-                      'Experiment 2 summary (config sensitivity)', header, rows)
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp2.csv'), header, rows)
 
 
 

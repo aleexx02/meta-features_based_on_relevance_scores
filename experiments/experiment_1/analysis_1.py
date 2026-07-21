@@ -1100,12 +1100,17 @@ if args.vanilla:
         print(f"  {cell:10s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
 
     import csv
+    rows_csv = []
+    for cell, v, a, k in rows:
+        rows_csv.append(dict(
+            cell=cell,
+            vanilla_ba=v,
+            abfs_best_ba=a,
+            komor_best_ba=k
+        ))
+
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp1.csv')
-    with open(out, 'w', newline='') as f:
-        w = csv.writer(f)
-        w.writerow(['cell', 'vanilla_ba', 'abfs_best_ba', 'komor_best_ba'])
-        for cell, v, a, k in rows:
-            w.writerow([cell, round(v, 3), round(a, 3), round(k, 3)])
+    write_dict_csv(out, rows_csv)
     print(f"\n  Saved: {out}")
 
 
@@ -1134,15 +1139,21 @@ if args.summary:
         if best[0] is None:
             continue
         rb = 1.0 / n_concepts
-        rows.append([drift_type, N_FEATURES, n_concepts, f'{rb:.3f}',
-                     f'{k_label} / {k_clf}', f'{k_ba:.3f}',
-                     f'{best[0]} / {best[1]}', f'{best[2]:.3f}',
-                     f'{best[2]-k_ba:+.3f}'])
+        rows.append([
+            drift_type,
+            N_FEATURES,
+            n_concepts,
+            rb,
+            f'{k_label} / {k_clf}',
+            k_ba,
+            f'{best[0]} / {best[1]}',
+            best[2],
+            best[2] - k_ba
+        ])
     header = ['drift', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
               'best ABFS (ver/clf)', 'ABFS BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1.csv'),
-                      'Experiment 1 summary', header, rows)
+    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1.csv'), header, rows)
     
 
 if args.concept_dist_features:
