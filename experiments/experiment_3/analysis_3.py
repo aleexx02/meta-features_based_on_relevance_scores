@@ -731,7 +731,6 @@ if args.concept_dist_features:
             continue
  
         per_rep_pairs = {}       # (a, b) -> [l2 per rep]
-        per_rep_stats = []       # (min, max, mean) per rep
         cm_rep0, uniq_rep0 = None, None
  
         for rep, seed in enumerate(REP_SEEDS):
@@ -759,28 +758,35 @@ if args.concept_dist_features:
                     d.append(l2)
                     per_rep_pairs.setdefault((int(uniq[i]), int(uniq[j])),
                                              []).append(l2)
-            if d:
-                per_rep_stats.append((min(d), max(d), float(np.mean(d))))
- 
-        if not per_rep_stats:
+            
+        if not per_rep_pairs:
             print(f"  {cell}: no usable reps -- skipped")
             continue
- 
-        stats = np.array(per_rep_stats)           # (n_reps, 3)
-        l2_min, l2_max, l2_mean = stats.mean(axis=0)
-        l2_mean_std = float(stats[:, 2].std())
- 
-        print(f"  {cell:34s} n_feat={cm_rep0.shape[1]:3d} "
-              f"n_conc={len(uniq_rep0):2d}  L2 mean={l2_mean:.4f} "
-              f"+/-{l2_mean_std:.4f}  (min={l2_min:.4f} max={l2_max:.4f}, "
-              f"{len(per_rep_stats)} reps)")
- 
-        rows_summary.append(dict(cell=cell, n_concepts=len(uniq_rep0),
-                                 n_reps=len(per_rep_stats),
-                                 l2_min=round(float(l2_min), 4),
-                                 l2_max=round(float(l2_max), 4),
-                                 l2_mean=round(float(l2_mean), 4),
-                                 l2_mean_std=round(l2_mean_std, 4)))
+
+        pair_means = np.array(
+            [np.mean(vals) for vals in per_rep_pairs.values()],
+            dtype=float
+        )
+
+        l2_min = float(np.min(pair_means))
+        l2_max = float(np.max(pair_means))
+        l2_mean = float(np.mean(pair_means))
+        l2_mean_std = float(np.std(pair_means))
+
+        print(f"  {cell:34s} n_feat={cm_rep0.shape[1]} "
+            f"n_conc={len(uniq_rep0):2d}  L2 mean={l2_mean:.4f} "
+            f"+/-{l2_mean_std:.4f}  (min={l2_min:.4f} max={l2_max:.4f}, "
+            f"{len(REP_SEEDS)} reps)")
+
+        rows_summary.append(dict(
+            cell=cell,
+            n_concepts=len(uniq_rep0),
+            n_reps=len(REP_SEEDS),
+            l2_min=round(l2_min, 4),
+            l2_max=round(l2_max, 4),
+            l2_mean=round(l2_mean, 4),
+            l2_mean_std=round(l2_mean_std, 4)
+        ))
  
         for (a, b), vals in sorted(per_rep_pairs.items()):
             rows_dist.append(dict(cell=cell, concept_a=a, concept_b=b,
