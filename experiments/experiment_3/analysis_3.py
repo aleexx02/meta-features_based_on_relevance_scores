@@ -813,5 +813,56 @@ if args.concept_dist_features:
             w.writerows(rows)
         print(f"  Saved: {out}")
  
-    
+
+
+
+# ---------------------------------------------------------
+# CONSISTENCY CHECK
+# Verify that concept_distance_summary_exp3.csv matches
+# the detailed pairwise values in concept_distances_exp3.csv
+# ---------------------------------------------------------
+
+import pandas as pd
+
+dist_path = os.path.join(RESULTS_DIR, 'concept_distances_exp3.csv')
+summ_path = os.path.join(RESULTS_DIR, 'concept_distance_summary_exp3.csv')
+
+if os.path.exists(dist_path) and os.path.exists(summ_path):
+    dist_df = pd.read_csv(dist_path)
+    summ_df = pd.read_csv(summ_path)
+
+    print("\n" + "=" * 60)
+    print("CONCEPT DISTANCE CONSISTENCY CHECK")
+    print("=" * 60)
+
+    for cell in summ_df['cell'].unique():
+        dcell = dist_df[dist_df['cell'] == cell]
+        scell = summ_df[summ_df['cell'] == cell].iloc[0]
+
+        vals = dcell['l2'].dropna().to_numpy()
+
+        if len(vals) == 0:
+            print(f"  {cell}: no pairwise values found -- skipped")
+            continue
+
+        min_ok  = np.isclose(scell['l2_min'], vals.min(), atol=1e-4)
+        max_ok  = np.isclose(scell['l2_max'], vals.max(), atol=1e-4)
+        mean_ok = np.isclose(scell['l2_mean'], vals.mean(), atol=1e-4)
+        std_ok  = np.isclose(scell['l2_mean_std'], vals.std(), atol=1e-4)
+
+        print(f"\n  Cell: {cell}")
+        print(f"    summary l2_min      = {scell['l2_min']:.4f} | computed = {vals.min():.4f} | ok={min_ok}")
+        print(f"    summary l2_max      = {scell['l2_max']:.4f} | computed = {vals.max():.4f} | ok={max_ok}")
+        print(f"    summary l2_mean     = {scell['l2_mean']:.4f} | computed = {vals.mean():.4f} | ok={mean_ok}")
+        print(f"    summary l2_mean_std = {scell['l2_mean_std']:.4f} | computed = {vals.std():.4f} | ok={std_ok}")
+
+        if not (min_ok and max_ok and mean_ok and std_ok):
+            print("    WARNING: summary file does not match detailed pairwise file.")
+        else:
+            print("    OK: summary matches detailed pairwise file.")
+
+else:
+    print("\nConsistency check skipped: one or both CSV files not found.")
+
+
 print("\nAnalysis 3 complete.")
