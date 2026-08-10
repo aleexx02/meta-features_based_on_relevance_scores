@@ -16,7 +16,7 @@ def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, m
     print(f"*** Sanity check summary: {stream_name} ***")
     print(f"{'-'*25}")
     print(f"Stream: {stream_name}")
-    print(f"ABFS: {'ABFS_match' if is_streamlearn else 'ABFS_mismatch'}")
+    print(f"ABFS: {'ABFS_match' if is_streamlearn else 'ABFS_match'}")
     print(f"Meta-features: {mf_type} ({len(mf_names)} features)")
     print(f"Total windows: {len(meta_features)}")
     print(f"Unique concepts: {len(unique_concepts)} {list(unique_concepts)}")

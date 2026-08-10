@@ -36,15 +36,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import os
+from collections import defaultdict
+from river.datasets import synth as river_synth
 
-from streams.generators import (
-    make_sea_sudden_drift, make_sea_gradual_drift,
-    make_stagger_sudden_drift_01, make_stagger_gradual_drift,
-    make_stagger_recurring, make_sea_stationary,
-    make_sea_multi_drift, make_stagger_multi_drift,
-    make_stagger_sudden_drift_02, make_stagger_sudden_drift_12
-)
-from abfs.abfs_implementation import ABFS_mismatch, ABFS_match
+from abfs.abfs_implementation import ABFS_match
 from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw, extract_metafeatures_raw_temporal,
     MF_NAMES_AGGSTATS, MF_NAMES_RAW, MF_NAMES_RAW_TEMPORAL
@@ -67,7 +62,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ================
  
 # set to True to run StreamLearn, False for SEA/STAGGER
-RUN_STREAMLEARN = True
+RUN_STREAMLEARN = False
 
 # StreamLearn configuration
 SL_RANDOM_STATE = 42
@@ -90,6 +85,20 @@ SL_MF_CONFIGS = [
     ('raw_temporal', MF_NAMES_RAW_TEMPORAL, 6),
 ]
 
+
+SEA_STAGGER_CONFIGS = [
+    ('SEA_SUDDEN', 'SEA',     'sudden',    []),
+    ('STG_12',     'STAGGER', 'sudden_12', [0, 1, 2]),
+]
+GROUND_TRUTH = {'SEA_SUDDEN': ({0,1}, {0,1}), 'STG_12': ({1,2}, {0})}
+
+ABFS_CONFIGS = [
+    ("orig",     dict(reset_on_drift=True,  weight_propagation=True)),   # original ABFS
+    ("noweight", dict(reset_on_drift=True,  weight_propagation=False)),  # - weight propagation
+    ("noreset",  dict(reset_on_drift=False, weight_propagation=True)),   # - drift reset
+    ("amf",      dict(reset_on_drift=False, weight_propagation=False)),  # AMF (both changes)
+]
+
 # SEA / STAGGER configuration
 DRIFT_POS = 5000
 N_INSTANCES = 10000
@@ -97,13 +106,6 @@ N_FEATURES_SS = 3
 SCORE_INTERVAL_SS = 100
 WINDOW_SIZE_SS = 200
 
-# streams to run: (stream_key, stream_type, drift_type, categorical_feats)
-SEA_STAGGER_CONFIGS = [
-    ('SEA_SUDDEN', 'SEA', 'sudden', []),
-    ('STG_01', 'STAGGER', 'sudden_01', [0, 1, 2]),
-    ('STG_12', 'STAGGER', 'sudden_12', [0, 1, 2]),
-    ('STG_02', 'STAGGER', 'sudden_02', [0, 1, 2]),
-]
 
 # COLORS
 palette = [
@@ -123,8 +125,31 @@ def make_abfs_match(n_features, chunk_size):
     return ABFS_match(n_features=n_features, categorical_features=[], accuracy_window_size=chunk_size, class_window_size=chunk_size)
 
 
-def make_abfs_mismatch(n_features, categorical_feats):
-    return ABFS_mismatch(n_features=n_features, categorical_features=categorical_feats)
+def make_sea_sudden_drift(drift_position=5000, seed=42, noise=0.1):
+    """SEA boundary drift: variant 0 (theta=8) -> variant 1 (theta=9).
+       f1,f2 relevant, f3 irrelevant; only the decision threshold moves."""
+    before = river_synth.SEA(variant=0, noise=noise, seed=seed)
+    after  = river_synth.SEA(variant=1, noise=noise, seed=seed)
+    for i, (x, y) in enumerate(before):
+        if i >= drift_position:
+            break
+        yield x, int(y)
+    for x, y in after:
+        yield x, int(y)
+
+
+def make_stagger_sudden_drift_12(drift_position=5000, seed=42):
+    """STAGGER feature drift: concept 1 (color=green OR shape=circle)
+       -> concept 2 (size in {medium,large}). Relevant feature set changes."""
+    before = river_synth.STAGGER(classification_function=1, seed=seed)
+    after  = river_synth.STAGGER(classification_function=2, seed=seed)
+    for i, (x, y) in enumerate(before):
+        if i >= drift_position:
+            break
+        yield x, int(y)
+    for x, y in after:
+        yield x, int(y)
+
 
 
 def plot_relevance_scores(scores_over_time, n_features, score_interval,drift_line, drift_moments, feature_names,title, filename):
@@ -304,90 +329,137 @@ else:
     def make_stream(stream_key, categorical_feats):
         if stream_key == 'SEA_SUDDEN':
             return make_sea_sudden_drift(drift_position=DRIFT_POS)
-        elif stream_key == 'SEA_GRADUAL':
-            return make_sea_gradual_drift(drift_position=DRIFT_POS)
-        elif stream_key == 'STG_01':
-            return make_stagger_sudden_drift_01(drift_position=DRIFT_POS)
         elif stream_key == 'STG_12':
             return make_stagger_sudden_drift_12(drift_position=DRIFT_POS)
-        elif stream_key == 'STG_02':
-            return make_stagger_sudden_drift_02(drift_position=DRIFT_POS)
-        elif stream_key == 'STG_GRADUAL':
-            return make_stagger_gradual_drift(drift_position=DRIFT_POS)
-        elif stream_key == 'STG_RECURRING':
-            return make_stagger_recurring()
-        elif stream_key == 'STG_MULTI':
-            return make_stagger_multi_drift()
-        elif stream_key == 'SEA_STATIONARY':
-            return make_sea_stationary()
-        elif stream_key == 'SEA_MULTI':
-            return make_sea_multi_drift()
         else:
             raise ValueError(f"Unknown stream: {stream_key}")
 
+        
     for stream_key, stream_type, drift_type, categorical_feats in SEA_STAGGER_CONFIGS:
         print(f"\n{'='*60}")
         print(f"{stream_type} - {drift_type}")
         print(f"{'='*60}")
 
-        mf_type = 'aggstats'
-        mf_names = MF_NAMES_AGGSTATS
+        mf_type   = 'aggstats'
+        mf_names  = MF_NAMES_AGGSTATS
         n_mf_cols = 4
+        feature_names = ['size', 'color', 'shape'] if categorical_feats == [0, 1, 2] \
+            else [f'f{j+1}' for j in range(N_FEATURES_SS)]
 
-        feature_names = ['size', 'color', 'shape'] if categorical_feats == [0, 1, 2] else [f'f{j+1}' for j in range(N_FEATURES_SS)]
+        rows = []
+        comparison = defaultdict(dict)
 
-        stream = make_stream(stream_key, categorical_feats)
+        for cfg_name, cfg_flags in ABFS_CONFIGS:
+            print(f"\n  --- config: {cfg_name} ---")
+            abfs = ABFS_match(N_FEATURES_SS, categorical_features=categorical_feats, **cfg_flags)
 
-        abfs = make_abfs_mismatch(N_FEATURES_SS, categorical_feats)
-        scores_over_time = []
-        drift_moments = []
-        meta_features = []
-        concept_labels = []
-        raw_vectors = []
-        wt_prev = None
-        instance_buffer = 0
-        window_counter = 0
+            scores_over_time = []
+            meta_features    = []
+            concept_labels   = []
+            raw_vectors      = [] 
+            wt_prev          = None
+            instance_buffer  = 0
 
-        for i, (x, y) in enumerate(stream):
-            if i >= N_INSTANCES:
-                break
-            x_arr = np.array(list(x.values()))
-            abfs.update(x_arr, y)
-            if abfs.drift_count > 0:
-                drift_moments.append(i)
-            if i % SCORE_INTERVAL_SS == 0:
-                scores_over_time.append(abfs.relevance_scores())
-            instance_buffer += 1
-            if instance_buffer == WINDOW_SIZE_SS:
-                wt = abfs.relevance_scores()
-                drift_count = abfs.pop_drift_count()
-                mf = extract_metafeatures(wt=wt, wt_prev=wt_prev,drift_count=drift_count,time_since_drift=abfs.time_since_drift)
-                meta_features.append(mf)
-                concept_labels.append(0 if i < DRIFT_POS else 1)
-                raw_vectors.append(wt)
-                wt_prev = wt
-                instance_buffer = 0
-                window_counter += 1
+            for i, (x, y) in enumerate(make_stream(stream_key, categorical_feats)):
+                if i >= N_INSTANCES:
+                    break
+                abfs.update(np.array(list(x.values())), y)
 
-        scores_over_time = np.array(scores_over_time)
-        meta_features = np.array(meta_features)
-        concept_labels = np.array(concept_labels)
-        raw_vectors = np.array(raw_vectors)
+                if i % SCORE_INTERVAL_SS == 0:
+                    scores_over_time.append(abfs.relevance_scores())
 
-        # drift window index
-        drift_window = DRIFT_POS // WINDOW_SIZE_SS
+                instance_buffer += 1
+                if instance_buffer == WINDOW_SIZE_SS:
+                    wt = abfs.relevance_scores()
+                    mf = extract_metafeatures(wt=wt, wt_prev=wt_prev,
+                                              drift_count=abfs.pop_drift_count(),
+                                              time_since_drift=abfs.time_since_drift)
+                    meta_features.append(mf)
+                    concept_labels.append(0 if i < DRIFT_POS else 1)
+                    raw_vectors.append(wt)
+                    wt_prev = wt
+                    instance_buffer = 0
 
-        # relevance scores
-        plot_relevance_scores(scores_over_time, N_FEATURES_SS, SCORE_INTERVAL_SS,drift_line=DRIFT_POS, drift_moments=drift_moments,
-            feature_names=feature_names,title=f'ABFS relevance scores - {stream_type} {drift_type}',filename=f'relevance_scores_{stream_type}_{drift_type}_{mf_type}.png')
+            scores_over_time = np.array(scores_over_time)
+            meta_features    = np.array(meta_features)
+            concept_labels   = np.array(concept_labels)
+            raw_vectors      = np.array(raw_vectors)
+            
+            # relevance scores — independent of any meta-feature version
+            plot_relevance_scores(
+                scores_over_time, N_FEATURES_SS, SCORE_INTERVAL_SS,
+                drift_line=DRIFT_POS, drift_moments=[], feature_names=feature_names,
+                title=f'ABFS relevance scores - {stream_type} {drift_type} [{cfg_name}]',
+                filename=f'relevance_scores_{stream_type}_{drift_type}_{cfg_name}.png')
 
-        # meta-features over windows
-        plot_metafeatures(meta_features, mf_names, n_mf_cols,drift_window=drift_window, warmup=0,title=f'Meta-features ({mf_type}) - {stream_type} {drift_type}',
-            filename=f'metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png')
+            # PCA — on aggstats meta-features
+            plot_pca(
+                meta_features, concept_labels,
+                title=f'PCA (aggstats) - {stream_type} {drift_type} [{cfg_name}]',
+                filename=f'pca_{stream_type}_{drift_type}_{cfg_name}.png')
 
-        # PCA
-        plot_pca(meta_features, concept_labels,title=f'PCA ({mf_type}) - {stream_type} {drift_type}',
-            filename=f'pca_{stream_type}_{drift_type}_{mf_type}.png')
+            if cfg_name == 'amf':
+                print_sanity_check_summary(
+                    f'{stream_type} {drift_type}', False, mf_type, mf_names,
+                    meta_features, concept_labels, raw_vectors, N_FEATURES_SS)
+                
+            # comparison numbers
+            dr = DRIFT_POS // SCORE_INTERVAL_SS
+            rb, ra = GROUND_TRUTH[stream_key]
+            a = scores_over_time[10:dr-2]; b = scores_over_time[dr+10:]
+            ma, mb = a.mean(0), b.mean(0)
+            allf = set(range(N_FEATURES_SS))
+            sep = lambda m, rel: float(m[sorted(rel)].mean() - (m[sorted(allf-rel)].mean() if allf-rel else 0))
+            rows.append((cfg_name, sep(ma, rb), sep(mb, ra),
+                         float(np.linalg.norm(mb-ma)),
+                         float(0.5*(a.std(0).mean()+b.std(0).mean()))))
 
-        # summary table
-        print_sanity_check_summary(f'{stream_type} {drift_type}', False, mf_type, mf_names,meta_features, concept_labels, raw_vectors, N_FEATURES_SS)
+            ma, mb = a.mean(0), b.mean(0)
+
+            comparison[cfg_name]["before"] = ma
+            comparison[cfg_name]["after"] = mb
+            comparison[cfg_name]["dominant_before"] = feature_names[np.argmax(ma)]
+            comparison[cfg_name]["dominant_after"]  = feature_names[np.argmax(mb)]
+
+
+        print("\n")
+        print("=" * 80)
+        print(f"{stream_type} {drift_type} - Mean relevance scores")
+        print("=" * 80)
+
+        for phase in ["before", "after"]:
+
+            print(f"\n{phase.upper()} DRIFT")
+            header = f"{'config':12s}"
+            for f in feature_names:
+                header += f"{f:>12s}"
+            print(header)
+
+            for cfg_name in comparison:
+                row = f"{cfg_name:12s}"
+                vals = comparison[cfg_name][phase]
+
+                for v in vals:
+                    row += f"{v:12.3f}"
+
+                print(row)
+
+        print("\nEXPECTED RELEVANT FEATURES")
+    
+        if stream_key == "STG_12":
+            print("Before drift: color, shape")
+            print("After drift : size")
+        elif stream_key == "SEA_SUDDEN":
+            print("Before drift: f1, f2")
+            print("After drift : f1, f2")
+
+
+        print("\nDOMINANT FEATURES")
+        print(f"{'config':12s}{'before':>15s}{'after':>15s}")
+
+        for cfg_name in comparison:
+            print(
+                f"{cfg_name:12s}"
+                f"{comparison[cfg_name]['dominant_before']:>15s}"
+                f"{comparison[cfg_name]['dominant_after']:>15s}"
+            )
