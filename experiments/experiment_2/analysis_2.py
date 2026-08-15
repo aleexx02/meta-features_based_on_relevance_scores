@@ -8,10 +8,10 @@
 # Flags:
 #   --sanity      : relevance scores, meta-features per version, PCA per version (rep 0 only)
 #   --performance : cumulative BA trajectory over windows (prequential)
-#   --shap        : SHAP -- all 4 classifiers, all 3 ABFS versions, per cell
+#   --shap        : SHAP -- all 4 classifiers, all 3 EMF versions, per cell
 #   --metrics     : F1 and Kappa heatmaps per cell (prequential only)
 #   --grid        : gap heatmap + sensitivity curves across 4x4 grid
-#   --stream_analysis : feature-mean drift intensity, ABFS relevance-score
+#   --stream_analysis : feature-mean drift intensity, EMF relevance-score
 #                   change, label entropy, and class distribution over
 #                   time (rep 0 only) -- same diagnostics as Experiment
 #                   3's --stream_analysis, computed directly from a
@@ -199,7 +199,7 @@ def load_komor_best(tag):
 
 
 def feat_names_for(version, n_features):
-    """Return feature names for a given ABFS version."""
+    """Return feature names for a given EMF version."""
     if version == 'aggstats':
         return MF_NAMES_AGGSTATS
     elif version == 'raw':
@@ -217,7 +217,7 @@ def extract_stream_data_all_versions(rs, drift_type, n_drifts,
                                      concept_sigmoid_spacing,
                                      chunk_size, n_informative):
     """
-    Single-pass extraction of all 3 ABFS versions + relevance scores.
+    Single-pass extraction of all 3 EMF versions + relevance scores.
 
     Returns
     -------
@@ -254,7 +254,7 @@ def extract_stream_data_all_versions(rs, drift_type, n_drifts,
 
     boundaries = get_concept_boundaries(concept_labels_all, N_CHUNKS)
 
-    # pass 2: all 3 ABFS versions
+    # pass 2: all 3 EMF versions
     abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
                       accuracy_window_size=chunk_size,
                       class_window_size=chunk_size)
@@ -437,7 +437,7 @@ def write_dict_csv(path, rows):
 
 
 # ============================================================
-#  1. SANITY CHECK PLOTS -- all 3 ABFS versions
+#  1. SANITY CHECK PLOTS -- all 3 EMF versions
 # ============================================================
 if RUN_SANITY:
     print("\n" + "="*60)
@@ -565,7 +565,7 @@ if RUN_PERFORMANCE:
                                    else boundaries_meta)
                 random_baseline = 1 / n_concepts
 
-                # all 3 ABFS versions + Komorniczak statistical representative
+                # all 3 EMF versions + Komorniczak statistical representative
                 sources = [(f'preq_abfs_{v}_ba', ABFS_LABELS[v])
                            for v in ABFS_VERSIONS]
                 sources += [('preq_komor_statistical_ba',
@@ -612,11 +612,11 @@ if RUN_PERFORMANCE:
 
 
 # ============================================================
-#  3. SHAP -- all 4 classifiers, all 3 ABFS versions
+#  3. SHAP -- all 4 classifiers, all 3 EMF versions
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
-    print("3. SHAP ANALYSIS - all 4 classifiers, all 3 ABFS versions")
+    print("3. SHAP ANALYSIS - all 4 classifiers, all 3 EMF versions")
     print("="*60)
 
     for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
@@ -730,7 +730,7 @@ if RUN_METRICS:
                                                np.mean(final, axis=0),
                                                np.std(final, axis=0)))
 
-                    # ABFS: all 3 versions
+                    # EMF: all 3 versions
                     abfs_rows = []
                     for version in ABFS_VERSIONS:
                         data = load(f'preq_abfs_{version}_{metric}',
@@ -759,7 +759,7 @@ if RUN_METRICS:
                          f'Komorniczak -- {metric_label}'),
                         (axes[1], abfs_m, abfs_s,
                          [r[0] for r in abfs_rows],
-                         f'ABFS -- {metric_label}'),
+                         f'EMF -- {metric_label}'),
                     ]:
                         im = ax.imshow(matrix, vmin=0.0, vmax=1.0,
                                        cmap='Blues', aspect='auto')
@@ -809,7 +809,7 @@ if RUN_STREAM_ANALYSIS:
                 drift_intensity_n = drift_intensity / (np.max(drift_intensity) + 1e-10)
                 delta_relevance_n = delta_relevance / (np.max(delta_relevance) + 1e-10)
 
-                # ---- drift intensity vs ABFS relevance change vs entropy ----
+                # ---- drift intensity vs EMF relevance change vs entropy ----
                 fname = os.path.join(FIGURES_DIR,
                                      f'stream_drift_entropy_{tag}_rep0.png')
                 if not os.path.exists(fname):
@@ -818,7 +818,7 @@ if RUN_STREAM_ANALYSIS:
                     ax1.plot(drift_intensity_n, color='steelblue',
                             label='Drift intensity', linewidth=1.5)
                     ax1.plot(delta_relevance_n, color='purple',
-                            label='ABFS relevance change', linewidth=1.2, alpha=0.7)
+                            label='EMF relevance change', linewidth=1.2, alpha=0.7)
                     ax1.set_ylabel('Normalized value')
 
                     ax2 = ax1.twinx()
@@ -836,7 +836,7 @@ if RUN_STREAM_ANALYSIS:
                     lines_2, labels_2 = ax2.get_legend_handles_labels()
                     ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
-                    ax1.set_title(f'Drift vs ABFS dynamics -- {tag} -- rep0')
+                    ax1.set_title(f'Drift vs EMF dynamics -- {tag} -- rep0')
 
                     fig.tight_layout()
                     fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -906,7 +906,7 @@ if RUN_GRID:
 
         # ---- gap heatmaps, one per EMF version (shared color scale) ----
         version_grids = {}
-        for version in EMF_VERSIONS:
+        for version in ABFS_VERSIONS:
             g = np.full((len(CHUNK_SIZES), len(N_INFORMATIVES)), np.nan)
             for i, chunk_size in enumerate(CHUNK_SIZES):
                 for j, n_informative in enumerate(N_INFORMATIVES):
@@ -922,7 +922,7 @@ if RUN_GRID:
                  if any(np.any(np.isfinite(g)) for g in version_grids.values()) else np.array([])
         vmax = float(np.max(np.abs(finite))) if finite.size else 1.0
 
-        for version in EMF_VERSIONS:
+        for version in ABFS_VERSIONS:
             gap_grid = version_grids[version]
             if not np.any(np.isfinite(gap_grid)):
                 continue
@@ -943,7 +943,7 @@ if RUN_GRID:
             ax.set_xticks(range(len(N_INFORMATIVES))); ax.set_xticklabels(x_labels, fontsize=10)
             ax.set_yticks(range(len(CHUNK_SIZES))); ax.set_yticklabels(y_labels, fontsize=10)
             ax.set_xlabel('n_informative', fontsize=11); ax.set_ylabel('chunk_size', fontsize=11)
-            ax.set_title(f'Gap (best EMF {EMF_LABELS[version]} minus Komorniczak best)\n'
+            ax.set_title(f'Gap (best EMF {ABFS_LABELS[version]} minus Komorniczak best)\n'
                          f'{drift_type} drift ({n_concepts} concepts)', fontsize=11)
             plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
             fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -989,7 +989,7 @@ if RUN_GRID:
             for clf_id, name in enumerate(clf_names_preq):
                 color = CLF_COLORS.get(name, f'C{clf_id}')
                 ax.plot(N_INFORMATIVES, grid_abfs_preq_clf[cs_idx, :, clf_id],
-                        color=color, label=f'{name} ABFS',
+                        color=color, label=f'{name} EMF',
                         linewidth=1.5, marker='o', markersize=5)
                 ax.plot(N_INFORMATIVES, grid_komor_preq_clf[cs_idx, :, clf_id],
                         color=color, label=f'{name} Komor',
@@ -1043,7 +1043,7 @@ if args.vanilla:
         if v is None:
             print(f"  {cell}: no vanilla results -- skipping"); continue
         rows.append((cell, v, a, k))
-        print(f"  {cell:35s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
+        print(f"  {cell:35s}  vanilla={v:.3f}  EMF={a:.3f}  komor={k:.3f}")
 
     import csv
     rows_csv = []
@@ -1088,7 +1088,7 @@ if args.summary:
                 ])
     header = ['drift', 'chunk', 'n_inform', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
-              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+              'best EMF (ver/clf)', 'EMF BA', 'gap']
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp2.csv'), header, rows)
 
 
