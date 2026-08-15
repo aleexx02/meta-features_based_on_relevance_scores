@@ -54,7 +54,7 @@ def _build_stream_and_labels(cfg, seed):
                   n_redundant=0, n_repeated=0,
                   concept_sigmoid_spacing=spacing, random_state=seed)
     stream = StreamGenerator(**config)
-    # concept labels need a full ABFS pass first (matches the real evaluator)
+    # concept labels need a full EMF pass first (matches the real evaluator)
     dummy = ABFS_match(n_features=N_FEATURES, categorical_features=[],
                        accuracy_window_size=cs, class_window_size=cs)
     stream.reset()

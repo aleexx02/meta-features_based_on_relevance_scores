@@ -2,15 +2,15 @@
 # ==============================================================================
 # Experiment 2: Stream Configuration Sensitivity
 #
-# Tests how ALL THREE ABFS meta-feature versions and all 9 Komorniczak
+# Tests how ALL THREE EMF meta-feature versions and all 9 Komorniczak
 # measure groups respond to changes in:
 #   - chunk_size   : 100, 200, 500, 1000
 #   - n_informative: 3, 5, 10, 15 (n_features fixed at 20)
 #
-# ABFS versions:
-#   - v1.1 aggstats    : 8-dim aggregate statistics
-#   - v2.0 raw scores  : 20-dim normalized relevance vector
-#   - v2.1 raw+temporal: 22-dim (v2.0 + delta_mean + cosine_sim)
+# EMF versions:
+#   - aggstats    : 8-dim aggregate statistics
+#   - raw scores  : 20-dim normalized relevance vector
+#   - raw+temporal: 22-dim (v2.0 + delta_mean + cosine_sim)
 #
 # 4x4 grid = 16 configurations x 2 drift types = 32 stream variants.
 # Evaluation protocol: Prequential only (test-then-train per window).

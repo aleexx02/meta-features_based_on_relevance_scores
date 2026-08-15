@@ -4,7 +4,7 @@
 # Experiment 1: Prequential evaluation of EMF
 # meta-features using River classifiers (test-then-train).
 #
-# Same streams, same concept labelling as 1a/1b.
+# Same streams, same concept labelling.
 # Evaluation protocol: prequential (test-then-train per window).
 # EMF warmup: first WARMUP_WINDOWS windows skipped.
 #
@@ -64,7 +64,7 @@ N_FEATURES = 10
 WARMUP_WINDOWS = 10
 N_REPLICATIONS = 5
 
-MF_CONFIGS = [('aggstats', 'Aggregate stats (v1.1)', 8), ('raw', 'Raw scores (v2.0)', 10),('raw_temporal', 'Raw + temporal (v2.1)', 12)]
+MF_CONFIGS = [('aggstats', 'Aggregate stats', 8), ('raw', 'Raw scores', 10),('raw_temporal', 'Raw + temporal', 12)]
 
 DRIFT_CONFIGS = [('sudden', 20, 9999), ('gradual', 6, 5)]
 

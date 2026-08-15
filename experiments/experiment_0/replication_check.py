@@ -38,7 +38,7 @@ import os
 # path to results folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..')) # go up two levels to project root
-RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_1a') # .npy files go here
+RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_0') # .npy files go here
 FIGURES_DIR = os.path.join(PROJECT_ROOT, 'results/experiment_0', 'figures') # comparison plots go here
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
