@@ -1,0 +1,7 @@
+experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
+exp3;sea_chunk100_sudden;EMF;3;5000;53,1360;10,6270;0,0700
+exp3;sea_chunk100_sudden;komorniczak;3;5000;209,2640;41,8530;0,5200
+exp3;stagger_chunk100_sudden;EMF;3;5000;51,5270;10,3050;0,0500
+exp3;stagger_chunk100_sudden;komorniczak;3;5000;210,1530;42,0310;0,4800
+exp3;led_chunk100_sudden;EMF;24;5000;562,6610;112,5320;0,9700
+exp3;led_chunk100_sudden;komorniczak;24;5000;918,2130;183,6430;0,6600
