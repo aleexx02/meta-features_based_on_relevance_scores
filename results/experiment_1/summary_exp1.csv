@@ -1,0 +1,3 @@
+drift;n_feat;n_conc;baseline;best Komor (grp/clf);Komor BA;best EMF (ver/clf);EMF BA;gap
+sudden;10;21;0,0476;statistical / HT;0,8961;Raw + temporal / KNN;0,8618;-0,0343
+gradual;10;25;0,0400;statistical / HT;0,6399;Aggregate stats / MLP;0,5616;-0,0783
