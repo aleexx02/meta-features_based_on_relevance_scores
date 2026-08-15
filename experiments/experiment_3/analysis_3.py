@@ -18,14 +18,14 @@
 # produced only for a REFERENCE chunk_size (REF_CHUNK_SIZE) per
 # (generator, drift) -- the chunk_size=200 cell, matching the rest of
 # the project's default. The --grid flag is what spans the full
-# chunk_size axis: it draws BA-vs-chunk_size sensitivity curves (ABFS
-# raw v2.0 vs Komorniczak best-of-9) using every cell.
+# chunk_size axis: it draws BA-vs-chunk_size sensitivity curves (EMF
+# raw vs Komorniczak best-of-9) using every cell.
 #
 # Concept label = generative concept id (exact).
 #
 # Flags:
 #   --sanity           relevance_scores / metafeatures_{version} / pca_{version}
-#   --performance      trajectory_abfs / trajectory_komor   (mean over reps)
+#   --performance      trajectory_EMF / trajectory_komor   (mean over reps)
 #   --shap             shap_all_clfs_{version}
 #   --metrics          heatmap_f1 / heatmap_kappa            (mean over reps)
 #   --stream_analysis  stream_drift_entropy / class_distribution (inline)
@@ -120,8 +120,8 @@ MEASURES = [
     'itemset', 'landmarking', 'model-based', 'statistical',
 ]
 ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
-ABFS_LABELS   = {'aggstats': 'Aggstats (v1.1)', 'raw': 'Raw scores (v2.0)',
-                 'raw_temporal': 'Raw + temporal (v2.1)'}
+ABFS_LABELS   = {'aggstats': 'Aggstats', 'raw': 'Raw scores',
+                 'raw_temporal': 'Raw + temporal'}
 CLF_NAMES = [n for n, _ in BASE_CLFS_PREQUENTIAL]
 N_CLFS    = len(CLF_NAMES)
 CLF_COLORS = {'GNB': '#e6194b', 'KNN': '#3cb44b', 'HT': '#f032e6', 'MLP': '#911eb4'}
@@ -165,7 +165,7 @@ def regenerate_cell(cell):
 
 
 def re_extract(cell):
-    """Re-run ABFS on the rep-0 realization -> scores, {version: X}, concept labels."""
+    """Re-run EMF on the rep-0 realization -> scores, {version: X}, concept labels."""
     data, cpc, spec = regenerate_cell(cell)
     n_features = spec['n_features']; chunk_size = spec['chunk_size']
     X_full = data[:, :-1]; y_full = data[:, -1]
@@ -364,7 +364,7 @@ if args.performance:
         boundaries = boundaries_from_cpc(cpc)
         print(f"\n  {cell}")
 
-        fname = os.path.join(FIGURES_DIR, f'trajectory_abfs_{cell}.png')
+        fname = os.path.join(FIGURES_DIR, f'trajectory_EMF_{cell}.png')
         if not os.path.exists(fname):
             fig, axes = plt.subplots(len(ABFS_VERSIONS), 1, figsize=(14, 4*len(ABFS_VERSIONS)), sharex=True)
             for ax, version in zip(axes, ABFS_VERSIONS):
@@ -380,7 +380,7 @@ if args.performance:
                 ax.set_ylabel('Cumulative BA'); ax.set_title(ABFS_LABELS[version])
                 ax.legend(fontsize=9, ncol=4); ax.set_ylim(0, 1)
             axes[-1].set_xlabel('Window')
-            fig.suptitle(f'ABFS trajectories (mean over reps) -- {cell}\n({n_concepts} concepts, baseline={rb:.3f})', fontsize=12)
+            fig.suptitle(f'EMF trajectories (mean over reps) -- {cell}\n({n_concepts} concepts, baseline={rb:.3f})', fontsize=12)
             plt.tight_layout(); plt.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
 
@@ -489,7 +489,7 @@ if args.metrics:
                                 color='white' if v > 0.6 else 'black')
             ax.set_xticks(range(N_CLFS)); ax.set_xticklabels(CLF_NAMES, fontsize=10)
             ax.set_yticks(range(len(ABFS_VERSIONS))); ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
-            ax.set_title(f'ABFS -- {ml}', fontsize=12)
+            ax.set_title(f'EMF -- {ml}', fontsize=12)
             fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
             fig.suptitle(f'{ml} (mean over reps) -- {cell}\nfinal window | baseline={1/n_concepts:.3f}', fontsize=12)
             plt.tight_layout(); plt.savefig(fname, dpi=150, bbox_inches='tight')
@@ -514,7 +514,7 @@ if args.stream_analysis:
             di_n = di / (np.max(di) + 1e-10)
             fig, ax1 = plt.subplots(figsize=(14, 4))
             ax1.plot(di_n, color='steelblue', label='Drift intensity', linewidth=1.5)
-            ax1.plot(dr, color='purple', label='ABFS relevance change', linewidth=1.2, alpha=0.7)
+            ax1.plot(dr, color='purple', label='EMF relevance change', linewidth=1.2, alpha=0.7)
             ax1.set_ylabel('Normalized value')
             ax2 = ax1.twinx(); ax2.plot(le, color='darkorange', label='Label entropy', alpha=0.7)
             ax2.set_ylabel('Entropy', color='darkorange')
@@ -523,7 +523,7 @@ if args.stream_analysis:
             ax1.set_xlabel('Window')
             l1, lab1 = ax1.get_legend_handles_labels(); l2, lab2 = ax2.get_legend_handles_labels()
             ax1.legend(l1 + l2, lab1 + lab2, loc='upper right')
-            ax1.set_title(f'Drift vs ABFS dynamics -- {cell}')
+            ax1.set_title(f'Drift vs EMF dynamics -- {cell}')
             fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
 
@@ -544,7 +544,7 @@ if args.stream_analysis:
 #  GAP HEATMAP  (reference cells, fixed layout, mean over reps)
 # ============================================================
 if args.gap:
-    print("\n" + "="*60); print("GRID GAP HEATMAP (per ABFS version)"); print("="*60)
+    print("\n" + "="*60); print("GRID GAP HEATMAP (per EMF version)"); print("="*60)
     GENERATORS = sorted({g for (g, d) in GEN_DRIFT_PAIRS})
     DRIFTS     = sorted({d for (g, d) in GEN_DRIFT_PAIRS})
 
@@ -598,7 +598,7 @@ if args.gap:
             ax.set_xticks(range(len(CHUNK_SIZES))); ax.set_xticklabels(CHUNK_SIZES)
             ax.set_yticks(range(len(GENERATORS))); ax.set_yticklabels(GENERATORS)
             ax.set_xlabel('chunk_size'); ax.set_ylabel('generator')
-            ax.set_title(f'Gap (best ABFS {ABFS_LABELS[version]} minus best Komorniczak)\n{drift}')
+            ax.set_title(f'Gap (best EMF {ABFS_LABELS[version]} minus best Komorniczak)\n{drift}')
             cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04); cbar.set_label('Gap (BA)')
             fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
             plt.close(); print(f"  Saved: {fname}")
@@ -606,10 +606,10 @@ if args.gap:
 
 # ============================================================
 #  GRID  - BA vs chunk_size sensitivity curves (per gen, drift)
-#  ABFS: one curve per version (best clf) + Komorniczak best-of-9
+#  EMF: one curve per version (best clf) + Komorniczak best-of-9
 # ============================================================
 if args.grid:
-    print("\n" + "="*60); print("GRID: BA vs chunk_size (one figure per ABFS version)"); print("="*60)
+    print("\n" + "="*60); print("GRID: BA vs chunk_size (one figure per EMF version)"); print("="*60)
 
     def komor_best_per_clf(cell):
         """Best Komorniczak group per classifier (mean over reps, final window)."""
@@ -652,12 +652,12 @@ if args.grid:
             for ci, name in enumerate(CLF_NAMES):
                 color = CLF_COLORS.get(name, f'C{ci}')
                 ax.plot(xs, abfs_clf[name], 'o-', color=color,
-                        label=f'{name} ABFS', linewidth=1.5, markersize=5)
+                        label=f'{name} EMF', linewidth=1.5, markersize=5)
                 ax.plot(xs, komor_clf[name], 's--', color=color,
                         label=f'{name} Komor', linewidth=1.5, markersize=5)
             ax.set_xscale('log'); ax.set_xticks(CHUNK_SIZES); ax.set_xticklabels(CHUNK_SIZES)
             ax.set_xlabel('chunk_size'); ax.set_ylabel('Final balanced accuracy (mean over reps)')
-            ax.set_title(f'BA vs chunk_size -- ABFS {ABFS_LABELS[version]} vs Komorniczak '
+            ax.set_title(f'BA vs chunk_size -- EMF {ABFS_LABELS[version]} vs Komorniczak '
                          f'-- {gen}, {drift}')
             ax.legend(fontsize=8, ncol=2, bbox_to_anchor=(1.01, 1), loc='upper left')
             ax.set_ylim(0, 1); ax.grid(alpha=0.3)
@@ -691,7 +691,7 @@ if args.vanilla:
         if v is None:
             print(f"  {cell}: no vanilla results -- skipping"); continue
         rows.append((cell, v, a, k))
-        print(f"  {cell:35s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
+        print(f"  {cell:35s}  vanilla={v:.3f}  EMF={a:.3f}  komor={k:.3f}")
 
     # write a CSV so the report table can be built from it
     import csv
@@ -742,7 +742,7 @@ if args.summary:
     header = ['generator', 'n_feat', 'drift', 'chunk', 'n_seg', 'n_conc', 'baseline',
               'n_inst', 'inst/seg',
               'best Komor (grp/clf)', 'Komor BA',
-              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+              'best EMF (ver/clf)', 'EMF BA', 'gap']
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp3.csv'), header, rows)
     
 

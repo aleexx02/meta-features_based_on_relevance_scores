@@ -1,5 +1,0 @@
-experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
-exp4;sea_chunk100_ndrift1_sudden;abfs;3;5000;108,4250;21,6850;0,0700
-exp4;sea_chunk100_ndrift1_sudden;komorniczak;3;5000;328,8180;65,7640;0,5200
-exp4;stagger_chunk100_ndrift1_sudden;abfs;3;5000;120,9940;24,1990;0,0500
-exp4;stagger_chunk100_ndrift1_sudden;komorniczak;3;5000;242,5760;48,5150;0,4800
