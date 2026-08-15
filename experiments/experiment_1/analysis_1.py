@@ -153,8 +153,8 @@ RANDOM_STATES = np.random.randint(100, 10000, N_REPLICATIONS)
 print(f"Random states: {RANDOM_STATES}")
 
 MF_CONFIGS = [
-    ('raw',          'Raw scores (v2.0)',      MF_NAMES_RAW,          5),
-    ('raw_temporal', 'Raw + temporal (v2.1)',  MF_NAMES_RAW_TEMPORAL, 6),
+    ('raw',          'Raw scores',      MF_NAMES_RAW,          5),
+    ('raw_temporal', 'Raw + temporal',  MF_NAMES_RAW_TEMPORAL, 6),
 ]
 
 DRIFT_CONFIGS = [
