@@ -1,0 +1,19 @@
+generator;n_feat;drift;chunk;n_seg;n_conc;baseline;n_inst;inst/seg;best Komor (grp/clf);Komor BA;best EMF (ver/clf);EMF BA;gap
+sea;3;sudden;100;4;4;0,2500;500000;125000;statistical / MLP;0,9954;Aggstats / MLP;0,9833;-0,0121
+sea;3;sudden;200;4;4;0,2500;500000;125000;statistical / MLP;0,9902;Aggstats / MLP;0,9795;-0,0107
+sea;3;sudden;500;4;4;0,2500;500000;125000;statistical / MLP;0,9720;Aggstats / MLP;0,9658;-0,0062
+sea;3;gradual;100;4;4;0,2500;500000;125000;statistical / MLP;0,9952;Aggstats / MLP;0,9938;-0,0015
+sea;3;gradual;200;4;4;0,2500;500000;125000;statistical / MLP;0,9900;Aggstats / MLP;0,9869;-0,0031
+sea;3;gradual;500;4;4;0,2500;500000;125000;statistical / MLP;0,9728;Aggstats / MLP;0,9656;-0,0072
+stagger;3;sudden;100;4;3;0,3333;500000;125000;complexity / HT;0,9990;Aggstats / MLP;0,9905;-0,0086
+stagger;3;sudden;200;4;3;0,3333;500000;125000;complexity / HT;0,9981;Aggstats / MLP;0,9790;-0,0191
+stagger;3;sudden;500;4;3;0,3333;500000;125000;complexity / KNN;0,9957;Aggstats / MLP;0,9397;-0,0560
+stagger;3;gradual;100;4;3;0,3333;500000;125000;complexity / KNN;0,9969;Aggstats / KNN;0,9807;-0,0162
+stagger;3;gradual;200;4;3;0,3333;500000;125000;concept / MLP;0,9905;Aggstats / MLP;0,9630;-0,0275
+stagger;3;gradual;500;4;3;0,3333;500000;125000;info-theory / GNB;0,9775;Aggstats / MLP;0,9365;-0,0409
+led;24;sudden;100;4;4;0,2500;500000;125000;general / MLP;0,9946;Aggstats / MLP;0,9904;-0,0042
+led;24;sudden;200;4;4;0,2500;500000;125000;model-based / MLP;0,9929;Aggstats / MLP;0,9818;-0,0110
+led;24;sudden;500;4;4;0,2500;500000;125000;model-based / MLP;0,9878;Raw scores / HT;0,9944;0,0066
+led;24;gradual;100;4;4;0,2500;500000;125000;general / MLP;0,9942;Aggstats / MLP;0,9788;-0,0154
+led;24;gradual;200;4;4;0,2500;500000;125000;model-based / MLP;0,9930;Raw + temporal / HT;0,9609;-0,0321
+led;24;gradual;500;4;4;0,2500;500000;125000;model-based / MLP;0,9878;Raw + temporal / HT;0,9766;-0,0112
