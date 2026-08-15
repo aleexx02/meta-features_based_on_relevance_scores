@@ -192,12 +192,12 @@ class _PerFeatureRelevanceTracker:
         majority_freq = self.majority_class_frequency()
         denom         = 1.0 - majority_freq + 1e-10
 
-        scores = []
+        scores =np.zeros(self.n_features, dtype=float)
         for j in range(self.n_features):
             window     = self.accuracy_windows[j]
             raw        = sum(window) / len(window) if window else 0.0
             normalized = (raw - majority_freq) / denom
-            scores.append(float(np.clip(normalized, 0.0, 1.0)))
+            scores[j] = np.clip(normalized, 0.0, 1.0)
 
         return scores
 
