@@ -20,30 +20,30 @@
 #
 # --sanity
 #   relevance_scores_{stream}.png
-#     ABFS relevance scores over time, with concept drift boundaries
+#     EMF relevance scores over time, with concept drift boundaries
 #     marked in red. For streams with more than
 #     N_FEATURES_CAP_THRESHOLD raw features (currently just SPAM,
 #     500 features), only the top N_TOP_FEATURES_CAPPED (by variance
 #     over time) are plotted -- plotting all 500 would be both
 #     unreadable and slow. See select_top_relevance_features().
 #
-#   metafeatures_{version}_{stream}.png  (one per ABFS version)
+#   metafeatures_{version}_{stream}.png  (one per EMF version)
 #     Each meta-feature dimension plotted over windows, with drift
 #     boundaries marked. Same feature-capping as above applies to
 #     the 'raw' and 'raw_temporal' versions (their dimensionality
 #     scales with n_features); 'aggstats' is always small (8 dims)
 #     and is never capped.
 #
-#   pca_{version}_{stream}.png  (one per ABFS version)
+#   pca_{version}_{stream}.png  (one per EMF version)
 #     2D PCA projection of the meta-feature space, coloured by
 #     concept label. Deliberately NOT capped -- PCA is cheap
 #     regardless of input dimensionality and benefits from seeing
 #     all features, unlike the per-feature trajectory plots above.
 #
 # --performance
-#   trajectory_abfs_{stream}.png
+#   trajectory_EMF_{stream}.png
 #     Cumulative balanced accuracy over windows for all
-#     3 ABFS versions stacked vertically, with drift
+#     3 EMF versions stacked vertically, with drift
 #     boundaries and random baseline marked.
 #
 #   trajectory_komor_{stream}.png
@@ -51,7 +51,7 @@
 #     arranged in a 3x3 grid.
 #
 # --shap
-#   shap_all_clfs_{version}_{stream}.png  (one per ABFS version)
+#   shap_all_clfs_{version}_{stream}.png  (one per EMF version)
 #     Mean |SHAP| feature importance for all 4 classifiers
 #     arranged in a 2x2 subplot. Same feature-capping as --sanity
 #     applies here, and for the same reason it matters more: running
@@ -63,15 +63,15 @@
 #   heatmap_f1_{stream}.png
 #   heatmap_kappa_{stream}.png
 #     Side-by-side heatmaps of final F1 / Kappa values
-#     for Komorniczak (left) and ABFS (right).
+#     for Komorniczak (left) and EMF (right).
 #
 # --stream_analysis
 #   stream_drift_entropy_{stream}.png
-#     Feature-mean drift intensity, ABFS relevance-score change, and
+#     Feature-mean drift intensity, EMF relevance-score change, and
 #     label entropy overlaid on one plot, with drift boundaries
 #     marked. Loads pre-computed diagnostics from
 #     data/real/annotated_streams_analysis/ (saved by
-#     generate_real_streams.py) and re-extracts ABFS relevance scores
+#     generate_real_streams.py) and re-extracts EMF relevance scores
 #     for the delta_relevance overlay.
 #
 #   class_distribution_{stream}.png
@@ -80,7 +80,7 @@
 #
 # --gap
 #   gap_heatmap_preq_exp5_{stream}.png  (one PER STREAM, not combined)
-#     Gap (ABFS raw v2.0 minus best-of-9 Komorniczak measure group)
+#     Gap (EMF raw minus best-of-9 Komorniczak measure group)
 #     at the final window, one cell per classifier, for that stream
 #     alone. Filename includes the stream name so multiple streams'
 #     gap heatmaps don't collide or get confused with each other.
@@ -184,7 +184,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 #  CONFIGURATION
 # ============================================================
 
-# Streams with more raw ABFS features than this get truncated to the
+# Streams with more raw EMF features than this get truncated to the
 # top N_TOP_FEATURES_CAPPED (by relevance-score variance) in the
 # per-feature plots (relevance_scores, metafeatures_raw*, SHAP). PCA
 # is never capped -- see module docstring. Threshold is set above
@@ -205,9 +205,9 @@ MEASURES = [
 
 ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
 ABFS_LABELS   = {
-    'aggstats':     'Aggstats (v1.1)',
-    'raw':          'Raw scores (v2.0)',
-    'raw_temporal': 'Raw + temporal (v2.1)',
+    'aggstats':     'Aggstats',
+    'raw':          'Raw scores',
+    'raw_temporal': 'Raw + temporal',
 }
 
 CLF_NAMES = [n for n, _ in BASE_CLFS_PREQUENTIAL]
@@ -256,7 +256,7 @@ def load_gt(stream_name):
 
 
 def feat_names_for(version, n_features):
-    """Return human-readable feature names for a given ABFS version."""
+    """Return human-readable feature names for a given EMF version."""
     if version == 'aggstats':
         return MF_NAMES_AGGSTATS
     elif version == 'raw':
@@ -288,7 +288,7 @@ def select_top_relevance_features(X_raw, n_features):
 
 def re_extract_stream(stream_name, drift_chunks):
     """
-    Re-run ABFS on the stream to get relevance scores and all 3 meta-feature
+    Re-run EMF on the stream to get relevance scores and all 3 meta-feature
     versions for sanity and SHAP plots. This avoids having to store large
     intermediate arrays to disk -- only the prequential results are saved by
     evaluate_concept_classification_5.py.
@@ -561,7 +561,7 @@ if RUN_SANITY:
 
 # ============================================================
 #  PERFORMANCE TRAJECTORIES
-#  trajectory_abfs_{stream}.png
+#  trajectory_EMF_{stream}.png
 #  trajectory_komor_{stream}.png
 # ============================================================
 if RUN_PERFORMANCE:
@@ -576,8 +576,8 @@ if RUN_PERFORMANCE:
         boundaries      = list(drift_chunks)
         print(f"\n  {stream_name}")
 
-        # all 3 ABFS versions stacked vertically
-        fname = os.path.join(FIGURES_DIR, f'trajectory_abfs_{stream_name}.png')
+        # all 3 EMF versions stacked vertically
+        fname = os.path.join(FIGURES_DIR, f'trajectory_EMF_{stream_name}.png')
         if not os.path.exists(fname):
             fig, axes = plt.subplots(len(ABFS_VERSIONS), 1,
                                      figsize=(14, 4*len(ABFS_VERSIONS)),
@@ -601,7 +601,7 @@ if RUN_PERFORMANCE:
                 ax.legend(fontsize=9, ncol=4)
                 ax.set_ylim(0, 1)
             axes[-1].set_xlabel('Window', fontsize=10)
-            fig.suptitle(f'ABFS trajectories -- {stream_name}\n'
+            fig.suptitle(f'EMF trajectories -- {stream_name}\n'
                          f'({n_concepts} concepts | '
                          f'random baseline={random_baseline:.3f})',
                          fontsize=12)
@@ -665,7 +665,7 @@ if RUN_SHAP:
         print(f"\n  {stream_name}")
 
         # concept_labels_{stream}.npy contains the ground truth concept label
-        # per window, derived from the known drift boundaries (not from ABFS).
+        # per window, derived from the known drift boundaries (not from EMF).
         # It was saved by evaluate_concept_classification_5.py.
         y = load('concept_labels', stream_name)
         if y is None:
@@ -811,7 +811,7 @@ if RUN_METRICS:
             ax.set_xticks(range(N_CLFS)); ax.set_xticklabels(CLF_NAMES, fontsize=10)
             ax.set_yticks(range(len(ABFS_VERSIONS)))
             ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
-            ax.set_title(f'ABFS -- {metric_label}', fontsize=12)
+            ax.set_title(f'EMF -- {metric_label}', fontsize=12)
 
             fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
             fig.suptitle(
@@ -848,7 +848,7 @@ if RUN_STREAM_ANALYSIS:
             entropy_vals = np.load(os.path.join(
                 REAL_ANALYSIS_DIR, f'{stream_name}_label_entropy.npy'))
 
-            # ---- ABFS RELEVANCE DYNAMICS ----
+            # ---- EMF RELEVANCE DYNAMICS ----
             scores_over_time, _, _ = re_extract_stream(stream_name, drift_chunks)
 
             delta_relevance = np.linalg.norm(
@@ -882,9 +882,9 @@ if RUN_STREAM_ANALYSIS:
             ax1.plot(drift_intensity, color='steelblue',
                     label='Drift intensity', linewidth=1.5)
 
-            # ---- ABFS dynamics ----
+            # ---- EMF dynamics ----
             ax1.plot(delta_relevance, color='purple',
-                    label='ABFS relevance change', linewidth=1.2, alpha=0.7)
+                    label='EMF relevance change', linewidth=1.2, alpha=0.7)
 
             ax1.set_ylabel('Normalized value')
 
@@ -906,7 +906,7 @@ if RUN_STREAM_ANALYSIS:
             lines_2, labels_2 = ax2.get_legend_handles_labels()
             ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
-            ax1.set_title(f'Drift vs ABFS dynamics -- {stream_name}')
+            ax1.set_title(f'Drift vs EMF dynamics -- {stream_name}')
 
             fig.tight_layout()
             fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -945,7 +945,7 @@ if RUN_STREAM_ANALYSIS:
 
 
 #  ============================================================
-#  GAP HEATMAP - one file PER STREAM, 3 rows (one per ABFS version).
+#  GAP HEATMAP - one file PER STREAM, 3 rows (one per EMF version).
 #  Each cell (version, clf) is that version's final-window BA minus
 #  the best-of-9 Komorniczak group for that same classifier. best_komor
 #  is computed per classifier (max over the 9 groups), held fixed across
@@ -956,7 +956,7 @@ if RUN_STREAM_ANALYSIS:
 # ============================================================
 if RUN_GAP:
     print("\n" + "="*60)
-    print("GAP HEATMAP - per ABFS version vs best Komorniczak group (per classifier)")
+    print("GAP HEATMAP - per EMF version vs best Komorniczak group (per classifier)")
     print("="*60)
 
     for stream_name in REAL_STREAMS:
@@ -986,7 +986,7 @@ if RUN_GAP:
                 gap_matrix[v_id, :] = data[-1, :] - best_komor
 
         if np.all(np.isnan(gap_matrix)):
-            print(f"  {stream_name}: missing ABFS data -- skipping.")
+            print(f"  {stream_name}: missing EMF data -- skipping.")
             continue
 
         # provenance print: per version, per classifier
@@ -1016,7 +1016,7 @@ if RUN_GAP:
         ax.set_yticks(range(len(ABFS_VERSIONS)))
         ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
         ax.set_xlabel('Classifier', fontsize=11, labelpad=8)
-        ax.set_title(f'Gap per ABFS version (version minus best Komorniczak) '
+        ax.set_title(f'Gap per EMF version (version minus best Komorniczak) '
                      f'-- {stream_name}', fontsize=11, pad=10)
         cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         cbar.set_label('Gap (BA)', fontsize=9)
@@ -1027,7 +1027,7 @@ if RUN_GAP:
         
 
 # ============================================================
-#  BARS - BA per ABFS version (best clf) + Komorniczak, per stream
+#  BARS - BA per EMF version (best clf) + Komorniczak, per stream
 #  (Exp 5 has no swept parameter, so this replaces the sensitivity
 #   curves used in Exp 2/3/4: grouped bars, one group per stream.)
 # ============================================================
@@ -1040,7 +1040,7 @@ if RUN_BARS:
 
     streams, abfs_ba, komor_ba = [], {v: [] for v in ABFS_VERSIONS}, []
     for stream_name in REAL_STREAMS:
-        # best clf per ABFS version at the final window
+        # best clf per EMF version at the final window
         row_ok = False
         per_version = {}
         for version in ABFS_VERSIONS:
@@ -1074,7 +1074,7 @@ if RUN_BARS:
         for bi, version in enumerate(ABFS_VERSIONS):
             ax.bar(x + bi * width, abfs_ba[version], width,
                    color=VERSION_COLORS[version],
-                   label=f'ABFS {ABFS_LABELS[version]}')
+                   label=f'EMF {ABFS_LABELS[version]}')
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
 
@@ -1089,7 +1089,7 @@ if RUN_BARS:
         ax.set_xticklabels(streams, rotation=20, ha='right', fontsize=9)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 5: BA per ABFS version vs Komorniczak (best classifier)')
+        ax.set_title('Exp 5: BA per EMF version vs Komorniczak (best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1146,7 +1146,7 @@ if args.vanilla:
             komor_best_ba=k,
             random_baseline=1.0 / N_CONCEPTS[stream]
         ))
-        print(f"  {stream:25s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}  "
+        print(f"  {stream:25s}  vanilla={v:.3f}  EMF={a:.3f}  komor={k:.3f}  "
               f"(baseline {1/N_CONCEPTS[stream]:.3f})")
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp5.csv')
@@ -1184,7 +1184,7 @@ if args.summary:
 
     header = ['stream', 'n_feat', 'n_conc', 'n_drifts', 'n_win', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
-              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+              'best EMF (ver/clf)', 'EMF BA', 'gap']
 
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp5.csv'), header, rows)    
 

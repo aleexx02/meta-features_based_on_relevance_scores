@@ -17,7 +17,7 @@
 # separate):
 #
 #   The last column of data/real/annotated_streams/{stream}.npy is the
-#   real classification target ABFS and Komorniczak operate on when
+#   real classification target EMF and Komorniczak operate on when
 #   computing per-window meta-features (for INSECTS: the SPECIES
 #   label, mapped through INSECTS_SPECIES_MAP below; for SPAM: the
 #   spam/not-spam label). This is the same role the class label plays
@@ -39,12 +39,12 @@
 #
 #   Why this separation matters: if the concept label were saved as
 #   the npy's last column (an earlier version of this script did
-#   this), ABFS's accuracy-based relevance mechanism and Komorniczak's
+#   this), EMF's accuracy-based relevance mechanism and Komorniczak's
 #   pymfe extraction would both be computing meta-features against the
 #   very thing being evaluated downstream — i.e. "which segment is
 #   this" used as the training signal for finding out "which segment
 #   is this." Saving the real classification target instead keeps
-#   ABFS/Komorniczak doing the same kind of task they do everywhere
+#   EMF/Komorniczak doing the same kind of task they do everywhere
 #   else in this project (classify the real target), with
 #   concept-discrimination tested purely through how their derived
 #   meta-features behave relative to the independently-known drift

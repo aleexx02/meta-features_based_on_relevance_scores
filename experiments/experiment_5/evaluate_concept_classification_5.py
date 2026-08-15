@@ -2,9 +2,9 @@
 # ==============================================================================
 # Experiment 5: Real-World Annotated Stream Evaluation
 #
-# I evaluate all three ABFS meta-feature versions and all 9 Komorniczak
+# I evaluate all three EMF meta-feature versions and all 9 Komorniczak
 # measure groups on real-world streams with known (or approximately known)
-# drift change-point locations. Everything runs in a single script — ABFS
+# drift change-point locations. Everything runs in a single script — EMF
 # and Komorniczak features are extracted here, no separate preprocessing
 # step needed. Komorniczak results are cached to disk so re-running the
 # script skips already-computed streams.
@@ -17,17 +17,17 @@
 #   chunk 9. Skipping warmup windows would discard the first concept entirely.
 #
 # What does y_chunk (the stream's last column) actually contain?
-#   The real classification target ABFS and Komorniczak both operate on —
+#   The real classification target EMF and Komorniczak both operate on —
 #   for INSECTS, the SPECIES label mapped through INSECTS_SPECIES_MAP in
 #   generate_real_streams.py; for SPAM, the spam/not-spam label. This is
 #   deliberately NOT the concept/drift label; see generate_real_streams.py's
 #   header for why keeping them separate matters.
 #
 # What is concept_labels_{stream}.npy?
-#   The ground truth concept label for each window — NOT produced by ABFS,
+#   The ground truth concept label for each window — NOT produced by EMF,
 #   and NOT read from the stream's last column. It's computed directly
 #   from the known drift chunk indices: concept = number of drift
-#   boundaries passed by this chunk. ABFS plays no role in this label;
+#   boundaries passed by this chunk. EMF plays no role in this label;
 #   it's saved here only because this is where we loop over the stream
 #   chunk by chunk anyway, and Komorniczak features (extracted later, in
 #   a separate loop) reuse the same label sequence so both approaches are
@@ -65,7 +65,7 @@
 #
 # Input files: Komorniczak's raw pymfe features, one file per stream x
 #               measure, extracted lazily on first use -> external/komorniczak/results/real/
-# Output: ABFS + Komorniczak classifier-sweep results and heatmaps -> results/experiment_5/
+# Output: EMF + Komorniczak classifier-sweep results and heatmaps -> results/experiment_5/
 
 # Outputs saved to results/experiment_5/:
 #   concept_labels_{stream}.npy             — ground truth concept label per window
@@ -77,8 +77,8 @@
 #   preq_komor_{measure}_kappa_{stream}.npy
 #
 # Figures saved to results/experiment_5/figures/:
-#   heatmap_comparison_komorniczak_ABFS_preq_exp5_{stream}.png
-#     side-by-side: 9 Komorniczak groups vs 3 ABFS versions, final BA
+#   heatmap_comparison_komorniczak_EMF_preq_exp5_{stream}.png
+#     side-by-side: 9 Komorniczak groups vs 3 EMF versions, final BA
 #
 # Run from project root:
 #   python experiments/experiment_5/evaluate_concept_classification_5.py
@@ -143,9 +143,9 @@ MEASURES = [
  
 ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
 ABFS_LABELS   = {
-    'aggstats':     'Aggstats (v1.1)',
-    'raw':          'Raw scores (v2.0)',
-    'raw_temporal': 'Raw + temporal (v2.1)',
+    'aggstats':     'Aggstats',
+    'raw':          'Raw scores',
+    'raw_temporal': 'Raw + temporal',
 }
  
 EXPECTED_N_CLFS = len(BASE_CLFS_PREQUENTIAL)
@@ -161,7 +161,7 @@ def load_gt(stream_name):
  
  
 def already_done_abfs(stream_name, version):
-    """Check whether prequential results for this ABFS version already exist."""
+    """Check whether prequential results for this EMF version already exist."""
     prefixes = [f'preq_abfs_{version}_ba', f'preq_abfs_{version}_f1',
                 f'preq_abfs_{version}_kappa']
     for p in prefixes:
@@ -206,14 +206,14 @@ def print_label_dist(name, y):
  
  
 # ============================================================
-#  COMBINED HEATMAP — Komorniczak vs ABFS at final window
+#  COMBINED HEATMAP — Komorniczak vs EMF at final window
 # ============================================================
  
 def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
     """
     Side-by-side heatmap showing final balanced accuracy for all
-    Komorniczak measure groups (left) and all ABFS versions (right).
-    Saved as: heatmap_comparison_komorniczak_ABFS_preq_exp5_{stream}.png
+    Komorniczak measure groups (left) and all EMF versions (right).
+    Saved as: heatmap_comparison_komorniczak_EMF_preq_exp5_{stream}.png
     """
     clf_names = [n for n, _ in BASE_CLFS_PREQUENTIAL]
     n_clfs    = len(clf_names)
@@ -235,7 +235,7 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
             path = os.path.join(RESULTS_DIR,
                                 f'preq_abfs_{version}_ba_{stream_name}.npy')
             if not os.path.exists(path):
-                print(f"  Heatmap: missing ABFS {version} — skipping.")
+                print(f"  Heatmap: missing EMF {version} — skipping.")
                 return
             abfs_matrix[v_id, :] = np.load(path)[-1, :]
  
@@ -265,34 +265,34 @@ def plot_combined_heatmap(stream_name, n_concepts, tba_versions):
     ax.set_xticks(range(n_clfs)); ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(len(ABFS_VERSIONS)))
     ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
-    ax.set_title('ABFS meta-features — balanced accuracy', fontsize=12)
+    ax.set_title('EMF meta-features — balanced accuracy', fontsize=12)
  
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
     fig.suptitle(
-        f'Komorniczak vs ABFS — {stream_name}\n'
+        f'Komorniczak vs EMF — {stream_name}\n'
         f'Prequential  |  chunk_size={CHUNK_SIZE}  |  '
         f'random baseline = {random_baseline:.3f}',
         fontsize=13)
     plt.tight_layout()
     out_path = os.path.join(
         FIGURES_DIR,
-        f'heatmap_comparison_komorniczak_ABFS_preq_exp5_{stream_name}.png')
+        f'heatmap_comparison_komorniczak_EMF_preq_exp5_{stream_name}.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Saved heatmap: {out_path}")
  
  
 # ============================================================
-#  ABFS EXTRACTION — all 3 versions in one pass over the stream
+#  EMF EXTRACTION — all 3 versions in one pass over the stream
 # ============================================================
  
 def extract_abfs_metafeatures(stream_name, drift_chunks):
     """
-    Run ABFS on the stream and extract all three meta-feature versions
+    Run EMF on the stream and extract all three meta-feature versions
     in a single pass. The concept label for each window is computed as
     the number of known drift boundaries that have been passed so far
     — NOT read from the stream's last column (which is the species
-    label that ABFS actually trains its relevance scores against).
+    label that EMF actually trains its relevance scores against).
  
     Returns: X_aggstats, X_raw, X_raw_temporal, y_concept_labels
     """
@@ -401,28 +401,28 @@ for stream_name in REAL_STREAMS:
     drift_chunks = load_gt(stream_name)
     print(f"  Drift chunks: {drift_chunks}")
  
-    # ---- ABFS ----
+    # ---- EMF ----
     versions_needed = [v for v in ABFS_VERSIONS
                        if not already_done_abfs(stream_name, v)]
     tba_versions = {}
  
     if not versions_needed:
-        print("  All ABFS versions done — loading from disk.")
+        print("  All EMF versions done — loading from disk.")
         y_abfs = np.load(os.path.join(RESULTS_DIR,
                                       f'concept_labels_{stream_name}.npy'))
-        print_label_dist('ABFS (loaded)', y_abfs)
+        print_label_dist('EMF (loaded)', y_abfs)
         for version in ABFS_VERSIONS:
             tba_versions[version] = np.load(
                 os.path.join(RESULTS_DIR,
                              f'preq_abfs_{version}_ba_{stream_name}.npy'))
     else:
-        print(f"\n  Extracting ABFS meta-features (all 3 versions, one pass)...")
+        print(f"\n  Extracting EMF meta-features (all 3 versions, one pass)...")
         X_agg, X_raw, X_rt, y_abfs = extract_abfs_metafeatures(
             stream_name, drift_chunks)
         print(f"  aggstats     : {X_agg.shape}")
         print(f"  raw          : {X_raw.shape}")
         print(f"  raw_temporal : {X_rt.shape}")
-        print_label_dist('ABFS', y_abfs)
+        print_label_dist('EMF', y_abfs)
  
         # save concept labels — used by analysis_5.py for SHAP and PCA
         save(y_abfs, 'concept_labels', stream_name)
@@ -431,19 +431,19 @@ for stream_name in REAL_STREAMS:
  
         for version in ABFS_VERSIONS:
             if already_done_abfs(stream_name, version):
-                print(f"  ABFS [{version}] done — loading.")
+                print(f"  EMF [{version}] done — loading.")
                 tba_versions[version] = np.load(
                     os.path.join(RESULTS_DIR,
                                  f'preq_abfs_{version}_ba_{stream_name}.npy'))
                 continue
-            print(f"\n  Running prequential (ABFS {version})...")
+            print(f"\n  Running prequential (EMF {version})...")
             X = X_by_version[version]
             _, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(X, y_abfs)
             save(tba, f'preq_abfs_{version}_ba',    stream_name)
             save(tf1, f'preq_abfs_{version}_f1',    stream_name)
             save(tk,  f'preq_abfs_{version}_kappa', stream_name)
             tba_versions[version] = tba
-            print(f"  [Preq ABFS {version}] " + "  ".join(
+            print(f"  [Preq EMF {version}] " + "  ".join(
                 f"{n}={tba[-1, i]:.3f}"
                 for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
  
@@ -463,7 +463,7 @@ for stream_name in REAL_STREAMS:
  
         print(f"  Komor: {X_komor.shape}  concepts: {np.unique(y_komor)}")
         y_komor_dist = print_label_dist(f'Komor [{measure}]', y_komor)
-        y_abfs_dist  = print_label_dist('ABFS', y_abfs)
+        y_abfs_dist  = print_label_dist('EMF', y_abfs)
         if y_komor_dist != y_abfs_dist:
             print(f"  WARNING: label distributions differ — check alignment.")
  
