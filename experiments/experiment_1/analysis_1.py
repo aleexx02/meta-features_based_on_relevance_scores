@@ -30,7 +30,7 @@
 #      - Includes Komorniczak baseline
 #
 #   5. Stream analysis plots (per replication x drift type):
-#      - Feature-mean drift intensity, ABFS relevance-score change,
+#      - Feature-mean drift intensity, EMF relevance-score change,
 #        and label entropy overlaid on one plot
 #      - Class distribution of the underlying binary classification
 #        target over time
@@ -41,7 +41,7 @@
 #
 #   6. Gap heatmap (one per drift type):
 #      - gap_heatmap_preq_{drift_type}.png
-#      - Gap (ABFS raw v2.0 minus best-of-9 Komorniczak measure group)
+#      - Gap (EMF raw v2.0 minus best-of-9 Komorniczak measure group)
 #        at the final window, mean across replications, one cell per
 #        classifier. Same "raw v2.0 vs Komorniczak best" comparison
 #        used in analysis_2.py / analysis_3.py; the unit here is
@@ -103,7 +103,7 @@ parser.add_argument('--performance', action='store_true', help='Run performance 
 parser.add_argument('--shap',       action='store_true', help='Run SHAP analysis')
 parser.add_argument('--metrics',    action='store_true', help='Run metrics heatmaps')
 parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
-parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ABFS raw v2.0 vs Komorniczak best)')
+parser.add_argument('--gap', action='store_true', help='Run gap heatmap (EMF raw v2.0 vs Komorniczak best)')
 parser.add_argument('--bars', action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--vanilla', action='store_true')
@@ -163,14 +163,14 @@ DRIFT_CONFIGS = [
 ]
 
 ABFS_MF_CONFIGS_FULL = [
-    ('aggstats',     'Aggregate stats (v1.1)'),
-    ('raw',          'Raw scores (v2.0)'),
-    ('raw_temporal', 'Raw + temporal (v2.1)'),
+    ('aggstats',     'Aggregate stats'),
+    ('raw',          'Raw scores'),
+    ('raw_temporal', 'Raw + temporal'),
 ]
 
 ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
-ABFS_LABELS   = {'aggstats': 'Aggstats (v1.1)', 'raw': 'Raw scores (v2.0)',
-                    'raw_temporal': 'Raw + temporal (v2.1)'}
+ABFS_LABELS   = {'aggstats': 'Aggstats', 'raw': 'Raw scores',
+                    'raw_temporal': 'Raw + temporal'}
 
 
 MEASURES = ['clustering', 'complexity', 'concept', 'general',
@@ -548,7 +548,7 @@ if RUN_SANITY_CHECK:
                 label='concept boundary')
             ax.set_xlabel('Time (x100 instances)')
             ax.set_ylabel('Relevance score')
-            ax.set_title(f'ABFS relevance scores - {drift_type} drift '
+            ax.set_title(f'EMF relevance scores - {drift_type} drift '
                 f'(seed={rs}) - experiment [1]')
             ax.legend(ncol=5, fontsize=8)
             fig.tight_layout()
@@ -684,7 +684,7 @@ if RUN_PERFORMANCE:
 
 
 # ============================================================
-#  3. SHAP -- all 4 classifiers, all 3 ABFS versions
+#  3. SHAP -- all 4 classifiers, all 3 EMF versions
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
@@ -862,7 +862,7 @@ if RUN_STREAM_ANALYSIS:
             drift_intensity_n = drift_intensity / (np.max(drift_intensity) + 1e-10)
             delta_relevance_n = delta_relevance / (np.max(delta_relevance) + 1e-10)
 
-            # ---- drift intensity vs ABFS relevance change vs entropy ----
+            # ---- drift intensity vs EMF relevance change vs entropy ----
             fname = os.path.join(FIGURES_DIR,
                 f'stream_drift_entropy_{drift_type}_rep{rep_id}.png')
             if not os.path.exists(fname):
@@ -871,7 +871,7 @@ if RUN_STREAM_ANALYSIS:
                 ax1.plot(drift_intensity_n, color='steelblue',
                         label='Drift intensity', linewidth=1.5)
                 ax1.plot(delta_relevance_n, color='purple',
-                        label='ABFS relevance change', linewidth=1.2, alpha=0.7)
+                        label='EMF relevance change', linewidth=1.2, alpha=0.7)
                 ax1.set_ylabel('Normalized value')
 
                 ax2 = ax1.twinx()
@@ -889,7 +889,7 @@ if RUN_STREAM_ANALYSIS:
                 lines_2, labels_2 = ax2.get_legend_handles_labels()
                 ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
-                ax1.set_title(f'Drift vs ABFS dynamics - {drift_type} drift '
+                ax1.set_title(f'Drift vs EMF dynamics - {drift_type} drift '
                     f'(seed={rs}) - experiment [1]')
 
                 fig.tight_layout()
@@ -923,7 +923,7 @@ if RUN_STREAM_ANALYSIS:
 
 
 # ============================================================
-#  6. GAP HEATMAP - ABFS raw v2.0 vs Komorniczak best-of-9,
+#  6. GAP HEATMAP - EMF raw v2.0 vs Komorniczak best-of-9,
 #  one file per drift type (no chunk_size/n_informative grid here
 #  the way Exp2 has, so drift type is the unit instead).
 # ============================================================
@@ -972,7 +972,7 @@ if RUN_GAP:
 
 
 # ============================================================
-#  BARS - BA per ABFS version (best clf) + Komorniczak, per drift type
+#  BARS - BA per EMF version (best clf) + Komorniczak, per drift type
 #  grouped bars, one group per drift type instead of per stream.
 # ============================================================
 if RUN_BARS:
@@ -984,7 +984,7 @@ if RUN_BARS:
 
     drifts, abfs_ba, komor_ba, baselines = [], {v: [] for v in ABFS_VERSIONS}, [], []
     for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
-        # best clf per ABFS version (mean over reps, final window)
+        # best clf per EMF version (mean over reps, final window)
         per_version = {}
         any_ok = False
         for version in ABFS_VERSIONS:
@@ -1020,7 +1020,7 @@ if RUN_BARS:
         fig, ax = plt.subplots(figsize=(max(7, n_groups * 2.2), 5))
         for bi, version in enumerate(ABFS_VERSIONS):
             ax.bar(x + bi * width, abfs_ba[version], width,
-                   color=VERSION_COLORS[version], label=f'ABFS {ABFS_LABELS[version]}')
+                   color=VERSION_COLORS[version], label=f'EMF {ABFS_LABELS[version]}')
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
 
@@ -1033,7 +1033,7 @@ if RUN_BARS:
         ax.set_xticklabels([f'{d} drift' for d in drifts], fontsize=10)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 1: BA per ABFS version vs Komorniczak (best classifier)')
+        ax.set_title('Exp 1: BA per EMF version vs Komorniczak (best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1097,7 +1097,7 @@ if args.vanilla:
         if v is None:
             print(f"  {cell}: no vanilla results -- skipping"); continue
         rows.append((cell, v, a, k))
-        print(f"  {cell:10s}  vanilla={v:.3f}  abfs={a:.3f}  komor={k:.3f}")
+        print(f"  {cell:10s}  vanilla={v:.3f}  EMF={a:.3f}  komor={k:.3f}")
 
     import csv
     rows_csv = []
@@ -1126,7 +1126,7 @@ if args.summary:
         kfin = np.mean(np.load(kpath)[:, :, -1, :], axis=1)   # (n_measures, n_clfs)
         ki, kj = np.unravel_index(np.nanargmax(kfin), kfin.shape)
         k_label, k_clf, k_ba = MEASURES[ki], clf_names[kj], float(kfin[ki, kj])
-        # best ABFS over available versions (mean over reps, final window)
+        # best EMF over available versions (mean over reps, final window)
         best = (None, None, -1.0)
         for version, vlabel in ABFS_MF_CONFIGS_FULL:
             apath = os.path.join(RESULTS_DIR, f'clf_ba_{version}_{drift_type}.npy')
@@ -1152,7 +1152,7 @@ if args.summary:
         ])
     header = ['drift', 'n_feat', 'n_conc', 'baseline',
               'best Komor (grp/clf)', 'Komor BA',
-              'best ABFS (ver/clf)', 'ABFS BA', 'gap']
+              'best EMF (ver/clf)', 'EMF BA', 'gap']
     write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1.csv'), header, rows)
     
 

@@ -1,5 +1,5 @@
 # ============================================================
-#  Sanity check: can ABFS relevance scores detect concept drift?
+#  Sanity check: can EMF relevance scores detect concept drift?
 #
 #  Goals:
 #    1. Verify that relevance scores change at drift moments
@@ -15,9 +15,9 @@
 #
 # For each stream produces the following outputs:
 #   1. relevance_scores_{stream_type}_{drift_type}.png
-    #      ABFS relevance scores over time with drift markers.
+    #      EMF relevance scores over time with drift markers.
     #      One per drift type since relevance scores do not depend
-    #      on the meta-feature set, only on ABFS and the stream.
+    #      on the meta-feature set, only on EMF and the stream.
 #   2. metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png
     #      meta-feature evolution across windows with drift markers.
     #      One per meta-feature set per drift type.
@@ -39,7 +39,9 @@ import os
 from collections import defaultdict
 from river.datasets import synth as river_synth
 
-from abfs.abfs_implementation import ABFS_match
+from abfs.abfs_implementation import (
+    EMF, ConfigResetWeightProp, ConfigReset, ConfigWeightProp,
+)
 from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw, extract_metafeatures_raw_temporal,
     MF_NAMES_AGGSTATS, MF_NAMES_RAW, MF_NAMES_RAW_TEMPORAL
@@ -92,11 +94,14 @@ SEA_STAGGER_CONFIGS = [
 ]
 GROUND_TRUTH = {'SEA_SUDDEN': ({0,1}, {0,1}), 'STG_12': ({1,2}, {0})}
 
-ABFS_CONFIGS = [
-    ("orig",     dict(reset_on_drift=True,  weight_propagation=True)),   # original ABFS
-    ("noweight", dict(reset_on_drift=True,  weight_propagation=False)),  # - weight propagation
-    ("noreset",  dict(reset_on_drift=False, weight_propagation=True)),   # - drift reset
-    ("amf",      dict(reset_on_drift=False, weight_propagation=False)),  # AMF (both changes)
+# Four settings of the SAME scoring mechanism (EMF), used to justify
+# EMF's two design choices. Each is its own named class -- no flags.
+# These are NOT "ABFS vs EMF": ABFS produces a feature subset, not scores.
+CONFIGS = [
+    ("orig",     ConfigResetWeightProp),  # reset + weight propagation (ABFS-style choices)
+    ("noweight", ConfigReset),            # reset only (no weight propagation)
+    ("noreset",  ConfigWeightProp),       # weight propagation only (no reset)
+    ("emf",      EMF),                     # EMF: no reset, no weight propagation
 ]
 
 # SEA / STAGGER configuration
@@ -121,8 +126,8 @@ palette = [
 #  HELPERS
 # ============================================================
 
-def make_abfs_match(n_features, chunk_size):
-    return ABFS_match(n_features=n_features, categorical_features=[], accuracy_window_size=chunk_size, class_window_size=chunk_size)
+def make_emf(n_features, chunk_size):
+    return EMF(n_features=n_features, categorical_features=[], accuracy_window_size=chunk_size, class_window_size=chunk_size)
 
 
 def make_sea_sudden_drift(drift_position=5000, seed=42, noise=0.1):
@@ -169,7 +174,7 @@ def plot_relevance_scores(scores_over_time, n_features, score_interval,drift_lin
     fig.tight_layout()
     fig.savefig(os.path.join(FIGURES_DIR, filename), dpi=150)
     plt.close()
-    print(f"\n*** ABFS relevance scores saved at:\n\t '{os.path.join(FIGURES_DIR, filename)}' ***")
+    print(f"\n*** Relevance scores saved at:\n\t '{os.path.join(FIGURES_DIR, filename)}' ***")
 
 
 def plot_metafeatures(meta_features, mf_names, n_mf_cols,drift_window, warmup, title, filename):
@@ -241,7 +246,7 @@ if RUN_STREAMLEARN:
         stream = StreamGenerator(**config)
 
         # pass 1: relevance scores over time
-        abfs = make_abfs_match(SL_N_FEATURES, SL_WINDOW_SIZE)
+        abfs = make_emf(SL_N_FEATURES, SL_WINDOW_SIZE)
         scores_over_time = []
         instance_counter = 0
         stream.reset()
@@ -270,20 +275,20 @@ if RUN_STREAMLEARN:
                    label='concept boundary')
         ax.set_xlabel(f'Time (x{SL_SCORE_INTERVAL} instances)')
         ax.set_ylabel('Relevance score')
-        ax.set_title(f'ABFS relevance scores - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})')
+        ax.set_title(f'EMF relevance scores - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})')
         ax.legend(ncol=5, fontsize=8)
         fig.tight_layout()
         fname = f'relevance_scores_{stream_type}_{drift_type}.png'
         fig.savefig(os.path.join(FIGURES_DIR, fname), dpi=150)
         plt.close()
-        print(f"\n*** Plot of ABFS relevance scores for {drift_type} stream saved at:\n\t '{os.path.join(FIGURES_DIR, fname)}' ***")
+        print(f"\n*** Plot of EMF relevance scores for {drift_type} stream saved at:\n\t '{os.path.join(FIGURES_DIR, fname)}' ***")
 
         # pass 2: meta-features per MF type
         for mf_type, mf_names, n_mf_cols in SL_MF_CONFIGS:
             print(f"*** MF type: {mf_type} ***")
             print(f"{'-'*20}")
 
-            abfs = make_abfs_match(SL_N_FEATURES, SL_WINDOW_SIZE)
+            abfs = make_emf(SL_N_FEATURES, SL_WINDOW_SIZE)
             meta_features = []
             concept_labels = []
             wt_prev = None
@@ -349,9 +354,9 @@ else:
         rows = []
         comparison = defaultdict(dict)
 
-        for cfg_name, cfg_flags in ABFS_CONFIGS:
+        for cfg_name, cfg_class in CONFIGS:
             print(f"\n  --- config: {cfg_name} ---")
-            abfs = ABFS_match(N_FEATURES_SS, categorical_features=categorical_feats, **cfg_flags)
+            abfs = cfg_class(N_FEATURES_SS, categorical_features=categorical_feats)
 
             scores_over_time = []
             meta_features    = []
@@ -389,7 +394,7 @@ else:
             plot_relevance_scores(
                 scores_over_time, N_FEATURES_SS, SCORE_INTERVAL_SS,
                 drift_line=DRIFT_POS, drift_moments=[], feature_names=feature_names,
-                title=f'ABFS relevance scores - {stream_type} {drift_type} [{cfg_name}]',
+                title=f'Relevance scores - {stream_type} {drift_type} [{cfg_name}]',
                 filename=f'relevance_scores_{stream_type}_{drift_type}_{cfg_name}.png')
 
             # PCA — on aggstats meta-features
@@ -398,7 +403,7 @@ else:
                 title=f'PCA (aggstats) - {stream_type} {drift_type} [{cfg_name}]',
                 filename=f'pca_{stream_type}_{drift_type}_{cfg_name}.png')
 
-            if cfg_name == 'amf':
+            if cfg_name == 'emf':
                 print_sanity_check_summary(
                     f'{stream_type} {drift_type}', False, mf_type, mf_names,
                     meta_features, concept_labels, raw_vectors, N_FEATURES_SS)

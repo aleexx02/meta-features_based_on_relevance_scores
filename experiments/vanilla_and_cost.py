@@ -1,14 +1,14 @@
 # vanilla_and_cost.py
 # ==============================================================================
 # SHARED add-on used by ALL experiments (1, 2, 3, 4, 5). Adds two things
-# without re-running the expensive ABFS / Komorniczak extraction:
+# without re-running the expensive EMF / Komorniczak extraction:
 #
 #   1. VANILLA BASELINE — trivial meta-features: per-feature mean + std of each
-#      raw window, run through the SAME prequential sweep as ABFS/Komorniczak.
+#      raw window, run through the SAME prequential sweep as EMF/Komorniczak.
 #      The only difference from the real approaches is the meta-features, so it
 #      is a fair floor. Saved as preq_vanilla_{ba,f1,kappa}_{tag}.npy.
 #
-#   2. EXTRACTION COST — wall-clock time + peak python-heap memory for ABFS and
+#   2. EXTRACTION COST — wall-clock time + peak python-heap memory for EMF and
 #      Komorniczak extraction, timed on ONE representative cell per experiment.
 #      Written to extraction_cost_{exp}.csv.
 #
@@ -174,7 +174,7 @@ def run_experiment(spec, do_vanilla=True, do_cost=True):
             komor_fn = spec.cost_komor(cell, seed)
             _,     t_kom,  mem_kom  = timed_closure(komor_fn)
  
-            for method, dt, mem in [('abfs', t_abfs, mem_abfs),
+            for method, dt, mem in [('EMF', t_abfs, mem_abfs),
                                     ('komorniczak', t_kom, mem_kom)]:
                 cost_rows.append(dict(
                     experiment=spec.name, tag=cell, method=method,
@@ -183,7 +183,7 @@ def run_experiment(spec, do_vanilla=True, do_cost=True):
                     ms_per_window=round(1000 * dt / max(n_win, 1), 3),
                     peak_mb=round(mem, 2)))
             print(f"  [{spec.name}] cost: {cell} (n_features={nf})  "
-                  f"abfs {1000*t_abfs/max(n_win,1):.1f} ms/win, {mem_abfs:.1f} MB | "
+                  f"EMF {1000*t_abfs/max(n_win,1):.1f} ms/win, {mem_abfs:.1f} MB | "
                   f"komor {1000*t_kom/max(n_win,1):.1f} ms/win, {mem_kom:.1f} MB")
  
         if cost_rows:

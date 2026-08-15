@@ -138,9 +138,9 @@ MEASURES = [
 
 ABFS_VERSIONS = ['aggstats', 'raw', 'raw_temporal']
 ABFS_LABELS   = {
-    'aggstats':     'Aggstats (v1.1)',
-    'raw':          'Raw scores (v2.0)',
-    'raw_temporal': 'Raw + temporal (v2.1)',
+    'aggstats':     'Aggstats',
+    'raw':          'Raw scores',
+    'raw_temporal': 'Raw + temporal',
 }
 
 clf_names_preq = [name for name, _ in BASE_CLFS_PREQUENTIAL]
@@ -888,7 +888,7 @@ if RUN_GRID:
             for j, n_informative in enumerate(N_INFORMATIVES):
                 tag = make_tag(chunk_size, n_informative, drift_type)
 
-                # ABFS raw v2.0
+                # EMF raw vector
                 pr_abfs = load('preq_abfs_raw_ba', tag, optional=True)
                 if pr_abfs is not None:
                     per_clf = np.mean(pr_abfs[:, -1, :], axis=0)
@@ -904,9 +904,9 @@ if RUN_GRID:
         x_labels = [str(ni) for ni in N_INFORMATIVES]
         y_labels  = [str(cs) for cs in CHUNK_SIZES]
 
-        # ---- gap heatmaps, one per ABFS version (shared color scale) ----
+        # ---- gap heatmaps, one per EMF version (shared color scale) ----
         version_grids = {}
-        for version in ABFS_VERSIONS:
+        for version in EMF_VERSIONS:
             g = np.full((len(CHUNK_SIZES), len(N_INFORMATIVES)), np.nan)
             for i, chunk_size in enumerate(CHUNK_SIZES):
                 for j, n_informative in enumerate(N_INFORMATIVES):
@@ -922,7 +922,7 @@ if RUN_GRID:
                  if any(np.any(np.isfinite(g)) for g in version_grids.values()) else np.array([])
         vmax = float(np.max(np.abs(finite))) if finite.size else 1.0
 
-        for version in ABFS_VERSIONS:
+        for version in EMF_VERSIONS:
             gap_grid = version_grids[version]
             if not np.any(np.isfinite(gap_grid)):
                 continue
@@ -943,7 +943,7 @@ if RUN_GRID:
             ax.set_xticks(range(len(N_INFORMATIVES))); ax.set_xticklabels(x_labels, fontsize=10)
             ax.set_yticks(range(len(CHUNK_SIZES))); ax.set_yticklabels(y_labels, fontsize=10)
             ax.set_xlabel('n_informative', fontsize=11); ax.set_ylabel('chunk_size', fontsize=11)
-            ax.set_title(f'Gap (best ABFS {ABFS_LABELS[version]} minus Komorniczak best)\n'
+            ax.set_title(f'Gap (best EMF {EMF_LABELS[version]} minus Komorniczak best)\n'
                          f'{drift_type} drift ({n_concepts} concepts)', fontsize=11)
             plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
             fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -961,7 +961,7 @@ if RUN_GRID:
             for clf_id, name in enumerate(clf_names_preq):
                 color = CLF_COLORS.get(name, f'C{clf_id}')
                 ax.plot(CHUNK_SIZES, grid_abfs_preq_clf[:, ni_idx, clf_id],
-                        color=color, label=f'{name} ABFS',
+                        color=color, label=f'{name} EMF',
                         linewidth=1.5, marker='o', markersize=5)
                 ax.plot(CHUNK_SIZES, grid_komor_preq_clf[:, ni_idx, clf_id],
                         color=color, label=f'{name} Komor',
