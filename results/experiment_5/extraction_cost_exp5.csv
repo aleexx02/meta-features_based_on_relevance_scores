@@ -1,0 +1,11 @@
+experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
+exp5;INSECTS-abrupt_balanced;EMF;33;529;92,8270;175,4760;15,2900
+exp5;INSECTS-abrupt_balanced;komorniczak;33;529;110,4520;208,7950;15,0400
+exp5;INSECTS-abrupt_imbalanced;EMF;33;3553;607,7590;171,0550;100,2600
+exp5;INSECTS-abrupt_imbalanced;komorniczak;33;3553;745,4310;209,8030;100,2100
+exp5;INSECTS-incgradual_balanced;EMF;33;242;41,3570;170,8950;7,2000
+exp5;INSECTS-incgradual_balanced;komorniczak;33;242;50,2670;207,7170;7,1600
+exp5;INSECTS-incgradual_imbalanced;EMF;33;1434;243,7470;169,9770;40,4900
+exp5;INSECTS-incgradual_imbalanced;komorniczak;33;1434;300,6020;209,6250;40,4400
+exp5;SPAM;EMF;499;94;188,4200;2004,4670;43,1700
+exp5;SPAM;komorniczak;499;94;307,8100;3274,5700;54,7400
