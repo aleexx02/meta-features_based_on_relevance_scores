@@ -8,8 +8,8 @@ from collections import deque
 # ============================================================
 #  What this module is (corrected understanding)
 # ============================================================
-# EMF is OUR per-feature relevance-scoring mechanism. It is INSPIRED BY
-# ABFS's idea of using one decision stump per feature to gauge how
+# EMF is OUR per-feature relevance-scoring mechanism. It is EXTENDS
+# # ABFS's idea of using one decision stump per feature to gauge how
 # predictive that feature is -- but it is NOT the ABFS algorithm.
 #
 #   - ABFS (Barddal et al. 2019) is a feature-SELECTION method: a

@@ -522,6 +522,16 @@ def plot_concept_distribution(concept_labels, title, out_path, n_concepts=None):
     plt.close(); print(f"  Saved: {out_path}")
 
 
+
+def best_vanilla(cell):
+    path = os.path.join(RESULTS_DIR, f'preq_vanilla_ba_{cell}.npy')
+    if not os.path.exists(path):
+        return np.nan
+
+    d = np.load(path)
+    return float(np.max(np.mean(d[:, -1, :], axis=0)))
+
+
 # ============================================================
 #  1. SANITY CHECK PLOTS
 # ============================================================
@@ -982,7 +992,7 @@ if RUN_BARS:
 
     VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
 
-    drifts, abfs_ba, komor_ba, baselines = [], {v: [] for v in ABFS_VERSIONS}, [], []
+    drifts, abfs_ba, komor_ba, vanilla_ba, baselines = ([], {v: [] for v in ABFS_VERSIONS}, [], [], [])
     for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
         # best clf per EMF version (mean over reps, final window)
         per_version = {}
@@ -997,6 +1007,7 @@ if RUN_BARS:
         # Komorniczak best-of-9 (best clf)
         kpath = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_ba_{drift_type}.npy')
         kb = np.nan
+        vb = best_vanilla(drift_type)
         if os.path.exists(kpath):
             kfin = np.mean(np.load(kpath)[:, :, -1, :], axis=1)   # (n_measures, n_clfs)
             kb = float(np.nanmax(kfin))
@@ -1006,6 +1017,7 @@ if RUN_BARS:
         for version in ABFS_VERSIONS:
             abfs_ba[version].append(per_version[version])
         komor_ba.append(kb)
+        vanilla_ba.append(vb)
         baselines.append(1.0 / n_concepts)
 
     if not drifts:
@@ -1013,7 +1025,7 @@ if RUN_BARS:
     else:
         fname = os.path.join(FIGURES_DIR, 'ba_per_version.png')
         n_groups = len(drifts)
-        n_bars   = len(ABFS_VERSIONS) + 1
+        n_bars   = len(ABFS_VERSIONS) + 2
         width    = 0.8 / n_bars
         x        = np.arange(n_groups)
 
@@ -1024,6 +1036,8 @@ if RUN_BARS:
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
 
+        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width,vanilla_ba,width,color='#808080',label='Distributional baseline')
+
         for gi in range(n_groups):
             ax.hlines(baselines[gi], x[gi] - width/2, x[gi] + n_bars*width - width/2,
                       color='red', linestyle='--', linewidth=1.0,
@@ -1033,7 +1047,7 @@ if RUN_BARS:
         ax.set_xticklabels([f'{d} drift' for d in drifts], fontsize=10)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 1: BA per EMF version vs Komorniczak (best classifier)')
+        ax.set_title('Exp 1: EMF vs Komorniczak vs Vanilla (BA, best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1103,10 +1117,10 @@ if args.vanilla:
     rows_csv = []
     for cell, v, a, k in rows:
         rows_csv.append(dict(
-            cell=cell,
+            drift_type=cell,
             vanilla_ba=v,
-            abfs_best_ba=a,
-            komor_best_ba=k
+            emf_best_ba=a,
+            komorniczak_best_ba=k
         ))
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp1.csv')

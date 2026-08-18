@@ -123,31 +123,3 @@ def extract_metafeatures_raw_temporal(wt, wt_prev=None, normalise=True):
 
 
 MF_NAMES_RAW_TEMPORAL = [f'r_f{j+1}' for j in range(10)] + ['delta_mean', 'cosine_sim']
-
-
-def extract_metafeatures_raw_delta(wt, wt_prev=None):
-    wt = np.array(wt, dtype=float)
-    if wt_prev is not None:
-        wt_prev = np.array(wt_prev, dtype=float)
-        delta_mean = float(np.abs(wt - wt_prev).mean())
-    else:
-        delta_mean = 0.0
-    total = wt.sum()
-    wt_norm = wt / (total + 1e-10)
-    return np.concatenate([wt_norm, [delta_mean]])
-
-def extract_metafeatures_raw_cosine(wt, wt_prev=None):
-    wt = np.array(wt, dtype=float)
-    if wt_prev is not None:
-        wt_prev = np.array(wt_prev, dtype=float)
-        norm_t    = np.linalg.norm(wt)
-        norm_prev = np.linalg.norm(wt_prev)
-        if norm_t > 1e-10 and norm_prev > 1e-10:
-            cosine_sim = float(np.dot(wt, wt_prev) / (norm_t * norm_prev))
-        else:
-            cosine_sim = 1.0
-    else:
-        cosine_sim = 1.0
-    total = wt.sum()
-    wt_norm = wt / (total + 1e-10)
-    return np.concatenate([wt_norm, [cosine_sim]])

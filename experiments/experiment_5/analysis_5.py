@@ -1038,7 +1038,7 @@ if RUN_BARS:
 
     VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
 
-    streams, abfs_ba, komor_ba = [], {v: [] for v in ABFS_VERSIONS}, []
+    streams, abfs_ba, komor_ba, vanilla_ba = ([], {v: [] for v in ABFS_VERSIONS}, [], [])
     for stream_name in REAL_STREAMS:
         # best clf per EMF version at the final window
         row_ok = False
@@ -1047,6 +1047,12 @@ if RUN_BARS:
             d = load(f'preq_abfs_{version}_ba', stream_name, optional=True)
             per_version[version] = float(np.max(d[-1, :])) if d is not None else np.nan
             row_ok |= d is not None
+
+        vb = np.nan
+        d = load('preq_vanilla_ba', stream_name, optional=True)
+        if d is not None:
+            vb = float(np.max(d[-1, :]))
+
         # best Komorniczak group (best clf)
         kb = np.nan
         for measure in MEASURES:
@@ -1060,13 +1066,14 @@ if RUN_BARS:
         for version in ABFS_VERSIONS:
             abfs_ba[version].append(per_version[version])
         komor_ba.append(kb)
+        vanilla_ba.append(vb)
 
     if not streams:
         print("  no data -- skipping.")
     else:
         fname = os.path.join(FIGURES_DIR, 'ba_per_version.png')
         n_groups = len(streams)
-        n_bars   = len(ABFS_VERSIONS) + 1            # 3 versions + Komorniczak
+        n_bars   = len(ABFS_VERSIONS) + 2            # 3 versions + Komorniczak + vanilla
         width    = 0.8 / n_bars
         x        = np.arange(n_groups)
 
@@ -1077,6 +1084,7 @@ if RUN_BARS:
                    label=f'EMF {ABFS_LABELS[version]}')
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
+        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width, vanilla_ba, width, color='#808080', label='Distributional baseline')
 
         # random-baseline marker per stream
         for gi, s in enumerate(streams):
@@ -1089,7 +1097,7 @@ if RUN_BARS:
         ax.set_xticklabels(streams, rotation=20, ha='right', fontsize=9)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 5: BA per EMF version vs Komorniczak (best classifier)')
+        ax.set_title('Exp 5: EMF vs Komorniczak vs Vanilla (BA, best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1142,7 +1150,7 @@ if args.vanilla:
         rows.append(dict(
             stream=stream,
             vanilla_ba=v,
-            abfs_best_ba=a,
+            emf_best_ba=a,
             komor_best_ba=k,
             random_baseline=1.0 / N_CONCEPTS[stream]
         ))

@@ -753,10 +753,10 @@ if args.vanilla:
     rows_csv = []
     for cell, v, a, k in rows:
         rows_csv.append(dict(
-            cell=cell,
+            drift_type=cell,
             vanilla_ba=v,
-            abfs_best_ba=a,
-            komor_best_ba=k
+            emf_best_ba=a,
+            komorniczak_best_ba=k
         ))
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp4.csv')
