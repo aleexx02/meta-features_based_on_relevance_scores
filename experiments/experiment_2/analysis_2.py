@@ -1052,7 +1052,7 @@ if args.vanilla:
             drift_type=cell,
             Vanilla_BA=v,
             ReMF_best_BA=a,
-            Komorniczak_best_ba=k
+            Komorniczak_best_BA=k
         ))
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp2.csv')
