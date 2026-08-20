@@ -6,7 +6,7 @@
 # This module is the prequential equivalent of
 # classifier_sweep_komor.py. It is used by:
 #   - evaluate_concept_classification_1.py: to run the sweep
-#     on our EMF meta-features
+#     on our ReMF meta-features
 #   - komor_concept_classification_1.py: to run the sweep on
 #     their pre-extracted meta-features
 #

@@ -2,12 +2,12 @@
 # ==============================================================================
 # Experiment 2: Stream Configuration Sensitivity
 #
-# Tests how ALL THREE EMF meta-feature versions and all 9 Komorniczak
+# Tests how ALL THREE ReMF meta-feature versions and all 9 Komorniczak
 # measure groups respond to changes in:
 #   - chunk_size   : 100, 200, 500, 1000
 #   - n_informative: 3, 5, 10, 15 (n_features fixed at 20)
 #
-# EMF versions:
+# ReMF versions:
 #   - aggstats    : 8-dim aggregate statistics
 #   - raw scores  : 20-dim normalized relevance vector
 #   - raw+temporal: 22-dim (v2.0 + delta_mean + cosine_sim)
@@ -19,7 +19,7 @@
 # Komorniczak baseline: all 9 measure groups re-extracted using pymfe
 # on the same streams.
 #
-# Output: both EMF and Komorniczak classifier-sweep results
+# Output: both ReMF and Komorniczak classifier-sweep results
 # (preq_abfs_*, preq_komor_*) -> results/experiment_2/.
 # NOTE: unlike Experiments 3/4, Komorniczak's raw pymfe features are NOT
 # cached anywhere under external/komorniczak/, instead, extract_komor_metafeatures()
@@ -35,7 +35,7 @@
 #   preq_komor_{measure}_kappa_chunk{cs}_ninf{ni}_{drift}.npy  (n_reps, n_windows, n_clfs)
 #
 #   Figures saved in results/experiment_2/figures/:
-#     heatmap_comparison_komorniczak_EMF_preq_chunk{cs}_ninf{ni}_{drift}.png
+#     heatmap_comparison_komorniczak_ReMF_preq_chunk{cs}_ninf{ni}_{drift}.png
 # ==============================================================================
 
 import numpy as np
@@ -165,7 +165,7 @@ def plot_combined_heatmap(tag, drift_type, n_concepts, abfs_results_dict):
         komor_matrix[m_id, :]     = np.mean(arr[:, -1, :], axis=0)
         komor_std_matrix[m_id, :] = np.std(arr[:, -1, :],  axis=0)
  
-    # EMF matrix (3 x n_clfs)
+    # ReMF matrix (3 x n_clfs)
     abfs_matrix     = np.full((len(ABFS_VERSIONS), N_CLFS), np.nan)
     abfs_std_matrix = np.full((len(ABFS_VERSIONS), N_CLFS), np.nan)
     for v_id, version in enumerate(ABFS_VERSIONS):
@@ -174,7 +174,7 @@ def plot_combined_heatmap(tag, drift_type, n_concepts, abfs_results_dict):
         else:
             path = os.path.join(RESULTS_DIR, f'preq_abfs_{version}_ba_{tag}.npy')
             if not os.path.exists(path):
-                print(f"  Heatmap: missing EMF {version} — skipping.")
+                print(f"  Heatmap: missing ReMF {version} — skipping.")
                 return
             arr = np.load(path)
         abfs_matrix[v_id, :]     = np.mean(arr[:, -1, :], axis=0)
@@ -333,7 +333,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
                   f"| drift={drift_type}  [tag: {tag}]")
             print(f"{'='*70}")
  
-            # ---- EMF: all 3 versions ----
+            # ---- ReMF: all 3 versions ----
             abfs_results = {v: {'ba': [], 'f1': [], 'kappa': []}
                             for v in ABFS_VERSIONS}
             versions_needed = [v for v in ABFS_VERSIONS
@@ -342,7 +342,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
             abfs_arrays = {}   # {version: (n_reps, n_windows, n_clfs)}
  
             if not versions_needed:
-                print("  All EMF versions done — loading from disk.")
+                print("  All ReMF versions done — loading from disk.")
                 for version in ABFS_VERSIONS:
                     abfs_arrays[version] = np.load(
                         os.path.join(RESULTS_DIR, f'preq_abfs_{version}_ba_{tag}.npy'))
@@ -351,7 +351,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
                 y_reps            = []
  
                 for rep_id, rs in enumerate(RANDOM_STATES):
-                    print(f"\n  [EMF] Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
+                    print(f"\n  [ReMF] Replication {rep_id+1}/{N_REPLICATIONS} (seed={rs})...")
                     Xa, Xr, Xrt, y = extract_abfs_metafeatures(
                         rs, drift_type, n_drifts, concept_sigmoid_spacing,
                         chunk_size, n_informative)
@@ -362,7 +362,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
  
                 for version in ABFS_VERSIONS:
                     if already_done_abfs(tag, version):
-                        print(f"  EMF [{version}] already done — loading.")
+                        print(f"  ReMF [{version}] already done — loading.")
                         abfs_arrays[version] = np.load(
                             os.path.join(RESULTS_DIR, f'preq_abfs_{version}_ba_{tag}.npy'))
                         continue
@@ -373,7 +373,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
                         y = y_reps[rep_id]
                         _, _, tba, _, _, tf1, _, _, tk = run_prequential_sweep(X, y)
                         ba_list.append(tba); f1_list.append(tf1); kappa_list.append(tk)
-                        print(f"    [Preq EMF {version} rep{rep_id+1}] " + "  ".join(
+                        print(f"    [Preq ReMF {version} rep{rep_id+1}] " + "  ".join(
                             f"{n}={tba[-1, i]:.3f}"
                             for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
  
@@ -382,7 +382,7 @@ for drift_type, n_drifts, concept_sigmoid_spacing, n_concepts in DRIFT_CONFIGS:
                     save(np.array(f1_list), f'preq_abfs_{version}_f1',    tag)
                     save(np.array(kappa_list), f'preq_abfs_{version}_kappa', tag)
                     abfs_arrays[version] = ba_arr
-                    print(f"  Saved EMF [{version}] for {tag}")
+                    print(f"  Saved ReMF [{version}] for {tag}")
  
             # ---- Komorniczak: all 9 measure groups ----
             for measure in MEASURES:

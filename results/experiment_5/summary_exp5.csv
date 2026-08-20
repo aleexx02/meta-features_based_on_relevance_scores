@@ -1,6 +1,0 @@
-stream;n_feat;n_conc;n_drifts;n_win;baseline;best Komor (grp/clf);Komor BA;best EMF (ver/clf);EMF BA;gap
-INSECTS-abrupt_balanced;33;6;5;529;0,1667;statistical / HT;0,6777;Aggstats / HT;0,6975;0,0198
-INSECTS-abrupt_imbalanced;33;6;5;3553;0,1667;general / MLP;0,9641;Aggstats / MLP;0,9107;-0,0534
-INSECTS-incgradual_balanced;33;2;1;242;0,5000;general / MLP;0,9314;Aggstats / MLP;0,9535;0,0221
-INSECTS-incgradual_imbalanced;33;2;1;1434;0,5000;general / MLP;0,9941;Aggstats / MLP;0,9939;-0,0002
-SPAM;499;6;5;94;0,1667;concept / KNN;0,5788;Raw scores / GNB;0,7194;0,1406

@@ -1,17 +1,17 @@
 # evaluate_concept_classification_1.py
 
 # ============================================================
-# Experiment 1: Prequential evaluation of EMF
+# Experiment 1: Prequential evaluation of ReMF
 # meta-features using River classifiers (test-then-train).
 #
 # Same streams, same concept labelling.
 # Evaluation protocol: prequential (test-then-train per window).
-# EMF warmup: first WARMUP_WINDOWS windows skipped.
+# ReMF warmup: first WARMUP_WINDOWS windows skipped.
 #
 # Metrics: cumulative balanced accuracy, macro F1, Cohen's Kappa
 # per window per classifier per replication.
 #
-# Output: EMF classifier-sweep results (clf_ba/f1/kappa_*.npy) and
+# Output: ReMF classifier-sweep results (clf_ba/f1/kappa_*.npy) and
 # the comparison heatmap -> results/experiment_1/. This script never
 # touches Komorniczak's features; that happens in komor_concept_classification_1.py.
 
@@ -25,8 +25,8 @@
 # where n_windows = N_CHUNKS - WARMUP_WINDOWS = 4990
 
 # And 2 figures in results/experiment_1/figures (1 per drift type):
-#   heatmap_comparison_komorniczak_EMF_sudden.png
-#   heatmap_comparison_komorniczak_EMF_gradual.png
+#   heatmap_comparison_komorniczak_ReMF_sudden.png
+#   heatmap_comparison_komorniczak_ReMF_gradual.png
 # Note: run komor_concept_classification_1.py first to generate
 # the Komorniczak baseline files needed for the comparison plots.
 # ============================================================
@@ -271,13 +271,13 @@ for drift_type, n_drifts, concept_sigmoid_spacing in DRIFT_CONFIGS:
             print(f"{name:<6s} {all_mean_ba[mf_type][clf_id]:>10.4f}")
 
     # ============================================================
-    #  COMPARISON - our EMF meta-features vs komor_concept_classif
+    #  COMPARISON - our ReMF meta-features vs komor_concept_classif
     # ============================================================
     rc_path = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_ba_{drift_type}.npy')
 
     if os.path.exists(rc_path):
         rc_raw = np.load(rc_path)  # shape: (n_measures, n_replications, n_windows, n_clfs)
         plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_median_ba, rc_raw, MEASURES, BASE_CLFS_PREQUENTIAL,drift_type, n_concepts, FIGURES_DIR,
-            exp_label='1',filename=f'heatmap_comparison_komorniczak_EMF_{drift_type}.png')
+            exp_label='1',filename=f'heatmap_comparison_komorniczak_ReMF_{drift_type}.png')
     else:
         print(f"\nWarning: {rc_path} not found - run komor_concept_classification_1.py first.")

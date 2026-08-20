@@ -1,5 +1,5 @@
 # ============================================================
-#  Sanity check: can EMF relevance scores detect concept drift?
+#  Sanity check: can ReMF relevance scores detect concept drift?
 #
 #  Goals:
 #    1. Verify that relevance scores change at drift moments
@@ -15,9 +15,9 @@
 #
 # For each stream produces the following outputs:
 #   1. relevance_scores_{stream_type}_{drift_type}.png
-    #      EMF relevance scores over time with drift markers.
+    #      ReMF relevance scores over time with drift markers.
     #      One per drift type since relevance scores do not depend
-    #      on the meta-feature set, only on EMF and the stream.
+    #      on the meta-feature set, only on ReMF and the stream.
 #   2. metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png
     #      meta-feature evolution across windows with drift markers.
     #      One per meta-feature set per drift type.
@@ -40,7 +40,7 @@ from collections import defaultdict
 from river.datasets import synth as river_synth
 
 from abfs.abfs_implementation import (
-    EMF, ConfigResetWeightProp, ConfigReset, ConfigWeightProp,
+    ReMF, ConfigResetWeightProp, ConfigReset, ConfigWeightProp,
 )
 from metafeatures.mf_extraction import (
     extract_metafeatures, extract_metafeatures_raw, extract_metafeatures_raw_temporal,
@@ -94,14 +94,14 @@ SEA_STAGGER_CONFIGS = [
 ]
 GROUND_TRUTH = {'SEA_SUDDEN': ({0,1}, {0,1}), 'STG_12': ({1,2}, {0})}
 
-# Four settings of the SAME scoring mechanism (EMF), used to justify
-# EMF's two design choices. Each is its own named class -- no flags.
-# These are NOT "ABFS vs EMF": ABFS produces a feature subset, not scores.
+# Four settings of the SAME scoring mechanism (ReMF), used to justify
+# ReMF's two design choices. Each is its own named class -- no flags.
+# These are NOT "ABFS vs ReMF": ABFS produces a feature subset, not scores.
 CONFIGS = [
     ("orig",     ConfigResetWeightProp),  # reset + weight propagation (ABFS-style choices)
     ("noweight", ConfigReset),            # reset only (no weight propagation)
     ("noreset",  ConfigWeightProp),       # weight propagation only (no reset)
-    ("emf",      EMF),                     # EMF: no reset, no weight propagation
+    ("emf",      ReMF),                     # ReMF: no reset, no weight propagation
 ]
 
 # SEA / STAGGER configuration
@@ -127,7 +127,7 @@ palette = [
 # ============================================================
 
 def make_emf(n_features, chunk_size):
-    return EMF(n_features=n_features, categorical_features=[], accuracy_window_size=chunk_size, class_window_size=chunk_size)
+    return ReMF(n_features=n_features, categorical_features=[], accuracy_window_size=chunk_size, class_window_size=chunk_size)
 
 
 def make_sea_sudden_drift(drift_position=5000, seed=42, noise=0.1):
@@ -275,13 +275,13 @@ if RUN_STREAMLEARN:
                    label='concept boundary')
         ax.set_xlabel(f'Time (x{SL_SCORE_INTERVAL} instances)')
         ax.set_ylabel('Relevance score')
-        ax.set_title(f'EMF relevance scores - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})')
+        ax.set_title(f'ReMF relevance scores - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})')
         ax.legend(ncol=5, fontsize=8)
         fig.tight_layout()
         fname = f'relevance_scores_{stream_type}_{drift_type}.png'
         fig.savefig(os.path.join(FIGURES_DIR, fname), dpi=150)
         plt.close()
-        print(f"\n*** Plot of EMF relevance scores for {drift_type} stream saved at:\n\t '{os.path.join(FIGURES_DIR, fname)}' ***")
+        print(f"\n*** Plot of ReMF relevance scores for {drift_type} stream saved at:\n\t '{os.path.join(FIGURES_DIR, fname)}' ***")
 
         # pass 2: meta-features per MF type
         for mf_type, mf_names, n_mf_cols in SL_MF_CONFIGS:

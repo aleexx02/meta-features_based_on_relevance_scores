@@ -4,7 +4,7 @@ import numpy as np
 
 def extract_metafeatures(wt, wt_prev, drift_count, time_since_drift, threshold=0.05):
     """
-    Extract meta-features from ABFS relevance state.
+    Extract meta-features from ReMF relevance state.
     
     Parameters:
         wt              : current relevance score vector [score_f1, ..., score_fd]
@@ -68,7 +68,7 @@ MF_NAMES_AGGSTATS = ["entropy", "n_relevant", "max_score", "std_score", "delta_m
 # This is a simpler version that just returns the raw relevance scores as meta-features.
 def extract_metafeatures_raw(wt, normalise=True):
     """
-    Use the raw ABFS relevance score vector directly as meta-features.
+    Use the raw ReMF relevance score vector directly as meta-features.
     
     Parameters:
         wt        : current relevance score vector [score_f1, ..., score_fd]
@@ -89,7 +89,7 @@ MF_NAMES_RAW = [f'r_f{j+1}' for j in range(10)]
 # This is a simpler version that just returns the raw relevance scores as meta-features.
 def extract_metafeatures_raw_temporal(wt, wt_prev=None, normalise=True):
     """
-    Use the raw ABFS relevance score vector directly as meta-features.
+    Use the raw ReMF relevance score vector directly as meta-features.
     
     Parameters:
         wt: current relevance score vector [score_f1, ..., score_fd]

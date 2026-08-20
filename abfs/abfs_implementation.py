@@ -16,22 +16,22 @@ from collections import deque
 #     boosted CHAIN of one-feature stumps that outputs a selected
 #     feature SUBSET (in / out). It does not output per-feature scores.
 #
-#   - EMF runs one INDEPENDENT depth-1 Hoeffding stump + one ADWIN per
+#   - ReMF runs one INDEPENDENT depth-1 Hoeffding stump + one ADWIN per
 #     feature, in PARALLEL (no chain, no feature removal, no selection),
 #     never resets on drift, and reads out a normalized RELEVANCE SCORE
 #     per feature. That score vector is what we turn into meta-features.
 #
-# The ablation configs below exist ONLY to justify EMF's two design
+# The ablation configs below exist ONLY to justify ReMF's two design
 # choices -- they switch ON the two ABFS-style behaviours (reset,
 # weight propagation) so we can show why we left them OFF. They are
-# four settings of ONE mechanism, not "ABFS vs EMF".
+# four settings of ONE mechanism, not "ABFS vs ReMF".
 #
 # NOTE on weight propagation: the lambda update rule matches Oza online
 # boosting / Barddal's pseudocode, BUT it is applied to independent
 # per-feature stumps in fixed index order (not ABFS's selection-ordered
 # chain with feature removal). So the weight-prop config tests
 # "boosting-style weighting", NOT faithful original ABFS. Describe it
-# that way. Our ablation shows it does not help, so EMF omits it.
+# that way. Our ablation shows it does not help, so ReMF omits it.
 # ============================================================
 
 
@@ -52,7 +52,7 @@ class _PerFeatureRelevanceTracker:
         reset_on_drift      -- rebuild a feature's stump when ADWIN fires
         weight_propagation  -- Oza-style boosting weight across features
 
-    Both default OFF here; the canonical method EMF keeps them OFF.
+    Both default OFF here; the canonical method ReMF keeps them OFF.
 
     Design notes:
       * Feature encoding: numeric features -> float (stump learns a
@@ -215,8 +215,8 @@ class _PerFeatureRelevanceTracker:
 #  The method
 # ============================================================
 
-class EMF(_PerFeatureRelevanceTracker):
-    """EMF -- our relevance-scoring mechanism (Extended Mechanism for
+class ReMF(_PerFeatureRelevanceTracker):
+    """ReMF -- our relevance-scoring mechanism (Extended Mechanism for
     Feature-relevance). Independent per-feature stumps, NO reset on
     drift, NO weight propagation. This is the method used in all the
     experiments."""
@@ -226,7 +226,7 @@ class EMF(_PerFeatureRelevanceTracker):
 
 # ============================================================
 #  Ablation configurations (used ONLY by the sanity-check script)
-#  Four settings of the SAME mechanism above. They justify EMF's two
+#  Four settings of the SAME mechanism above. They justify ReMF's two
 #  design choices by switching the ABFS-style behaviours back ON.
 #
 #  sanity-check label  ->  class here            (reset , weight-prop)
@@ -234,7 +234,7 @@ class EMF(_PerFeatureRelevanceTracker):
 #  orig                ->  ConfigResetWeightProp  ( on   , on  )
 #  noweight            ->  ConfigReset            ( on   , off )
 #  noreset             ->  ConfigWeightProp       ( off  , on  )
-#  emf                 ->  EMF                    ( off  , off )
+#  emf                 ->  ReMF                    ( off  , off )
 # ============================================================
 
 class ConfigResetWeightProp(_PerFeatureRelevanceTracker):
@@ -258,4 +258,4 @@ class ConfigWeightProp(_PerFeatureRelevanceTracker):
 
 
 
-ABFS_match = EMF
+ABFS_match = ReMF

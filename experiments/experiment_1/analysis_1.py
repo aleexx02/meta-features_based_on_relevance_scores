@@ -30,7 +30,7 @@
 #      - Includes Komorniczak baseline
 #
 #   5. Stream analysis plots (per replication x drift type):
-#      - Feature-mean drift intensity, EMF relevance-score change,
+#      - Feature-mean drift intensity, ReMF relevance-score change,
 #        and label entropy overlaid on one plot
 #      - Class distribution of the underlying binary classification
 #        target over time
@@ -41,7 +41,7 @@
 #
 #   6. Gap heatmap (one per drift type):
 #      - gap_heatmap_preq_{drift_type}.png
-#      - Gap (EMF raw v2.0 minus best-of-9 Komorniczak measure group)
+#      - Gap (ReMF raw v2.0 minus best-of-9 Komorniczak measure group)
 #        at the final window, mean across replications, one cell per
 #        classifier. Same "raw v2.0 vs Komorniczak best" comparison
 #        used in analysis_2.py / analysis_3.py; the unit here is
@@ -103,7 +103,7 @@ parser.add_argument('--performance', action='store_true', help='Run performance 
 parser.add_argument('--shap',       action='store_true', help='Run SHAP analysis')
 parser.add_argument('--metrics',    action='store_true', help='Run metrics heatmaps')
 parser.add_argument('--stream_analysis', action='store_true', help='Run stream analysis plots')
-parser.add_argument('--gap', action='store_true', help='Run gap heatmap (EMF raw v2.0 vs Komorniczak best)')
+parser.add_argument('--gap', action='store_true', help='Run gap heatmap (ReMF raw v2.0 vs Komorniczak best)')
 parser.add_argument('--bars', action='store_true')
 parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--vanilla', action='store_true')
@@ -558,7 +558,7 @@ if RUN_SANITY_CHECK:
                 label='concept boundary')
             ax.set_xlabel('Time (x100 instances)')
             ax.set_ylabel('Relevance score')
-            ax.set_title(f'EMF relevance scores - {drift_type} drift '
+            ax.set_title(f'ReMF relevance scores - {drift_type} drift '
                 f'(seed={rs}) - experiment [1]')
             ax.legend(ncol=5, fontsize=8)
             fig.tight_layout()
@@ -694,7 +694,7 @@ if RUN_PERFORMANCE:
 
 
 # ============================================================
-#  3. SHAP -- all 4 classifiers, all 3 EMF versions
+#  3. SHAP -- all 4 classifiers, all 3 ReMF versions
 # ============================================================
 if RUN_SHAP:
     print("\n" + "="*60)
@@ -872,7 +872,7 @@ if RUN_STREAM_ANALYSIS:
             drift_intensity_n = drift_intensity / (np.max(drift_intensity) + 1e-10)
             delta_relevance_n = delta_relevance / (np.max(delta_relevance) + 1e-10)
 
-            # ---- drift intensity vs EMF relevance change vs entropy ----
+            # ---- drift intensity vs ReMF relevance change vs entropy ----
             fname = os.path.join(FIGURES_DIR,
                 f'stream_drift_entropy_{drift_type}_rep{rep_id}.png')
             if not os.path.exists(fname):
@@ -881,7 +881,7 @@ if RUN_STREAM_ANALYSIS:
                 ax1.plot(drift_intensity_n, color='steelblue',
                         label='Drift intensity', linewidth=1.5)
                 ax1.plot(delta_relevance_n, color='purple',
-                        label='EMF relevance change', linewidth=1.2, alpha=0.7)
+                        label='ReMF relevance change', linewidth=1.2, alpha=0.7)
                 ax1.set_ylabel('Normalized value')
 
                 ax2 = ax1.twinx()
@@ -899,7 +899,7 @@ if RUN_STREAM_ANALYSIS:
                 lines_2, labels_2 = ax2.get_legend_handles_labels()
                 ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
-                ax1.set_title(f'Drift vs EMF dynamics - {drift_type} drift '
+                ax1.set_title(f'Drift vs ReMF dynamics - {drift_type} drift '
                     f'(seed={rs}) - experiment [1]')
 
                 fig.tight_layout()
@@ -933,7 +933,7 @@ if RUN_STREAM_ANALYSIS:
 
 
 # ============================================================
-#  6. GAP HEATMAP - EMF raw v2.0 vs Komorniczak best-of-9,
+#  6. GAP HEATMAP - ReMF raw v2.0 vs Komorniczak best-of-9,
 #  one file per drift type (no chunk_size/n_informative grid here
 #  the way Exp2 has, so drift type is the unit instead).
 # ============================================================
@@ -982,7 +982,7 @@ if RUN_GAP:
 
 
 # ============================================================
-#  BARS - BA per EMF version (best clf) + Komorniczak, per drift type
+#  BARS - BA per ReMF version (best clf) + Komorniczak, per drift type
 #  grouped bars, one group per drift type instead of per stream.
 # ============================================================
 if RUN_BARS:
@@ -994,7 +994,7 @@ if RUN_BARS:
 
     drifts, abfs_ba, komor_ba, vanilla_ba, baselines = ([], {v: [] for v in ABFS_VERSIONS}, [], [], [])
     for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
-        # best clf per EMF version (mean over reps, final window)
+        # best clf per ReMF version (mean over reps, final window)
         per_version = {}
         any_ok = False
         for version in ABFS_VERSIONS:
@@ -1032,11 +1032,11 @@ if RUN_BARS:
         fig, ax = plt.subplots(figsize=(max(7, n_groups * 2.2), 5))
         for bi, version in enumerate(ABFS_VERSIONS):
             ax.bar(x + bi * width, abfs_ba[version], width,
-                   color=VERSION_COLORS[version], label=f'EMF {ABFS_LABELS[version]}')
+                   color=VERSION_COLORS[version], label=f'ReMF {ABFS_LABELS[version]}')
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
 
-        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width,vanilla_ba,width,color='#808080',label='Distributional baseline')
+        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width,vanilla_ba,width,color='#808080',label='Vanilla baseline')
 
         for gi in range(n_groups):
             ax.hlines(baselines[gi], x[gi] - width/2, x[gi] + n_bars*width - width/2,
@@ -1047,7 +1047,7 @@ if RUN_BARS:
         ax.set_xticklabels([f'{d} drift' for d in drifts], fontsize=10)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 1: EMF vs Komorniczak vs Vanilla (BA, best classifier)')
+        ax.set_title('Exp 1: ReMF vs Komorniczak vs Vanilla (BA, best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1111,16 +1111,16 @@ if args.vanilla:
         if v is None:
             print(f"  {cell}: no vanilla results -- skipping"); continue
         rows.append((cell, v, a, k))
-        print(f"  {cell:10s}  vanilla={v:.3f}  EMF={a:.3f}  komor={k:.3f}")
+        print(f"  {cell:10s}  vanilla={v:.3f}  ReMF={a:.3f}  komor={k:.3f}")
 
-    import csv
+
     rows_csv = []
     for cell, v, a, k in rows:
         rows_csv.append(dict(
             drift_type=cell,
-            vanilla_ba=v,
-            emf_best_ba=a,
-            komorniczak_best_ba=k
+            Vanilla_BA=v,
+            ReMF_best_BA=a,
+            Komorniczak_best_BA=k
         ))
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp1.csv')
@@ -1129,45 +1129,120 @@ if args.vanilla:
 
 
 
+# ---- shared combined-summary core (paste once per analysis_N.py) ----
+def _per_clf_best_over(load_fn, keys, has_reps, clf_names):
+    n = len(clf_names)
+    best_ba = np.full(n, -1.0); best_lab = [None]*n
+    for label, prefix in keys:
+        v = _final_per_clf(load_fn(prefix), has_reps=has_reps)
+        if v is None: continue
+        for j in range(n):
+            if np.isfinite(v[j]) and v[j] > best_ba[j]:
+                best_ba[j] = float(v[j]); best_lab[j] = label
+    return ([b if lab is not None else None for b,lab in zip(best_ba,best_lab)],
+            [lab if lab is not None else '' for lab in best_lab])
+
+def _read_cost_lookup(path):
+    lut = {}
+    if not path or not os.path.exists(path):
+        print(f"  [cost] {path} not found -- cost columns left blank."); return lut
+    with open(path, newline='') as f:
+        for row in csv.DictReader(f, delimiter=';'):
+            try:
+                method=(row.get('method') or '').strip()
+                nf=int(float((row.get('n_features') or '').replace(',', '.')))
+            except (TypeError, ValueError): continue
+            def g(k):
+                v=(row.get(k) or '').strip().replace(',', '.')
+                try: return float(v)
+                except ValueError: return None
+            lut[(method,nf)]=dict(ms_per_window=g('ms_per_window'), peak_mb=g('peak_mb'))
+    return lut
+
+def combined_tail_header(clf_names, include_cost):
+    cols = ['ReMF best (repr / clf)','ReMF best BA',
+            'Komorniczak best (group / clf)','Komorniczak best BA',
+            'vanilla best (clf)','vanilla best BA',
+            'gap ReMF - Komorniczak (best vs best)']
+    if include_cost:
+        cols += ['ReMF time (ms/win)','ReMF peak MB (rel.)',
+                 'Komorniczak time (ms/win)','Komorniczak peak MB (rel.)']
+    for clf in clf_names:
+        cols += [f'ReMF {clf} BA', f'ReMF {clf} representation',
+                 f'Komorniczak {clf} BA', f'Komorniczak {clf} group',
+                 f'vanilla {clf} BA']
+    return cols
+
+def combined_tail_values(loadf, has_reps, clf_names, ab, kb, remf_keys, komor_keys,
+                         n_features=None, cost=None, include_cost=False):
+    vb_vec = _final_per_clf(loadf('preq_vanilla_ba'), has_reps)
+    if vb_vec is not None:
+        vj=int(np.nanargmax(vb_vec)); vb_clf, vb_ba = clf_names[vj], float(vb_vec[vj])
+    else:
+        vb_clf, vb_ba = '', None
+    remf_ba, remf_rep = _per_clf_best_over(loadf, remf_keys, has_reps, clf_names)
+    kom_ba, kom_grp = _per_clf_best_over(loadf, komor_keys, has_reps, clf_names)
+    van_ba = vb_vec if vb_vec is not None else [None]*len(clf_names)
+    vals = [f'{ab[0]} / {ab[1]}', ab[2], f'{kb[0]} / {kb[1]}', kb[2],
+            vb_clf, vb_ba, ab[2]-kb[2]]
+    if include_cost:
+        c_remf=(cost or {}).get(('ReMF', n_features), {})
+        c_kom=(cost or {}).get(('komorniczak', n_features), {})
+        vals += [c_remf.get('ms_per_window'), c_remf.get('peak_mb'),
+                 c_kom.get('ms_per_window'), c_kom.get('peak_mb')]
+    for j in range(len(clf_names)):
+        vals += [remf_ba[j], remf_rep[j], kom_ba[j], kom_grp[j],
+                 (float(van_ba[j]) if van_ba[j] is not None else None)]
+    return vals
+
+
 if args.summary:
-    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
-    rows = []
-    for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
-        # Komorniczak best-of-9 (mean over reps, final window)
+    print("\n" + "="*60); print("SUMMARY TABLE (combined)"); print("="*60)
+    ReMF_KEYS   = [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS]
+    KOMOR_KEYS = [(m, f'preq_komor_{m}_ba') for m in MEASURES]
+
+    def make_loadf_exp1(drift_type):
+        # Exp 1 stores ReMF as clf_ba_{version}_{drift} and Komorniczak as ONE
+        # stacked clf_komor_concept_classif_ba_{drift} array (measures on axis 0,
+        # in MEASURES order -- VERIFY that ordering against the evaluate script).
         kpath = os.path.join(RESULTS_DIR, f'clf_komor_concept_classif_ba_{drift_type}.npy')
-        if not os.path.exists(kpath):
+        kstack = np.load(kpath) if os.path.exists(kpath) else None
+        midx = {m: i for i, m in enumerate(MEASURES)}
+        def lf(prefix):
+            if prefix == 'preq_vanilla_ba':
+                p = os.path.join(RESULTS_DIR, f'preq_vanilla_ba_{drift_type}.npy')
+                return np.load(p) if os.path.exists(p) else None
+            if prefix.startswith('preq_abfs_') and prefix.endswith('_ba'):
+                ver = prefix[len('preq_abfs_'):-len('_ba')]
+                p = os.path.join(RESULTS_DIR, f'clf_ba_{ver}_{drift_type}.npy')
+                return np.load(p) if os.path.exists(p) else None
+            if prefix.startswith('preq_komor_') and prefix.endswith('_ba'):
+                m = prefix[len('preq_komor_'):-len('_ba')]
+                return kstack[midx[m]] if (kstack is not None and m in midx) else None
+            return None
+        return lf
+
+    header, rows = None, []
+    for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
+        loadf = make_loadf_exp1(drift_type)
+        ab = best_side(loadf, ReMF_KEYS, has_reps=True)
+        kb = best_side(loadf, KOMOR_KEYS, has_reps=True)
+        if ab[0] is None or kb[0] is None:
             continue
-        kfin = np.mean(np.load(kpath)[:, :, -1, :], axis=1)   # (n_measures, n_clfs)
-        ki, kj = np.unravel_index(np.nanargmax(kfin), kfin.shape)
-        k_label, k_clf, k_ba = MEASURES[ki], clf_names[kj], float(kfin[ki, kj])
-        # best EMF over available versions (mean over reps, final window)
-        best = (None, None, -1.0)
-        for version, vlabel in ABFS_MF_CONFIGS_FULL:
-            apath = os.path.join(RESULTS_DIR, f'clf_ba_{version}_{drift_type}.npy')
-            if not os.path.exists(apath):
-                continue
-            af = np.mean(np.load(apath)[:, -1, :], axis=0)    # (n_clfs,)
-            j = int(np.nanargmax(af))
-            if af[j] > best[2]:
-                best = (vlabel, clf_names[j], float(af[j]))
-        if best[0] is None:
-            continue
-        rb = 1.0 / n_concepts
-        rows.append([
-            drift_type,
-            N_FEATURES,
-            n_concepts,
-            rb,
-            f'{k_label} / {k_clf}',
-            k_ba,
-            f'{best[0]} / {best[1]}',
-            best[2],
-            best[2] - k_ba
-        ])
-    header = ['drift', 'n_feat', 'n_conc', 'baseline',
-              'best Komor (grp/clf)', 'Komor BA',
-              'best EMF (ver/clf)', 'EMF BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1.csv'), header, rows)
+        meta = [
+            ('stream', 'stream-learn'),
+            ('n_features', N_FEATURES),
+            ('drift_type', drift_type),
+            ('n_concepts', n_concepts),
+            ('random_baseline', 1.0 / n_concepts),
+        ]
+        tail = combined_tail_values(loadf, True, clf_names, ab, kb,
+                                    ReMF_KEYS, KOMOR_KEYS, include_cost=False)
+        if header is None:
+            header = [c for c, _ in meta] + combined_tail_header(clf_names, include_cost=False)
+        rows.append([v for _, v in meta] + tail)
+    if header is not None:
+        write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp1.csv'), header, rows)
     
 
 if args.concept_dist_features:

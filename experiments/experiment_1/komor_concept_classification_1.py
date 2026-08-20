@@ -8,7 +8,7 @@
 # using the same prequential (test-then-train) protocol as
 # evaluate_concept_classification_1.py. The first
 # WARMUP_WINDOWS windows are skipped to align with our
-# EMF-based meta-features.
+# ReMF-based meta-features.
 #
 # Unlike replication_check_1a.py, this is NOT a replication
 # of their original results — the protocol differs (prequential
@@ -28,7 +28,7 @@
 
 # RUN: their meta-features evaluated with our prequential protocol
 # COMPARISON: their meta-features (prequential) vs our meta-features (prequential)
-# COMPARE: meta-features (theirs vs our EMF-based)
+# COMPARE: meta-features (theirs vs our ReMF-based)
 
 # Input: Komorniczak's pre-extracted meta-features, written once by
 #          E1_extract_synthetic.py (external/komorniczak/results/synthetic/),

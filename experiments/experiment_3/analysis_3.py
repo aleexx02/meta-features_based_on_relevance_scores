@@ -700,9 +700,9 @@ if args.vanilla:
     for cell, v, a, k in rows:
         rows_csv.append(dict(
             drift_type=cell,
-            vanilla_ba=v,
-            emf_best_ba=a,
-            komorniczak_best_ba=k
+            Vanilla_BA=v,
+            ReMF_best_BA=a,
+            Komorniczak_best_BA=k
         ))
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp3.csv')
@@ -800,12 +800,12 @@ def write_combined_summary(specs, results_dir, out_name, meta_of,
         else:
             vb_clf, vb_ba = '', None
 
-        emf_ba, emf_rep = _per_clf_best_over(loadf, ReMF_KEYS,   has_reps)
+        remf_ba, remf_rep = _per_clf_best_over(loadf, ReMF_KEYS,   has_reps)
         kom_ba, kom_grp = _per_clf_best_over(loadf, KOMOR_KEYS, has_reps)
         van_ba = vb_vec if vb_vec is not None else [None] * N_CLFS
 
         nf = spec.get('n_features')
-        c_emf = cost.get(('ReMF', nf), {})
+        c_remf = cost.get(('ReMF', nf), {})
         c_kom = cost.get(('komorniczak', nf), {})
 
         meta = meta_of(spec)
@@ -817,16 +817,16 @@ def write_combined_summary(specs, results_dir, out_name, meta_of,
             f'{kb[0]} / {kb[1]}', kb[2],
             vb_clf, vb_ba,
             ab[2] - kb[2],
-            c_emf.get('ms_per_window'), c_emf.get('peak_mb'),
+            c_remf.get('ms_per_window'), c_remf.get('peak_mb'),
             c_kom.get('ms_per_window'), c_kom.get('peak_mb'),
         ]
         for j in range(N_CLFS):
-            row += [emf_ba[j], emf_rep[j], kom_ba[j], kom_grp[j],
+            row += [remf_ba[j], remf_rep[j], kom_ba[j], kom_grp[j],
                     (float(van_ba[j]) if van_ba[j] is not None else None)]
         rows.append(row)
         print(f"  {cell:34s} ReMF {ab[2]:.3f} ({ab[0]}/{ab[1]})  "
               f"Komor {kb[2]:.3f} ({kb[0]}/{kb[1]})  "
-              f"ReMF cost {c_emf.get('ms_per_window','NA')} ms/win")
+              f"ReMF cost {c_remf.get('ms_per_window','NA')} ms/win")
 
     if header is None:
         print("  No cells with results -- nothing written."); return

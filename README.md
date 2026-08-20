@@ -42,8 +42,8 @@ The **report** drops the batch-CV experiment (1a) and renumbers, so:
 ```
 meta-features_based_on_relevance_scores/
 │
-├── abfs/
-│   └── abfs_implementation.py
+├── ABFS/
+│   └── ABFS_implementation.py
 │
 ├── data/  # local data files - not committed to git
 │   └── real/

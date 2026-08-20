@@ -16,7 +16,7 @@ def print_sanity_check_summary(stream_name, is_streamlearn, mf_type, mf_names, m
     print(f"*** Sanity check summary: {stream_name} ***")
     print(f"{'-'*25}")
     print(f"Stream: {stream_name}")
-    print(f"EMF: {'ABFS_match' if is_streamlearn else 'ABFS_match'}")
+    print(f"ReMF: {'ABFS_match' if is_streamlearn else 'ABFS_match'}")
     print(f"Meta-features: {mf_type} ({len(mf_names)} features)")
     print(f"Total windows: {len(meta_features)}")
     print(f"Unique concepts: {len(unique_concepts)} {list(unique_concepts)}")
@@ -94,7 +94,7 @@ def plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_
     """
     One figure with two heatmaps side by side:
       - Left: Komorniczak results (their features, our protocol)
-      - Right: EMF results (aggstats, raw and raw+temporal)
+      - Right: ReMF results (aggstats , raw and raw+temporal)
 
     Parameters
     ----------
@@ -119,7 +119,7 @@ def plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_
     rc_std_matrix = np.std(rc_final, axis=1)       # (n_measures, n_clfs)
     rc_median_matrix = np.median(rc_final, axis=1) # (n_measures, n_clfs)
 
-    # EMF 
+    # ReMF 
     abfs_configs = [('aggstats', 'Aggregate stats'), ('raw', 'Raw scores'), ('raw_temporal', 'Raw + temporal')]
 
     abfs_matrix = np.array([all_mean_ba[mf_type] for mf_type, _ in abfs_configs])
@@ -148,7 +148,7 @@ def plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_
     ax.set_yticklabels(MEASURES, fontsize=10)
     ax.set_title('Komorniczak meta-features - balanced accuracy', fontsize=12)
 
-    # Right heatmap: EMF
+    # Right heatmap: ReMF
     ax = axes[1]
     im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
     ax.set_ylim(n_abfs - 0.5, -0.5)
@@ -163,15 +163,15 @@ def plot_heatmap_balanced_accuracy_comparison_exp1(all_mean_ba, all_std_ba, all_
     ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(n_abfs))
     ax.set_yticklabels(abfs_row_labels, fontsize=10)
-    ax.set_title('EMF meta-features - balanced accuracy', fontsize=12)
+    ax.set_title('ReMF meta-features - balanced accuracy', fontsize=12)
 
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
 
-    fig.suptitle(f'Komorniczak vs EMF - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',fontsize=15)
+    fig.suptitle(f'Komorniczak vs ReMF - {drift_type} drift ({n_concepts} concepts) - experiment [{exp_label}]',fontsize=15)
     plt.tight_layout()
 
     if filename is None:
-        filename = f'heatmap_comparison_komorniczak_EMF_{drift_type}.png'
+        filename = f'heatmap_comparison_komorniczak_ReMF_{drift_type}.png'
     path = os.path.join(FIGURES_DIR, filename)
     plt.savefig(path, dpi=150, bbox_inches='tight')
     plt.show()
@@ -191,7 +191,7 @@ def plot_heatmap_balanced_accuracy_comparison(
     Side-by-side heatmap for Experiments 2 and 3.
  
     Left  panel: Komorniczak — rows = 9 measure groups, cols = classifiers
-    Right panel: EMF        — rows = 3 versions,       cols = classifiers
+    Right panel: ReMF        — rows = 3 versions,       cols = classifiers
  
     Parameters
     ----------
@@ -238,7 +238,7 @@ def plot_heatmap_balanced_accuracy_comparison(
     ax.set_yticklabels(MEASURES, fontsize=10)
     ax.set_title('Komorniczak meta-features — balanced accuracy', fontsize=12)
  
-    # ---- right: EMF (3 rows) ----
+    # ---- right: ReMF (3 rows) ----
     ax = axes[1]
     im = ax.imshow(abfs_matrix, vmin=0.0, vmax=1.0, cmap='Blues', aspect='auto')
     abfs_row_labels = [ABFS_LABELS[v] for v in ABFS_VERSIONS]
@@ -255,17 +255,17 @@ def plot_heatmap_balanced_accuracy_comparison(
     ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(n_versions))
     ax.set_yticklabels(abfs_row_labels, fontsize=10)
-    ax.set_title('EMF meta-features — balanced accuracy', fontsize=12)
+    ax.set_title('ReMF meta-features — balanced accuracy', fontsize=12)
  
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
     fig.suptitle(
-        f'Komorniczak vs EMF — {drift_type} ({n_concepts} concepts) — {tag}\n'
+        f'Komorniczak vs ReMF — {drift_type} ({n_concepts} concepts) — {tag}\n'
         f'Prequential evaluation  |  random baseline = {random_baseline:.3f}',
         fontsize=13
     )
     plt.tight_layout()
  
-    filename = f'heatmap_comparison_komorniczak_EMF_{tag}.png'
+    filename = f'heatmap_comparison_komorniczak_ReMF_{tag}.png'
     path = os.path.join(FIGURES_DIR, filename)
     plt.savefig(path, dpi=150, bbox_inches='tight')
     plt.close()

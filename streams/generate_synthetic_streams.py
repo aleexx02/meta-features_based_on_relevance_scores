@@ -77,7 +77,7 @@
 #
 # Target class (npy last column) vs concept label: the last column is
 # the generator's REAL target (binary for SEA/STAGGER, 10-class digit
-# for LED) -- what EMF/Komorniczak classify per window. The concept
+# for LED) -- what ReMF/Komorniczak classify per window. The concept
 # label is concept_per_chunk[i], the GENERATIVE concept id, which
 # repeats on recurrence. Drift boundaries = np.diff(concept_per_chunk)
 # != 0.

@@ -20,30 +20,30 @@
 #
 # --sanity
 #   relevance_scores_{stream}.png
-#     EMF relevance scores over time, with concept drift boundaries
+#     ReMF relevance scores over time, with concept drift boundaries
 #     marked in red. For streams with more than
 #     N_FEATURES_CAP_THRESHOLD raw features (currently just SPAM,
 #     500 features), only the top N_TOP_FEATURES_CAPPED (by variance
 #     over time) are plotted -- plotting all 500 would be both
 #     unreadable and slow. See select_top_relevance_features().
 #
-#   metafeatures_{version}_{stream}.png  (one per EMF version)
+#   metafeatures_{version}_{stream}.png  (one per ReMF version)
 #     Each meta-feature dimension plotted over windows, with drift
 #     boundaries marked. Same feature-capping as above applies to
 #     the 'raw' and 'raw_temporal' versions (their dimensionality
 #     scales with n_features); 'aggstats' is always small (8 dims)
 #     and is never capped.
 #
-#   pca_{version}_{stream}.png  (one per EMF version)
+#   pca_{version}_{stream}.png  (one per ReMF version)
 #     2D PCA projection of the meta-feature space, coloured by
 #     concept label. Deliberately NOT capped -- PCA is cheap
 #     regardless of input dimensionality and benefits from seeing
 #     all features, unlike the per-feature trajectory plots above.
 #
 # --performance
-#   trajectory_EMF_{stream}.png
+#   trajectory_ReMF_{stream}.png
 #     Cumulative balanced accuracy over windows for all
-#     3 EMF versions stacked vertically, with drift
+#     3 ReMF versions stacked vertically, with drift
 #     boundaries and random baseline marked.
 #
 #   trajectory_komor_{stream}.png
@@ -51,7 +51,7 @@
 #     arranged in a 3x3 grid.
 #
 # --shap
-#   shap_all_clfs_{version}_{stream}.png  (one per EMF version)
+#   shap_all_clfs_{version}_{stream}.png  (one per ReMF version)
 #     Mean |SHAP| feature importance for all 4 classifiers
 #     arranged in a 2x2 subplot. Same feature-capping as --sanity
 #     applies here, and for the same reason it matters more: running
@@ -63,15 +63,15 @@
 #   heatmap_f1_{stream}.png
 #   heatmap_kappa_{stream}.png
 #     Side-by-side heatmaps of final F1 / Kappa values
-#     for Komorniczak (left) and EMF (right).
+#     for Komorniczak (left) and ReMF (right).
 #
 # --stream_analysis
 #   stream_drift_entropy_{stream}.png
-#     Feature-mean drift intensity, EMF relevance-score change, and
+#     Feature-mean drift intensity, ReMF relevance-score change, and
 #     label entropy overlaid on one plot, with drift boundaries
 #     marked. Loads pre-computed diagnostics from
 #     data/real/annotated_streams_analysis/ (saved by
-#     generate_real_streams.py) and re-extracts EMF relevance scores
+#     generate_real_streams.py) and re-extracts ReMF relevance scores
 #     for the delta_relevance overlay.
 #
 #   class_distribution_{stream}.png
@@ -80,7 +80,7 @@
 #
 # --gap
 #   gap_heatmap_preq_exp5_{stream}.png  (one PER STREAM, not combined)
-#     Gap (EMF raw minus best-of-9 Komorniczak measure group)
+#     Gap (ReMF raw minus best-of-9 Komorniczak measure group)
 #     at the final window, one cell per classifier, for that stream
 #     alone. Filename includes the stream name so multiple streams'
 #     gap heatmaps don't collide or get confused with each other.
@@ -184,7 +184,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 #  CONFIGURATION
 # ============================================================
 
-# Streams with more raw EMF features than this get truncated to the
+# Streams with more raw ReMF features than this get truncated to the
 # top N_TOP_FEATURES_CAPPED (by relevance-score variance) in the
 # per-feature plots (relevance_scores, metafeatures_raw*, SHAP). PCA
 # is never capped -- see module docstring. Threshold is set above
@@ -256,7 +256,7 @@ def load_gt(stream_name):
 
 
 def feat_names_for(version, n_features):
-    """Return human-readable feature names for a given EMF version."""
+    """Return human-readable feature names for a given ReMF version."""
     if version == 'aggstats':
         return MF_NAMES_AGGSTATS
     elif version == 'raw':
@@ -288,7 +288,7 @@ def select_top_relevance_features(X_raw, n_features):
 
 def re_extract_stream(stream_name, drift_chunks):
     """
-    Re-run EMF on the stream to get relevance scores and all 3 meta-feature
+    Re-run ReMF on the stream to get relevance scores and all 3 meta-feature
     versions for sanity and SHAP plots. This avoids having to store large
     intermediate arrays to disk -- only the prequential results are saved by
     evaluate_concept_classification_5.py.
@@ -561,7 +561,7 @@ if RUN_SANITY:
 
 # ============================================================
 #  PERFORMANCE TRAJECTORIES
-#  trajectory_EMF_{stream}.png
+#  trajectory_ReMF_{stream}.png
 #  trajectory_komor_{stream}.png
 # ============================================================
 if RUN_PERFORMANCE:
@@ -576,8 +576,8 @@ if RUN_PERFORMANCE:
         boundaries      = list(drift_chunks)
         print(f"\n  {stream_name}")
 
-        # all 3 EMF versions stacked vertically
-        fname = os.path.join(FIGURES_DIR, f'trajectory_EMF_{stream_name}.png')
+        # all 3 ReMF versions stacked vertically
+        fname = os.path.join(FIGURES_DIR, f'trajectory_ReMF_{stream_name}.png')
         if not os.path.exists(fname):
             fig, axes = plt.subplots(len(ABFS_VERSIONS), 1,
                                      figsize=(14, 4*len(ABFS_VERSIONS)),
@@ -601,7 +601,7 @@ if RUN_PERFORMANCE:
                 ax.legend(fontsize=9, ncol=4)
                 ax.set_ylim(0, 1)
             axes[-1].set_xlabel('Window', fontsize=10)
-            fig.suptitle(f'EMF trajectories -- {stream_name}\n'
+            fig.suptitle(f'ReMF trajectories -- {stream_name}\n'
                          f'({n_concepts} concepts | '
                          f'random baseline={random_baseline:.3f})',
                          fontsize=12)
@@ -665,7 +665,7 @@ if RUN_SHAP:
         print(f"\n  {stream_name}")
 
         # concept_labels_{stream}.npy contains the ground truth concept label
-        # per window, derived from the known drift boundaries (not from EMF).
+        # per window, derived from the known drift boundaries (not from ReMF).
         # It was saved by evaluate_concept_classification_5.py.
         y = load('concept_labels', stream_name)
         if y is None:
@@ -811,7 +811,7 @@ if RUN_METRICS:
             ax.set_xticks(range(N_CLFS)); ax.set_xticklabels(CLF_NAMES, fontsize=10)
             ax.set_yticks(range(len(ABFS_VERSIONS)))
             ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
-            ax.set_title(f'EMF -- {metric_label}', fontsize=12)
+            ax.set_title(f'ReMF -- {metric_label}', fontsize=12)
 
             fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
             fig.suptitle(
@@ -848,7 +848,7 @@ if RUN_STREAM_ANALYSIS:
             entropy_vals = np.load(os.path.join(
                 REAL_ANALYSIS_DIR, f'{stream_name}_label_entropy.npy'))
 
-            # ---- EMF RELEVANCE DYNAMICS ----
+            # ---- ReMF RELEVANCE DYNAMICS ----
             scores_over_time, _, _ = re_extract_stream(stream_name, drift_chunks)
 
             delta_relevance = np.linalg.norm(
@@ -882,9 +882,9 @@ if RUN_STREAM_ANALYSIS:
             ax1.plot(drift_intensity, color='steelblue',
                     label='Drift intensity', linewidth=1.5)
 
-            # ---- EMF dynamics ----
+            # ---- ReMF dynamics ----
             ax1.plot(delta_relevance, color='purple',
-                    label='EMF relevance change', linewidth=1.2, alpha=0.7)
+                    label='ReMF relevance change', linewidth=1.2, alpha=0.7)
 
             ax1.set_ylabel('Normalized value')
 
@@ -906,7 +906,7 @@ if RUN_STREAM_ANALYSIS:
             lines_2, labels_2 = ax2.get_legend_handles_labels()
             ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
 
-            ax1.set_title(f'Drift vs EMF dynamics -- {stream_name}')
+            ax1.set_title(f'Drift vs ReMF dynamics -- {stream_name}')
 
             fig.tight_layout()
             fig.savefig(fname, dpi=150, bbox_inches='tight')
@@ -945,7 +945,7 @@ if RUN_STREAM_ANALYSIS:
 
 
 #  ============================================================
-#  GAP HEATMAP - one file PER STREAM, 3 rows (one per EMF version).
+#  GAP HEATMAP - one file PER STREAM, 3 rows (one per ReMF version).
 #  Each cell (version, clf) is that version's final-window BA minus
 #  the best-of-9 Komorniczak group for that same classifier. best_komor
 #  is computed per classifier (max over the 9 groups), held fixed across
@@ -956,7 +956,7 @@ if RUN_STREAM_ANALYSIS:
 # ============================================================
 if RUN_GAP:
     print("\n" + "="*60)
-    print("GAP HEATMAP - per EMF version vs best Komorniczak group (per classifier)")
+    print("GAP HEATMAP - per ReMF version vs best Komorniczak group (per classifier)")
     print("="*60)
 
     for stream_name in REAL_STREAMS:
@@ -986,7 +986,7 @@ if RUN_GAP:
                 gap_matrix[v_id, :] = data[-1, :] - best_komor
 
         if np.all(np.isnan(gap_matrix)):
-            print(f"  {stream_name}: missing EMF data -- skipping.")
+            print(f"  {stream_name}: missing ReMF data -- skipping.")
             continue
 
         # provenance print: per version, per classifier
@@ -1016,7 +1016,7 @@ if RUN_GAP:
         ax.set_yticks(range(len(ABFS_VERSIONS)))
         ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
         ax.set_xlabel('Classifier', fontsize=11, labelpad=8)
-        ax.set_title(f'Gap per EMF version (version minus best Komorniczak) '
+        ax.set_title(f'Gap per ReMF version (version minus best Komorniczak) '
                      f'-- {stream_name}', fontsize=11, pad=10)
         cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         cbar.set_label('Gap (BA)', fontsize=9)
@@ -1027,7 +1027,7 @@ if RUN_GAP:
         
 
 # ============================================================
-#  BARS - BA per EMF version (best clf) + Komorniczak, per stream
+#  BARS - BA per ReMF version (best clf) + Komorniczak, per stream
 #  (Exp 5 has no swept parameter, so this replaces the sensitivity
 #   curves used in Exp 2/3/4: grouped bars, one group per stream.)
 # ============================================================
@@ -1040,7 +1040,7 @@ if RUN_BARS:
 
     streams, abfs_ba, komor_ba, vanilla_ba = ([], {v: [] for v in ABFS_VERSIONS}, [], [])
     for stream_name in REAL_STREAMS:
-        # best clf per EMF version at the final window
+        # best clf per ReMF version at the final window
         row_ok = False
         per_version = {}
         for version in ABFS_VERSIONS:
@@ -1081,7 +1081,7 @@ if RUN_BARS:
         for bi, version in enumerate(ABFS_VERSIONS):
             ax.bar(x + bi * width, abfs_ba[version], width,
                    color=VERSION_COLORS[version],
-                   label=f'EMF {ABFS_LABELS[version]}')
+                   label=f'ReMF {ABFS_LABELS[version]}')
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
         ax.bar(x + (len(ABFS_VERSIONS) + 1) * width, vanilla_ba, width, color='#808080', label='Distributional baseline')
@@ -1097,7 +1097,7 @@ if RUN_BARS:
         ax.set_xticklabels(streams, rotation=20, ha='right', fontsize=9)
         ax.set_ylabel('Final balanced accuracy (best clf)')
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 5: EMF vs Komorniczak vs Vanilla (BA, best classifier)')
+        ax.set_title('Exp 5: ReMF vs Komorniczak vs Vanilla (BA, best classifier)')
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
         fig.tight_layout()
@@ -1149,52 +1149,117 @@ if args.vanilla:
             continue
         rows.append(dict(
             stream=stream,
-            vanilla_ba=v,
-            emf_best_ba=a,
-            komor_best_ba=k,
+            Vanilla_BA=v,
+            ReMF_best_BA=a,
+            Komorniczak_best_BA=k,
             random_baseline=1.0 / N_CONCEPTS[stream]
         ))
-        print(f"  {stream:25s}  vanilla={v:.3f}  EMF={a:.3f}  komor={k:.3f}  "
+        print(f"  {stream:25s}  vanilla={v:.3f}  ReMF={a:.3f}  komor={k:.3f}  "
               f"(baseline {1/N_CONCEPTS[stream]:.3f})")
 
     out = os.path.join(RESULTS_DIR, 'vanilla_comparison_exp5.csv')
     write_dict_csv(out, rows)
 
 
+# ---- shared combined-summary core (paste once per analysis_N.py) ----
+def _per_clf_best_over(load_fn, keys, has_reps, clf_names):
+    n = len(clf_names)
+    best_ba = np.full(n, -1.0); best_lab = [None]*n
+    for label, prefix in keys:
+        v = _final_per_clf(load_fn(prefix), has_reps=has_reps)
+        if v is None: continue
+        for j in range(n):
+            if np.isfinite(v[j]) and v[j] > best_ba[j]:
+                best_ba[j] = float(v[j]); best_lab[j] = label
+    return ([b if lab is not None else None for b,lab in zip(best_ba,best_lab)],
+            [lab if lab is not None else '' for lab in best_lab])
+
+def _read_cost_lookup(path):
+    lut = {}
+    if not path or not os.path.exists(path):
+        print(f"  [cost] {path} not found -- cost columns left blank."); return lut
+    with open(path, newline='') as f:
+        for row in csv.DictReader(f, delimiter=';'):
+            try:
+                method=(row.get('method') or '').strip()
+                nf=int(float((row.get('n_features') or '').replace(',', '.')))
+            except (TypeError, ValueError): continue
+            def g(k):
+                v=(row.get(k) or '').strip().replace(',', '.')
+                try: return float(v)
+                except ValueError: return None
+            lut[(method,nf)]=dict(ms_per_window=g('ms_per_window'), peak_mb=g('peak_mb'))
+    return lut
+
+def combined_tail_header(clf_names, include_cost):
+    cols = ['ReMF best (repr / clf)','ReMF best BA',
+            'Komorniczak best (group / clf)','Komorniczak best BA',
+            'vanilla best (clf)','vanilla best BA',
+            'gap ReMF - Komorniczak (best vs best)']
+    if include_cost:
+        cols += ['ReMF time (ms/win)','ReMF peak MB (rel.)',
+                 'Komorniczak time (ms/win)','Komorniczak peak MB (rel.)']
+    for clf in clf_names:
+        cols += [f'ReMF {clf} BA', f'ReMF {clf} representation',
+                 f'Komorniczak {clf} BA', f'Komorniczak {clf} group',
+                 f'vanilla {clf} BA']
+    return cols
+
+def combined_tail_values(loadf, has_reps, clf_names, ab, kb, remf_keys, komor_keys,
+                         n_features=None, cost=None, include_cost=False):
+    vb_vec = _final_per_clf(loadf('preq_vanilla_ba'), has_reps)
+    if vb_vec is not None:
+        vj=int(np.nanargmax(vb_vec)); vb_clf, vb_ba = clf_names[vj], float(vb_vec[vj])
+    else:
+        vb_clf, vb_ba = '', None
+    remf_ba, remf_rep = _per_clf_best_over(loadf, remf_keys, has_reps, clf_names)
+    kom_ba, kom_grp = _per_clf_best_over(loadf, komor_keys, has_reps, clf_names)
+    van_ba = vb_vec if vb_vec is not None else [None]*len(clf_names)
+    vals = [f'{ab[0]} / {ab[1]}', ab[2], f'{kb[0]} / {kb[1]}', kb[2],
+            vb_clf, vb_ba, ab[2]-kb[2]]
+    if include_cost:
+        c_remf=(cost or {}).get(('ReMF', n_features), {})
+        c_kom=(cost or {}).get(('komorniczak', n_features), {})
+        vals += [c_remf.get('ms_per_window'), c_remf.get('peak_mb'),
+                 c_kom.get('ms_per_window'), c_kom.get('peak_mb')]
+    for j in range(len(clf_names)):
+        vals += [remf_ba[j], remf_rep[j], kom_ba[j], kom_grp[j],
+                 (float(van_ba[j]) if van_ba[j] is not None else None)]
+    return vals
+
+
 if args.summary:
-    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
-    rows = []
+    print("\n" + "="*60); print("SUMMARY TABLE (combined + cost)"); print("="*60)
+    ReMF_KEYS   = [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS]
+    KOMOR_KEYS = [(m, f'preq_komor_{m}_ba') for m in MEASURES]
+    cost = _read_cost_lookup(os.path.join(RESULTS_DIR, 'extraction_cost_exp5.csv'))
+    header, rows = None, []
     for s in REAL_STREAMS:
         loadf = lambda prefix, st=s: load(prefix, st, optional=True)
-        kb = best_side(loadf, [(m, f'preq_komor_{m}_ba') for m in MEASURES], has_reps=False)
-        ab = best_side(loadf, [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS], has_reps=False)
-        if kb[0] is None or ab[0] is None:
+        ab = best_side(loadf, ReMF_KEYS, has_reps=False)
+        kb = best_side(loadf, KOMOR_KEYS, has_reps=False)
+        if ab[0] is None or kb[0] is None:
             continue
-
-        rb = 1.0 / N_CONCEPTS[s]
+        nf = N_FEATURES[s]
         n_drifts_real = len(load_gt(s))
         cl = load('concept_labels', s, optional=True)
         n_win = len(cl) if cl is not None else '-'
-
-        rows.append([
-            s,
-            N_FEATURES[s],
-            N_CONCEPTS[s],
-            n_drifts_real,
-            n_win,
-            rb,
-            f'{kb[0]} / {kb[1]}',
-            kb[2],
-            f'{ab[0]} / {ab[1]}',
-            ab[2],
-            ab[2] - kb[2]
-        ])
-
-    header = ['stream', 'n_feat', 'n_conc', 'n_drifts', 'n_win', 'baseline',
-              'best Komor (grp/clf)', 'Komor BA',
-              'best EMF (ver/clf)', 'EMF BA', 'gap']
-
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp5.csv'), header, rows)    
+        meta = [
+            ('stream', s),
+            ('n_features', nf),
+            ('n_concepts', N_CONCEPTS[s]),
+            ('n_drifts', n_drifts_real),
+            ('n_windows', n_win),
+            ('random_baseline', 1.0 / N_CONCEPTS[s]),
+        ]
+        tail = combined_tail_values(loadf, False, CLF_NAMES, ab, kb,
+                                    ReMF_KEYS, KOMOR_KEYS,
+                                    n_features=nf, cost=cost, include_cost=True)
+        if header is None:
+            header = [c for c, _ in meta] + combined_tail_header(CLF_NAMES, include_cost=True)
+        rows.append([v for _, v in meta] + tail)
+    if header is not None:
+        write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp5.csv'), header, rows)    
 
 
 
@@ -1277,4 +1342,3 @@ if args.sparsity:
 
         
 print("\nAnalysis 5 complete.")
-
