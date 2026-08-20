@@ -876,6 +876,18 @@ if args.concept_dist_metafeatures:
     "stagger_chunk100_gradual": "complexity",
     "stagger_chunk100_sudden": "complexity",
     }
+
+    BEST_REMF_VARIANT = {
+    "led_chunk100_gradual": "aggstats",
+    "led_chunk100_sudden": "aggstats",
+
+    "sea_chunk100_gradual": "aggstats",
+    "sea_chunk100_sudden": "aggstats",
+
+    "stagger_chunk100_gradual": "aggstats",
+    "stagger_chunk100_sudden": "aggstats",
+}
+    
     STREAM_DIR = os.path.join(FIGURES_DIR, '..', 'streams')
     os.makedirs(STREAM_DIR, exist_ok=True)
 
@@ -992,7 +1004,7 @@ if args.concept_dist_metafeatures:
         method_mats = {}
         for v in ABFS_VERSIONS:
             ids, cm = _concept_means(Xbv[v], labels)
-            method_mats[f'remf_{v}'] = (ids, _pairwise_l2(cm))
+            method_mats[f'ReMF_{v}'] = (ids, _pairwise_l2(cm))
         ids, cm = _concept_means(_vanilla_matrix(raw_windows), labels)
         method_mats['vanilla'] = (ids, _pairwise_l2(cm))
         ids, cm = _concept_means(_raw_feature_matrix(raw_windows), labels)
@@ -1032,39 +1044,145 @@ if args.concept_dist_metafeatures:
                                      l2_mean=round(l2_mean, 4)))
             print(f"  {cell:28s} {method:22s} mean L2 {l2_mean:.4f}")
 
-        # ---- HERO 2-panel: raw features (blind) vs ReMF raw scores (recovers) ----
+        # ---- HERO 3-panel: Raw Features vs Best Komorniczak vs Best ReMF ----
+
         ids_raw, D_raw = raw_ref
-        ids_r, D_r = method_mats['remf_raw']
-        fig, axes = plt.subplots(1, 2, figsize=(11, 5))
-        for ax, (D, ids_, sub) in zip(
-                axes, [(D_raw, ids_raw, "Raw feature means (vanilla's view)"),
-                       (D_r, ids_r, "ReMF raw-score fingerprints")]):
-            Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
+
+        best_remf = BEST_REMF_VARIANT.get(cell)
+        best_komor = BEST_KOMOR_FAMILY.get(cell)
+
+        remf_key = f"ReMF_{best_remf}"
+        komor_key = f"komorniczak_{best_komor}"
+
+        if remf_key not in method_mats:
+            print(f"  missing {remf_key} for {cell} -- skipping hero panel")
+            continue
+
+        if komor_key not in method_mats:
+            print(f"  missing {komor_key} for {cell} -- skipping hero panel")
+            continue
+
+        ids_k, D_k = method_mats[komor_key]
+        ids_r, D_r = method_mats[remf_key]
+
+        panels = [
+            (D_raw, ids_raw, "Raw Features"),
+            (D_k, ids_k, f"Komorniczak ({best_komor})"),
+            (D_r, ids_r, f"ReMF ({best_remf})")
+        ]
+
+        # -------------------------------------------------------
+        # Shared colour scale across ALL representations
+        # -------------------------------------------------------
+        all_vals = []
+
+        for D, _, _ in panels:
+            Dm = D.astype(float).copy()
+            np.fill_diagonal(Dm, np.nan)
+
+            vals = Dm[np.isfinite(Dm)]
+            if vals.size:
+                all_vals.extend(vals)
+
+        if len(all_vals):
+            global_vmin = float(np.min(all_vals))
+            global_vmax = float(np.max(all_vals))
+        else:
+            global_vmin, global_vmax = 0.0, 1.0
+
+        if global_vmin == global_vmax:
+            global_vmin -= 0.5
+            global_vmax += 0.5
+
+        # -------------------------------------------------------
+        # Plot
+        # -------------------------------------------------------
+        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+
+        for ax, (D, ids_, subtitle) in zip(axes, panels):
+
+            Dm = D.astype(float).copy()
+            np.fill_diagonal(Dm, np.nan)
+
             finite = Dm[np.isfinite(Dm)]
-            vmin, vmax = ((float(finite.min()), float(finite.max()))
-                          if finite.size else (0.0, 1.0))
-            if vmin == vmax:
-                vmin, vmax = vmin - 0.5, vmax + 0.5
-            cmap = plt.cm.viridis.copy(); cmap.set_bad(color="lightgrey")
-            im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
-            ax.set_title(sub, fontsize=10)
-            ax.set_xticks(range(len(ids_))); ax.set_xticklabels(ids_, fontsize=6)
-            ax.set_yticks(range(len(ids_))); ax.set_yticklabels(ids_, fontsize=6)
+
+            mean_l2 = float(finite.mean()) if finite.size else 0.0
+
+            cmap = plt.cm.viridis.copy()
+            cmap.set_bad(color="lightgrey")
+
+            im = ax.imshow(
+                Dm,
+                cmap=cmap,
+                aspect="auto",
+                vmin=global_vmin,
+                vmax=global_vmax
+            )
+
+            ax.set_title(
+                f"{subtitle}\nmean L2 = {mean_l2:.2f}",
+                fontsize=10
+            )
+
+            ax.set_xticks(range(len(ids_)))
+            ax.set_xticklabels(ids_, fontsize=6)
+
+            ax.set_yticks(range(len(ids_)))
+            ax.set_yticklabels(ids_, fontsize=6)
+
             if len(ids_) <= 12 and finite.size:
-                span = vmax - vmin
+
+                span = global_vmax - global_vmin
+
                 for i in range(len(D)):
                     for j in range(len(D)):
+
                         if i == j:
                             continue
-                        norm = (D[i, j] - vmin) / span if span > 0 else 0.5
-                        ax.text(j, i, f"{D[i, j]:.2f}", ha="center", va="center",
-                                fontsize=6, color="white" if norm < 0.5 else "black")
-            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        fig.suptitle(f"{cell}: invisible in the data, visible to ReMF (rep-0)",
-                     fontsize=11)
+
+                        norm = (
+                            (D[i, j] - global_vmin) / span
+                            if span > 0 else 0.5
+                        )
+
+                        ax.text(
+                            j, i,
+                            f"{D[i, j]:.2f}",
+                            ha="center",
+                            va="center",
+                            fontsize=6,
+                            color="white" if norm < 0.5 else "black"
+                        )
+
+        # Single shared colourbar
+        cbar = fig.colorbar(
+            im,
+            ax=axes,
+            fraction=0.025,
+            pad=0.02
+        )
+        cbar.set_label("Concept distance (L2)", fontsize=9)
+
+        fig.suptitle(
+            f"{cell}: concept separation across representations (rep-0)",
+            fontsize=11
+        )
+
         fig.tight_layout()
-        hero = os.path.join(STREAM_DIR, f"hero_raw_vs_remf_{cell}.png")
-        fig.savefig(hero, dpi=150, bbox_inches="tight"); plt.close()
+
+        hero = os.path.join(
+            STREAM_DIR,
+            f"hero_raw_vs_komor_vs_remf_{cell}.png"
+        )
+
+        fig.savefig(
+            hero,
+            dpi=150,
+            bbox_inches="tight"
+        )
+
+        plt.close()
+
         print(f"  {cell:28s} hero panel -> {hero}")
 
 
