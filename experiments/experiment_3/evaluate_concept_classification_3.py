@@ -14,7 +14,7 @@
 # like Experiment 2).
 #
 # This is one plain serial script: it loops over all 24 cells, and for
-# each cell over N_REPLICATIONS seeds, extracting EMF (3 versions) and
+# each cell over N_REPLICATIONS seeds, extracting ReMF (3 versions) and
 # Komorniczak (9 measures) and running the prequential sweep. Results
 # stack into (n_reps, n_windows, n_clfs). Re-running skips cells whose
 # result files already exist with the right shape, and the Komorniczak
@@ -26,7 +26,7 @@
 # concept label per window is concept_per_chunk[i], the generative
 # concept id (exact, since we built the stream).
 #
-# WARMUP_WINDOWS = 0. EMF window size ties to the cell's chunk_size.
+# WARMUP_WINDOWS = 0. ReMF window size ties to the cell's chunk_size.
 #
 # Output: results/experiment_3/  (shape (n_reps, n_windows, n_clfs))
 #   preq_abfs_{version}_ba_{cell}.npy   / _f1_ / _kappa_
@@ -34,7 +34,7 @@
 #   concept_labels_{cell}.npy           (rep-0 concept labels)
 #   where {cell} = {gen}_chunk{cs}_{drift}
 # Figures: results/experiment_3/figures/
-#   heatmap_comparison_komorniczak_EMF_preq_exp3_{cell}.png
+#   heatmap_comparison_komorniczak_ReMF_preq_exp3_{cell}.png
 #
 # Run from project root:
 #   python experiments/experiment_3/evaluate_concept_classification_3.py
@@ -147,7 +147,7 @@ def chunk_iter(data, concept_per_chunk, chunk_size):
 
 
 # ============================================================
-#  COMBINED HEATMAP -- Komorniczak vs EMF, mean final window over reps
+#  COMBINED HEATMAP -- Komorniczak vs ReMF, mean final window over reps
 # ============================================================
 
 def plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions):
@@ -168,7 +168,7 @@ def plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions):
         else:
             path = os.path.join(RESULTS_DIR, f'preq_abfs_{version}_ba_{cell}.npy')
             if not os.path.exists(path):
-                print(f"  Heatmap: missing EMF {version} -- skipping."); return
+                print(f"  Heatmap: missing ReMF {version} -- skipping."); return
             abfs_matrix[v_id, :] = np.mean(np.load(path)[:, -1, :], axis=0)
 
     random_baseline = 1.0 / n_concepts
@@ -195,15 +195,15 @@ def plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions):
     ax.set_xticks(range(n_clfs)); ax.set_xticklabels(clf_names, fontsize=10)
     ax.set_yticks(range(len(ABFS_VERSIONS)))
     ax.set_yticklabels([ABFS_LABELS[v] for v in ABFS_VERSIONS], fontsize=10)
-    ax.set_title('EMF meta-features -- balanced accuracy', fontsize=12)
+    ax.set_title('ReMF meta-features -- balanced accuracy', fontsize=12)
 
     fig.colorbar(im, ax=axes[1], fraction=0.046, pad=0.04)
-    fig.suptitle(f'Komorniczak vs EMF -- {cell}\n'
+    fig.suptitle(f'Komorniczak vs ReMF -- {cell}\n'
                  f'Prequential | chunk_size={chunk_size} | mean of {N_REPLICATIONS} reps | '
                  f'random baseline = {random_baseline:.3f}', fontsize=13)
     plt.tight_layout()
     out = os.path.join(FIGURES_DIR,
-                       f'heatmap_comparison_komorniczak_EMF_preq_{EXP_TAG}_{cell}.png')
+                       f'heatmap_comparison_komorniczak_ReMF_preq_{EXP_TAG}_{cell}.png')
     plt.savefig(out, dpi=150, bbox_inches='tight'); plt.close()
     print(f"  Saved heatmap: {out}")
 
@@ -273,7 +273,7 @@ for spec in SPECS:
     n_concepts   = spec['n_concepts']
 
     if not abfs_needed and not komor_needed:
-        print("  Cell already complete -- loading EMF BA for heatmap.")
+        print("  Cell already complete -- loading ReMF BA for heatmap.")
         for v in ABFS_VERSIONS:
             tba_versions[v] = np.load(os.path.join(RESULTS_DIR, f'preq_abfs_{v}_ba_{cell}.npy'))
         plot_combined_heatmap(cell, n_concepts, chunk_size, tba_versions)
@@ -316,7 +316,7 @@ for spec in SPECS:
         save(np.array(abfs_acc[version]['kappa']), f'preq_abfs_{version}_kappa', cell)
         tba_versions[version] = tba_arr
         mf = np.mean(tba_arr[:, -1, :], axis=0)
-        print(f"  [EMF {version}] " + "  ".join(
+        print(f"  [ReMF {version}] " + "  ".join(
             f"{n}={mf[i]:.3f}" for i, (n, _) in enumerate(BASE_CLFS_PREQUENTIAL)))
 
     for measure in MEASURES:
