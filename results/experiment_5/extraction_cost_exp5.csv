@@ -1,4 +1,0 @@
-experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
-exp5;INSECTS-abrupt_balanced;ReMF;33;529;125,2390;236,7470;15,2900
-exp5;INSECTS-abrupt_balanced;Komorniczak;33;529;131,4310;248,4510;15,0400
-exp5;INSECTS-abrupt_balanced;Vanilla;33;529;0,0940;0,1780;0,6600
