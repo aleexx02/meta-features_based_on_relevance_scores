@@ -73,8 +73,7 @@ from classifier_sweep_prequential import run_prequential_sweep, BASE_CLFS_PREQUE
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 
-KOMOR_CACHE_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak',
-                               'results', 'synthetic_recurring')
+KOMOR_CACHE_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak', 'results', 'synthetic_recurring')
 RESULTS_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
 FIGURES_DIR     = os.path.join(PROJECT_ROOT, 'results', 'experiment_4', 'figures')
 os.makedirs(RESULTS_DIR,     exist_ok=True)
@@ -91,8 +90,7 @@ N_REPLICATIONS = 5
 SPECS = exp4_specs()
 
 _seed_rng = np.random.RandomState(SEED)
-RANDOM_STATES = [SEED] + [int(s) for s in
-                                 _seed_rng.randint(100, 100000, N_REPLICATIONS - 1)]
+RANDOM_STATES = [SEED] + [int(s) for s in _seed_rng.randint(100, 100000, N_REPLICATIONS - 1)]
 print(f"Replication seeds: {RANDOM_STATES}")
 print(f"Experiment 4 grid: {len(SPECS)} cells x {N_REPLICATIONS} reps")
 

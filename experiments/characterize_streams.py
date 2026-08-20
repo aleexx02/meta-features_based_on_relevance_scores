@@ -161,23 +161,57 @@ def plot_fingerprint(cm, concept_ids, title, out_path, centre=True,
  
  
 def plot_distance_matrix(cm, concept_ids, title, out_path):
-    """Heatmap of the pairwise concept-distance matrix."""
+    """Heatmap of the pairwise concept-distance matrix.
+
+    Fixes vs the original:
+      1. The zero diagonal is masked out (np.nan) so it no longer anchors the
+         colour scale at 0. Previously imshow coloured the diagonal zeros, which
+         stretched the scale downward and made genuinely different off-diagonal
+         distances look similar. Now vmin/vmax are set from the off-diagonal
+         values only, so cell colour tracks the actual spread of distances.
+      2. Annotation text colour is chosen from the SAME normalised scale that
+         drives the cell colour, and the caption states it is a legibility
+         choice — so a reader no longer misreads black/white text as encoding
+         magnitude. Magnitude is the cell colour / colourbar, full stop.
+    """
     D, _ = pairwise_l2(cm)
     n = len(cm)
+
+    # Mask the diagonal so it neither colours nor anchors the scale.
+    Dm = D.astype(float).copy()
+    np.fill_diagonal(Dm, np.nan)
+
+    # Scale from off-diagonal values only.
+    finite = Dm[np.isfinite(Dm)]
+    if finite.size == 0:                       # 1 concept, or all-zero distances
+        vmin, vmax = 0.0, 1.0
+    else:
+        vmin, vmax = float(finite.min()), float(finite.max())
+        if vmin == vmax:                       # all pairwise distances equal
+            vmin, vmax = vmin - 0.5, vmax + 0.5
+
+    cmap = plt.cm.viridis.copy()
+    cmap.set_bad(color="lightgrey")            # masked diagonal shows grey
+
     fig, ax = plt.subplots(figsize=(max(4, n * 0.35), max(4, n * 0.35)))
-    im = ax.imshow(D, cmap="viridis", aspect="auto")
+    im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
     ax.set_xticks(range(n))
     ax.set_xticklabels(concept_ids, fontsize=6, rotation=90)
     ax.set_yticks(range(n))
     ax.set_yticklabels(concept_ids, fontsize=6)
     ax.set_title(f"Pairwise concept distance (L2)\n{title}", fontsize=10)
-    if n <= 12 and D.max() > 0:
+
+    if n <= 12 and finite.size > 0:
+        span = vmax - vmin
         for i in range(n):
             for j in range(n):
-                if i != j:
-                    ax.text(j, i, f"{D[i, j]:.2f}", ha="center", va="center",
-                            fontsize=6,
-                            color="white" if D[i, j] < D.max() * 0.6 else "black")
+                if i == j:
+                    continue
+                norm = (D[i, j] - vmin) / span if span > 0 else 0.5
+                ax.text(j, i, f"{D[i, j]:.2f}", ha="center", va="center",
+                        fontsize=6,
+                        color="white" if norm < 0.5 else "black")
+
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cbar.set_label("L2 distance", fontsize=8)
     fig.tight_layout()

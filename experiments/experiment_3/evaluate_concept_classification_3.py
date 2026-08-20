@@ -88,8 +88,7 @@ N_REPLICATIONS = 5
 SPECS = exp3_specs()
 
 _seed_rng = np.random.RandomState(SEED)
-RANDOM_STATES = [SEED] + [int(s) for s in
-                                 _seed_rng.randint(100, 100000, N_REPLICATIONS - 1)]
+RANDOM_STATES = [SEED] + [int(s) for s in _seed_rng.randint(100, 100000, N_REPLICATIONS - 1)]
 print(f"Replication seeds: {RANDOM_STATES}")
 print(f"Experiment 3 grid: {len(SPECS)} cells x {N_REPLICATIONS} reps")
 

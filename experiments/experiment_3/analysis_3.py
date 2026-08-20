@@ -83,6 +83,7 @@ parser.add_argument('--grid',            action='store_true')
 parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary',         action='store_true')
 parser.add_argument('--concept_dist_features', action='store_true')
+parser.add_argument('--concept_dist_metafeatures', action='store_true')
 args = parser.parse_args()
 
 EXP_TAG = 'exp3'
@@ -710,41 +711,353 @@ if args.vanilla:
 
 
 
-if args.summary:
-    print("\n" + "="*60); print("SUMMARY TABLE"); print("="*60)
-    from streams.generate_synthetic_streams import TOTAL_INSTANCES
-    rows = []
-    for spec in SPECS:
+# ---- combined summary helpers (ReMF headers, per-classifier BA + cost) ----
+def _per_clf_best_over(load_fn, keys, has_reps):
+    """For each classifier, best final-window BA over (label, prefix) keys, and
+    which label achieved it. Returns (ba_vec, lab_vec); (None,'') where absent."""
+    best_ba = np.full(N_CLFS, -1.0)
+    best_lab = [None] * N_CLFS
+    for label, prefix in keys:
+        v = _final_per_clf(load_fn(prefix), has_reps=has_reps)
+        if v is None:
+            continue
+        for j in range(N_CLFS):
+            if np.isfinite(v[j]) and v[j] > best_ba[j]:
+                best_ba[j] = float(v[j]); best_lab[j] = label
+    out_ba = [b if lab is not None else None for b, lab in zip(best_ba, best_lab)]
+    out_lab = [lab if lab is not None else '' for lab in best_lab]
+    return out_ba, out_lab
+
+
+def _read_cost_lookup(path):
+    """extraction_cost_expN.csv -> {(method, n_features): {time_s, ms_per_window,
+    peak_mb}}. European format (';' + comma decimal). Empty if file absent."""
+    lut = {}
+    if not path or not os.path.exists(path):
+        print(f"  [cost] {path} not found -- cost columns left blank.")
+        return lut
+    with open(path, newline='') as f:
+        for row in csv.DictReader(f, delimiter=';'):
+            try:
+                method = (row.get('method') or '').strip()
+                nf = int(float((row.get('n_features') or '').replace(',', '.')))
+            except (TypeError, ValueError):
+                continue
+
+            def g(k):
+                v = (row.get(k) or '').strip().replace(',', '.')
+                try:
+                    return float(v)
+                except ValueError:
+                    return None
+            lut[(method, nf)] = dict(time_s=g('time_s'),
+                                     ms_per_window=g('ms_per_window'),
+                                     peak_mb=g('peak_mb'))
+    return lut
+
+
+def write_combined_summary(specs, results_dir, out_name, meta_of,
+                           has_reps=True, cost_name=None):
+    """Combined per-cell summary CSV. meta_of(spec) -> ordered [(col, val), ...].
+    cost_name: extraction-cost CSV filename in results_dir, or None for blank."""
+    EMF_KEYS   = [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS]
+    KOMOR_KEYS = [(m, f'preq_komor_{m}_ba') for m in MEASURES]
+
+    cost_path = os.path.join(results_dir, cost_name) if cost_name else None
+    cost = _read_cost_lookup(cost_path)
+
+    global_cols = [
+        'ReMF best (repr / clf)',         'ReMF best BA',
+        'Komorniczak best (group / clf)', 'Komorniczak best BA',
+        'vanilla best (clf)',             'vanilla best BA',
+        'gap ReMF - Komorniczak (best vs best)',
+    ]
+    cost_cols = [
+        'ReMF time (ms/win)',        'ReMF peak MB (rel.)',
+        'Komorniczak time (ms/win)', 'Komorniczak peak MB (rel.)',
+    ]
+    perclf_cols = []
+    for clf in CLF_NAMES:
+        perclf_cols += [
+            f'ReMF {clf} BA',        f'ReMF {clf} representation',
+            f'Komorniczak {clf} BA', f'Komorniczak {clf} group',
+            f'vanilla {clf} BA',
+        ]
+
+    header, rows = None, []
+    for spec in specs:
         cell = spec['name']
         loadf = lambda prefix, c=cell: load(prefix, c, optional=True)
-        kb = best_side(loadf, [(m, f'preq_komor_{m}_ba') for m in MEASURES], has_reps=True)
-        ab = best_side(loadf, [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS], has_reps=True)
-        if kb[0] is None or ab[0] is None:
+
+        ab = best_side(loadf, EMF_KEYS,   has_reps)
+        kb = best_side(loadf, KOMOR_KEYS, has_reps)
+        if ab[0] is None or kb[0] is None:
+            print(f"  {cell}: no ReMF/Komorniczak results -- skipping")
             continue
+        vb_vec = _final_per_clf(loadf('preq_vanilla_ba'), has_reps)
+        if vb_vec is not None:
+            vj = int(np.nanargmax(vb_vec)); vb_clf, vb_ba = CLF_NAMES[vj], float(vb_vec[vj])
+        else:
+            vb_clf, vb_ba = '', None
+
+        emf_ba, emf_rep = _per_clf_best_over(loadf, EMF_KEYS,   has_reps)
+        kom_ba, kom_grp = _per_clf_best_over(loadf, KOMOR_KEYS, has_reps)
+        van_ba = vb_vec if vb_vec is not None else [None] * N_CLFS
+
+        nf = spec.get('n_features')
+        c_emf = cost.get(('EMF', nf), {})
+        c_kom = cost.get(('komorniczak', nf), {})
+
+        meta = meta_of(spec)
+        if header is None:
+            header = [c for c, _ in meta] + global_cols + cost_cols + perclf_cols
+
+        row = [v for _, v in meta] + [
+            f'{ab[0]} / {ab[1]}', ab[2],
+            f'{kb[0]} / {kb[1]}', kb[2],
+            vb_clf, vb_ba,
+            ab[2] - kb[2],
+            c_emf.get('ms_per_window'), c_emf.get('peak_mb'),
+            c_kom.get('ms_per_window'), c_kom.get('peak_mb'),
+        ]
+        for j in range(N_CLFS):
+            row += [emf_ba[j], emf_rep[j], kom_ba[j], kom_grp[j],
+                    (float(van_ba[j]) if van_ba[j] is not None else None)]
+        rows.append(row)
+        print(f"  {cell:34s} ReMF {ab[2]:.3f} ({ab[0]}/{ab[1]})  "
+              f"Komor {kb[2]:.3f} ({kb[0]}/{kb[1]})  "
+              f"ReMF cost {c_emf.get('ms_per_window','NA')} ms/win")
+
+    if header is None:
+        print("  No cells with results -- nothing written."); return
+    write_summary_csv(os.path.join(results_dir, out_name), header, rows)
+
+
+if args.summary:
+    print("\n" + "="*60); print("SUMMARY TABLE (combined + cost)"); print("="*60)
+    from streams.generate_synthetic_streams import TOTAL_INSTANCES
+
+    def meta_of(spec):
         n_seg = len(spec['order'])
-        rb = 1.0 / spec['n_concepts']
-        rows.append([
-            spec['gen_name'],
-            spec['n_features'],
-            spec['transition'],
-            spec['chunk_size'],
-            n_seg,
-            spec['n_concepts'],
-            rb,
-            TOTAL_INSTANCES,
-            TOTAL_INSTANCES // n_seg,
-            f'{kb[0]} / {kb[1]}',
-            kb[2],
-            f'{ab[0]} / {ab[1]}',
-            ab[2],
-            ab[2] - kb[2]
-        ])
-    header = ['generator', 'n_feat', 'drift', 'chunk', 'n_seg', 'n_conc', 'baseline',
-              'n_inst', 'inst/seg',
-              'best Komor (grp/clf)', 'Komor BA',
-              'best EMF (ver/clf)', 'EMF BA', 'gap']
-    write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp3.csv'), header, rows)
+        return [
+            ('stream', spec['gen_name']),
+            ('n_features', spec['n_features']),
+            ('drift_type', spec['transition']),
+            ('chunk_size', spec['chunk_size']),
+            ('n_segments', n_seg),
+            ('n_concepts', spec['n_concepts']),
+            ('random_baseline', 1.0 / spec['n_concepts']),
+            ('n_instances', TOTAL_INSTANCES),
+            ('instances_per_segment', TOTAL_INSTANCES // n_seg),
+        ]
+
+    write_combined_summary(SPECS, RESULTS_DIR, 'summary_exp3.csv', meta_of,
+                           has_reps=True, cost_name='extraction_cost_exp3.csv')
     
+
+
+if args.concept_dist_metafeatures:
+    import itertools
+    print("\n" + "=" * 60)
+    print("CONCEPT SEPARATION IN META-FEATURE SPACE (rep-0; vanilla/komor/ReMF)")
+    print("=" * 60)
+
+    KEEP_CHUNK_SIZE = 100
+    REP_SEED = SEED                      # single rep = rep-0
+    KOMOR_FAMILY = 'statistical'         # which pymfe family to fingerprint
+    STREAM_DIR = os.path.join(FIGURES_DIR, '..', 'streams')
+    os.makedirs(STREAM_DIR, exist_ok=True)
+
+    # Komorniczak per-(cell,measure,seed) pymfe cache, written by
+    # evaluate_concept_classification_3.py. Same path construction as there.
+    KOMOR_CACHE_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak',
+                                   'results', 'synthetic_sea_stagger_led')
+
+    def _load_komor_cache(cell, measure, seed):
+        """Return the cached per-window pymfe matrix for one family, last
+        column dropped (it is the concept id), or None if absent."""
+        path = os.path.join(KOMOR_CACHE_DIR,
+                            f'komor_{cell}_{measure}_seed{seed}.npy')
+        if not os.path.exists(path):
+            return None, None
+        arr = np.load(path)
+        if arr.ndim != 2 or arr.shape[0] == 0:
+            return None, None
+        X = arr[:, :-1].astype(float)
+        y = arr[:, -1].astype(int)
+        X[np.isnan(X)] = 0; X[np.isinf(X)] = 0
+        return X, y
+
+    # ---- local L2 + fixed distance-matrix plotter (masked diagonal) ---------
+    def _pairwise_l2(cm):
+        n = len(cm); D = np.zeros((n, n))
+        for i, j in itertools.combinations(range(n), 2):
+            d = float(np.linalg.norm(cm[i] - cm[j]))
+            D[i, j] = D[j, i] = d
+        return D
+
+    def _plot_distance_matrix(D, concept_ids, title, out_path):
+        n = len(D)
+        Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
+        finite = Dm[np.isfinite(Dm)]
+        if finite.size == 0:
+            vmin, vmax = 0.0, 1.0
+        else:
+            vmin, vmax = float(finite.min()), float(finite.max())
+            if vmin == vmax:
+                vmin, vmax = vmin - 0.5, vmax + 0.5
+        cmap = plt.cm.viridis.copy(); cmap.set_bad(color="lightgrey")
+        fig, ax = plt.subplots(figsize=(max(4, n * 0.35), max(4, n * 0.35)))
+        im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
+        ax.set_xticks(range(n)); ax.set_xticklabels(concept_ids, fontsize=6, rotation=90)
+        ax.set_yticks(range(n)); ax.set_yticklabels(concept_ids, fontsize=6)
+        ax.set_title(title, fontsize=10)
+        if n <= 12 and finite.size > 0:
+            span = vmax - vmin
+            for i in range(n):
+                for j in range(n):
+                    if i == j:
+                        continue
+                    norm = (D[i, j] - vmin) / span if span > 0 else 0.5
+                    ax.text(j, i, f"{D[i, j]:.2f}", ha="center", va="center",
+                            fontsize=6, color="white" if norm < 0.5 else "black")
+        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label("L2 distance", fontsize=8)
+        fig.tight_layout(); fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        plt.close()
+
+    # ---- rep-0 fingerprint sources ------------------------------------------
+    def _remf_and_raw(cell, seed):
+        """ReMF matrices {version: X}, per-window concept labels, raw windows."""
+        spec = SPEC_BY_NAME[cell]
+        data, cpc = spec['builder'](seed)
+        n_features = spec['n_features']; chunk_size = spec['chunk_size']
+        X_full = data[:, :-1]; y_full = data[:, -1]
+        abfs = ABFS_match(n_features=n_features, categorical_features=[],
+                          accuracy_window_size=chunk_size, class_window_size=chunk_size)
+        mf = {'aggstats': [], 'raw': [], 'raw_temporal': []}
+        raw_windows, labels = [], []
+        wt_prev = None
+        for ci in range(len(cpc)):
+            s = ci * chunk_size; e = s + chunk_size
+            Xc, yc = X_full[s:e], y_full[s:e]
+            for i in range(len(Xc)):
+                abfs.update(Xc[i], yc[i])
+            wt = abfs.relevance_scores(); dc = abfs.pop_drift_count(); ts = abfs.time_since_drift
+            mf['aggstats'].append(extract_metafeatures(wt, wt_prev, dc, ts))
+            mf['raw'].append(extract_metafeatures_raw(wt))
+            mf['raw_temporal'].append(extract_metafeatures_raw_temporal(wt, wt_prev))
+            raw_windows.append(Xc); labels.append(int(cpc[ci])); wt_prev = wt
+
+        def clean(a):
+            a = np.array(a, dtype=float); a[np.isnan(a)] = 0; a[np.isinf(a)] = 0; return a
+        return {v: clean(mf[v]) for v in ABFS_VERSIONS}, np.array(labels), raw_windows
+
+    def _vanilla_matrix(raw_windows):
+        feats = [np.concatenate([np.asarray(w, float).mean(axis=0),
+                                 np.asarray(w, float).std(axis=0)])
+                 for w in raw_windows]
+        X = np.array(feats, dtype=float)
+        X[np.isnan(X)] = 1; X[np.isinf(X)] = 1
+        return X
+
+    def _raw_feature_matrix(raw_windows):
+        return np.array([np.asarray(w, float).mean(axis=0) for w in raw_windows])
+
+    def _concept_means(X, labels):
+        ids = sorted(np.unique(labels).tolist())
+        cm = np.array([X[labels == c].mean(axis=0) for c in ids])
+        return ids, cm
+
+    # ---- main loop (single rep) ---------------------------------------------
+    rows_summary = []
+    for spec in SPECS:
+        cell = spec['name']
+        if KEEP_CHUNK_SIZE is not None and spec['chunk_size'] != KEEP_CHUNK_SIZE:
+            continue
+
+        Xbv, labels, raw_windows = _remf_and_raw(cell, REP_SEED)
+
+        method_mats = {}
+        for v in ABFS_VERSIONS:
+            ids, cm = _concept_means(Xbv[v], labels)
+            method_mats[f'remf_{v}'] = (ids, _pairwise_l2(cm))
+        ids, cm = _concept_means(_vanilla_matrix(raw_windows), labels)
+        method_mats['vanilla'] = (ids, _pairwise_l2(cm))
+        ids, cm = _concept_means(_raw_feature_matrix(raw_windows), labels)
+        method_mats['raw_features'] = (ids, _pairwise_l2(cm))
+        raw_ref = method_mats['raw_features']
+
+        # Komorniczak from cache (single family, single rep)
+        Xk, yk = _load_komor_cache(cell, KOMOR_FAMILY, REP_SEED)
+        if Xk is None:
+            print(f"  [komor] cache miss for {cell} / {KOMOR_FAMILY} "
+                  f"seed{REP_SEED} -- skipping komor for this cell.")
+        else:
+            # cache row order == window order == labels order (same chunk_iter,
+            # WARMUP_WINDOWS=0), so reuse `labels`; fall back to yk if lengths differ.
+            lab = labels if len(labels) == len(Xk) else yk
+            ids, cm = _concept_means(Xk, lab)
+            method_mats[f'komorniczak_{KOMOR_FAMILY}'] = (ids, _pairwise_l2(cm))
+
+        for method, (ids_m, D) in method_mats.items():
+            off = D[~np.eye(len(D), dtype=bool)]
+            l2_mean = float(off.mean()) if off.size else 0.0
+            l2_min = float(off.min()) if off.size else 0.0
+            l2_max = float(off.max()) if off.size else 0.0
+            title = (f"{method}  |  {cell}\n"
+                     f"concept distance in meta-feature space "
+                     f"(mean L2 {l2_mean:.3f}, rep-0)")
+            out = os.path.join(STREAM_DIR, f"distance_mf_{method}_{cell}.png")
+            _plot_distance_matrix(D, ids_m, title, out)
+            rows_summary.append(dict(cell=cell, method=method,
+                                     n_concepts=len(ids_m), rep=int(REP_SEED),
+                                     l2_min=round(l2_min, 4),
+                                     l2_max=round(l2_max, 4),
+                                     l2_mean=round(l2_mean, 4)))
+            print(f"  {cell:28s} {method:22s} mean L2 {l2_mean:.4f}")
+
+        # ---- HERO 2-panel: raw features (blind) vs ReMF raw scores (recovers) ----
+        ids_raw, D_raw = raw_ref
+        ids_r, D_r = method_mats['remf_raw']
+        fig, axes = plt.subplots(1, 2, figsize=(11, 5))
+        for ax, (D, ids_, sub) in zip(
+                axes, [(D_raw, ids_raw, "Raw feature means (vanilla's view)"),
+                       (D_r, ids_r, "ReMF raw-score fingerprints")]):
+            Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
+            finite = Dm[np.isfinite(Dm)]
+            vmin, vmax = ((float(finite.min()), float(finite.max()))
+                          if finite.size else (0.0, 1.0))
+            if vmin == vmax:
+                vmin, vmax = vmin - 0.5, vmax + 0.5
+            cmap = plt.cm.viridis.copy(); cmap.set_bad(color="lightgrey")
+            im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
+            ax.set_title(sub, fontsize=10)
+            ax.set_xticks(range(len(ids_))); ax.set_xticklabels(ids_, fontsize=6)
+            ax.set_yticks(range(len(ids_))); ax.set_yticklabels(ids_, fontsize=6)
+            if len(ids_) <= 12 and finite.size:
+                span = vmax - vmin
+                for i in range(len(D)):
+                    for j in range(len(D)):
+                        if i == j:
+                            continue
+                        norm = (D[i, j] - vmin) / span if span > 0 else 0.5
+                        ax.text(j, i, f"{D[i, j]:.2f}", ha="center", va="center",
+                                fontsize=6, color="white" if norm < 0.5 else "black")
+            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        fig.suptitle(f"{cell}: invisible in the data, visible to ReMF (rep-0)",
+                     fontsize=11)
+        fig.tight_layout()
+        hero = os.path.join(STREAM_DIR, f"hero_raw_vs_remf_{cell}.png")
+        fig.savefig(hero, dpi=150, bbox_inches="tight"); plt.close()
+        print(f"  {cell:28s} hero panel -> {hero}")
+
+
+
+    if rows_summary:
+        out = os.path.join(RESULTS_DIR, 'concept_distance_metafeatures_exp3.csv')
+        write_dict_csv(out, rows_summary)
+        print(f"  Saved: {out}")
 
 
 if args.concept_dist_features:
