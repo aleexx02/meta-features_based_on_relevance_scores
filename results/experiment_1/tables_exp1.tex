@@ -1,0 +1,30 @@
+% Auto-generated from summary_exp1.csv
+% Requires \usepackage{booktabs}.
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stream-learn, drifttype=sudden. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.380 (Aggstats) & 0.838 (statistical) & \textbf{0.989} & 0.048 \\
+KNN & 0.862 (Raw + temporal) & 0.665 (statistical) & \textbf{0.953} & 0.048 \\
+HT & 0.653 (Raw + temporal) & 0.896 (statistical) & \textbf{0.991} & 0.048 \\
+MLP & 0.605 (Aggstats) & 0.790 (clustering) & \textbf{0.876} & 0.048 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stream-learn, drifttype=gradual. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.310 (Aggstats) & 0.488 (statistical) & \textbf{0.750} & 0.040 \\
+KNN & 0.454 (Raw scores) & 0.383 (statistical) & \textbf{0.636} & 0.040 \\
+HT & 0.364 (Raw + temporal) & 0.640 (statistical) & \textbf{0.741} & 0.040 \\
+MLP & 0.562 (Aggstats) & \textbf{0.582 (clustering)} & 0.548 & 0.040 \\
+\bottomrule
+\end{tabular}
+\end{table}

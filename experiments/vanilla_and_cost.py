@@ -1,15 +1,15 @@
 # vanilla_and_cost.py
 # ==============================================================================
 # SHARED add-on used by ALL experiments (1, 2, 3, 4, 5). Adds two things
-# without re-running the expensive ReMF / Komorniczak extraction:
+# without re-running the expensive ReMF / Komorniczak / Vanilla extraction:
 #
 #   1. VANILLA BASELINE — trivial meta-features: per-feature mean + std of each
 #      raw window, run through the SAME prequential sweep as ReMF/Komorniczak.
 #      The only difference from the real approaches is the meta-features, so it
 #      is a fair floor. Saved as preq_vanilla_{ba,f1,kappa}_{tag}.npy.
 #
-#   2. EXTRACTION COST — wall-clock time + peak python-heap memory for ReMF and
-#      Komorniczak extraction, timed on ONE representative cell per experiment.
+#   2. EXTRACTION COST — wall-clock time + peak python-heap memory for ReMF,
+#      Komorniczak and Vanilla extraction, timed on ONE representative cell per experiment.
 #      Written to extraction_cost_{exp}.csv.
 #
 # Everything experiment-specific (how to build a stream's windows, warmup,
@@ -94,31 +94,31 @@ def timed_closure(fn):
 #  EXPERIMENT SPEC
 # ------------------------------------------------------------------
 class ExperimentSpec:
-    """
-    name            : 'exp2', 'exp3', ...
-    results_dir     : absolute path to results/experiment_X/
-    cells           : list of tags to run the VANILLA baseline on
-    seeds           : replication seeds (1 seed for real streams)
-    window_provider : fn(cell, seed) -> (windows, labels)
-    cost_abfs       : fn(cell, seed) -> zero-arg CLOSURE that extracts ABFS
-                      features and returns n_windows. Stream building must
-                      happen OUTSIDE the closure.
-    cost_komor      : fn(cell, seed) -> zero-arg CLOSURE, same contract.
-    n_features_of   : fn(cell) -> int
-    cost_cells      : which cells to time. Default: first cell only (cost is
-                      feature-count driven). For exp5 pass ALL streams, so
-                      SPAM's 500-feature cost is captured.
-    """
-    def __init__(self, name, results_dir, cells, seeds,
-                 window_provider, cost_abfs, cost_komor, n_features_of,
-                 cost_cells=None):
+
+    def __init__(
+        self,
+        name,
+        results_dir,
+        cells,
+        seeds,
+        window_provider,
+        cost_remf,
+        cost_komor,
+        cost_vanilla,
+        n_features_of,
+        cost_cells=None
+    ):
+
         self.name = name
         self.results_dir = results_dir
         self.cells = cells
         self.seeds = seeds
         self.window_provider = window_provider
-        self.cost_abfs = cost_abfs
+
+        self.cost_remf = cost_remf
         self.cost_komor = cost_komor
+        self.cost_vanilla = cost_vanilla
+
         self.n_features_of = n_features_of
         self.cost_cells = cost_cells if cost_cells is not None else cells[:1]
  
@@ -168,14 +168,16 @@ def run_experiment(spec, do_vanilla=True, do_cost=True):
             nf = spec.n_features_of(cell)
  
             # build stream OUTSIDE the timer; get back a pure-extraction closure
-            abfs_fn  = spec.cost_abfs(cell, seed)
-            n_win, t_abfs, mem_abfs = timed_closure(abfs_fn)
+            remf_fn  = spec.cost_remf(cell, seed)
+            n_win, t_remf, mem_remf = timed_closure(remf_fn)
  
             komor_fn = spec.cost_komor(cell, seed)
             _,     t_kom,  mem_kom  = timed_closure(komor_fn)
+
+            van_fn = spec.cost_vanilla(cell, seed)
+            _, t_van, mem_van = timed_closure(van_fn)
  
-            for method, dt, mem in [('ReMF', t_abfs, mem_abfs),
-                                    ('komorniczak', t_kom, mem_kom)]:
+            for method, dt, mem in [('ReMF', t_remf, mem_remf), ('Komorniczak', t_kom, mem_kom), ('Vanilla', t_van, mem_van)]:
                 cost_rows.append(dict(
                     experiment=spec.name, tag=cell, method=method,
                     n_features=nf, n_windows=n_win,
@@ -183,8 +185,10 @@ def run_experiment(spec, do_vanilla=True, do_cost=True):
                     ms_per_window=round(1000 * dt / max(n_win, 1), 3),
                     peak_mb=round(mem, 2)))
             print(f"  [{spec.name}] cost: {cell} (n_features={nf})  "
-                  f"ReMF {1000*t_abfs/max(n_win,1):.1f} ms/win, {mem_abfs:.1f} MB | "
-                  f"komor {1000*t_kom/max(n_win,1):.1f} ms/win, {mem_kom:.1f} MB")
+            f"ReMF {1000*t_remf/max(n_win,1):.1f} ms/win, {mem_remf:.1f} MB | "
+            f"komor {1000*t_kom/max(n_win,1):.1f} ms/win, {mem_kom:.1f} MB | "
+            f"vanilla {1000*t_van/max(n_win,1):.1f} ms/win, {mem_van:.1f} MB")
+
  
         if cost_rows:
             path = os.path.join(

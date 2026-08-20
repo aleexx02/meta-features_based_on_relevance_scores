@@ -14,7 +14,11 @@ warnings.filterwarnings('ignore')
 sys.path.append('..')     # experiments/
 sys.path.append('../..')  # project root
 
-from vanilla_and_cost import ExperimentSpec, run_experiment
+from vanilla_and_cost import (
+    ExperimentSpec,
+    run_experiment,
+    vanilla_features_from_windows
+)
 
 from strlearn.streams import StreamGenerator
 from abfs.abfs_implementation import ABFS_match
@@ -79,7 +83,19 @@ def window_provider(cell, seed):
     return windows, labels
 
 
-def cost_abfs(cell, seed):
+def cost_vanilla(cell, seed):
+
+    windows, _ = window_provider(cell, seed)
+
+    def _extract():
+
+        Xv = vanilla_features_from_windows(windows)
+
+        return len(Xv)
+
+    return _extract
+
+def cost_remf(cell, seed):
     cfg = CELL_CONFIG[cell]
     drift_type, n_drifts, spacing, _, cs, ni = cfg
     config = dict(n_drifts=n_drifts, n_chunks=N_CHUNKS, chunk_size=cs,
@@ -88,14 +104,14 @@ def cost_abfs(cell, seed):
     stream = StreamGenerator(**config)
  
     def _extract():
-        abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
+        remf = ABFS_match(n_features=N_FEATURES, categorical_features=[],
                           accuracy_window_size=cs, class_window_size=cs)
         n = 0
         stream.reset()
         for Xc, yc in stream:
             for i in range(len(Xc)):
-                abfs.update(Xc[i], yc[i])
-            _ = extract_metafeatures_raw(abfs.relevance_scores())
+                remf.update(Xc[i], yc[i])
+            _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
  
@@ -131,6 +147,15 @@ def n_features_of(cell):
 
 
 if __name__ == '__main__':
-    spec = ExperimentSpec('exp2', RESULTS_DIR, CELLS, SEEDS,
-                          window_provider, cost_abfs, cost_komor, n_features_of)
+    spec = ExperimentSpec(
+    'exp2',
+    RESULTS_DIR,
+    CELLS,
+    SEEDS,
+    window_provider,
+    cost_remf,
+    cost_komor,
+    cost_vanilla,
+    n_features_of)
+
     run_experiment(spec, do_vanilla=False, do_cost=True)

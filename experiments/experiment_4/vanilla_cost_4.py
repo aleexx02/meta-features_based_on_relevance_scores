@@ -8,7 +8,11 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, '..'))        # experiments/
 sys.path.insert(0, os.path.join(_HERE, '..', '..'))  # repo root
  
-from vanilla_and_cost import ExperimentSpec, run_experiment
+from vanilla_and_cost import (
+    ExperimentSpec,
+    run_experiment,
+    vanilla_features_from_windows
+)
 from abfs.abfs_implementation import ABFS_match
 from metafeatures.mf_extraction import extract_metafeatures_raw
 from streams.generate_synthetic_streams import (
@@ -46,14 +50,26 @@ def window_provider(cell, seed):
         windows.append(np.asarray(block, dtype=float))
         labels.append(int(cpc[w]))
     return windows, labels
- 
-def cost_abfs(cell, seed):
+
+def cost_vanilla(cell, seed):
+
+    windows, _ = window_provider(cell, seed)
+
+    def _extract():
+
+        Xv = vanilla_features_from_windows(windows)
+
+        return len(Xv)
+
+    return _extract
+
+def cost_remf(cell, seed):
     data, cpc, s = _rebuild(cell, seed)
     cs = s['chunk_size']
     nf = RIVER_N_FEATURES[s['gen_name']]
  
     def _extract():
-        abfs = ABFS_match(n_features=nf, categorical_features=[],
+        remf = ABFS_match(n_features=nf, categorical_features=[],
                           accuracy_window_size=cs, class_window_size=cs)
         n = 0
         for w in range(len(cpc)):
@@ -61,8 +77,8 @@ def cost_abfs(cell, seed):
             if len(block) == 0:
                 break
             for row in block:
-                abfs.update(row[:-1], int(row[-1]))
-            _ = extract_metafeatures_raw(abfs.relevance_scores())
+                remf.update(row[:-1], int(row[-1]))
+            _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
  
@@ -93,6 +109,15 @@ def n_features_of(cell):
     return RIVER_N_FEATURES[SPECS[cell]['gen_name']]
  
 if __name__ == '__main__':
-    spec = ExperimentSpec('exp4', RESULTS_DIR, CELLS, SEEDS,
-                          window_provider, cost_abfs, cost_komor, n_features_of, cost_cells=COST_CELLS)
+    spec = ExperimentSpec(
+        'exp4',
+        RESULTS_DIR,
+        CELLS,
+        SEEDS,
+        window_provider,
+        cost_remf,
+        cost_komor,
+        cost_vanilla,
+        n_features_of)
+    
     run_experiment(spec, do_vanilla=True, do_cost=True)

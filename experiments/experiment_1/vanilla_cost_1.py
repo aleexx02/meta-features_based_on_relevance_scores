@@ -6,7 +6,11 @@ import warnings
 warnings.filterwarnings('ignore')
 sys.path.append('..'); sys.path.append('../..')
  
-from vanilla_and_cost import ExperimentSpec, run_experiment
+from vanilla_and_cost import (
+    ExperimentSpec,
+    run_experiment,
+    vanilla_features_from_windows
+)
 from strlearn.streams import StreamGenerator
 from abfs.abfs_implementation import ABFS_match
 from metafeatures.mf_extraction import extract_metafeatures_raw
@@ -63,22 +67,37 @@ def window_provider(cell, seed):
             labels.append(labels_all[wc])
         wc += 1
     return windows, labels
- 
-def cost_abfs(cell, seed):
+
+
+
+def cost_vanilla(cell, seed):
+
+    windows, _ = window_provider(cell, seed)
+
+    def _extract():
+
+        Xv = vanilla_features_from_windows(windows)
+
+        return len(Xv)
+
+    return _extract
+
+
+def cost_remf(cell, seed):
     # stream built HERE, outside the timed closure — so tracemalloc measures
     # only the extraction, not the stream array
     stream, _ = _build(CELL_CONFIG[cell], seed)
 
     def _extract():
-        abfs = ABFS_match(n_features=N_FEATURES, categorical_features=[],
+        remf = ABFS_match(n_features=N_FEATURES, categorical_features=[],
                           accuracy_window_size=CHUNK_SIZE_1,
                           class_window_size=CHUNK_SIZE_1)
         n = 0
         stream.reset()
         for Xc, yc in stream:
             for i in range(len(Xc)):
-                abfs.update(Xc[i], yc[i])
-            _ = extract_metafeatures_raw(abfs.relevance_scores())
+                remf.update(Xc[i], yc[i])
+            _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
 
@@ -107,6 +126,15 @@ def n_features_of(cell):
     return N_FEATURES
  
 if __name__ == '__main__':
-    spec = ExperimentSpec('exp1', RESULTS_DIR, CELLS, SEEDS,
-                          window_provider, cost_abfs, cost_komor, n_features_of)
+    spec = ExperimentSpec(
+    'exp1',
+    RESULTS_DIR,
+    CELLS,
+    SEEDS,
+    window_provider,
+    cost_remf,
+    cost_komor,
+    cost_vanilla,
+    n_features_of
+    )
     run_experiment(spec, do_vanilla=False, do_cost=True)

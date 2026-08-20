@@ -7,7 +7,11 @@ warnings.filterwarnings('ignore')
 sys.path.append('..'); sys.path.append('../..')
  
 import strlearn as sl
-from vanilla_and_cost import ExperimentSpec, run_experiment
+from vanilla_and_cost import (
+    ExperimentSpec,
+    run_experiment,
+    vanilla_features_from_windows
+)
 from abfs.abfs_implementation import ABFS_match
 from metafeatures.mf_extraction import extract_metafeatures_raw
 from streams.generate_real_streams import REAL_STREAMS, N_FEATURES, CHUNK_SIZE
@@ -40,15 +44,29 @@ def window_provider(cell, seed):
         windows.append(np.asarray(X_chunk, dtype=float))   # features (target is separate)
         labels.append(concept)
     return windows, labels
- 
-def cost_abfs(cell, seed):
+
+
+def cost_vanilla(cell, seed):
+
+    windows, _ = window_provider(cell, seed)
+
+    def _extract():
+
+        Xv = vanilla_features_from_windows(windows)
+
+        return len(Xv)
+
+    return _extract
+
+
+def cost_remf(cell, seed):
     stream_path = os.path.join(REAL_STREAM_DIR, f'{cell}.npy')
     nf = N_FEATURES[cell]
  
     def _extract():
         stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
                                       n_chunks=100000)
-        abfs = ABFS_match(n_features=nf, categorical_features=[],
+        remf = ABFS_match(n_features=nf, categorical_features=[],
                           accuracy_window_size=CHUNK_SIZE,
                           class_window_size=CHUNK_SIZE)
         n = 0
@@ -60,8 +78,8 @@ def cost_abfs(cell, seed):
             if len(X_chunk) == 0:
                 break
             for i in range(len(X_chunk)):
-                abfs.update(X_chunk[i], y_chunk[i])
-            _ = extract_metafeatures_raw(abfs.relevance_scores())
+                remf.update(X_chunk[i], y_chunk[i])
+            _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
  
@@ -96,7 +114,15 @@ def n_features_of(cell):
     return N_FEATURES[cell]
  
 if __name__ == '__main__':
-    spec = ExperimentSpec('exp5', RESULTS_DIR, CELLS, SEEDS,
-                          window_provider, cost_abfs, cost_komor, n_features_of,
-                          cost_cells=CELLS)     # <-- ALL streams, incl. SPAM
+    spec = ExperimentSpec(
+        'exp5',
+        RESULTS_DIR,
+        CELLS,
+        SEEDS,
+        window_provider,
+        cost_remf,
+        cost_komor,
+        cost_vanilla,
+        n_features_of)
+    
     run_experiment(spec, do_vanilla=False, do_cost=True)
