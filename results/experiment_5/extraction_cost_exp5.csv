@@ -1,0 +1,16 @@
+experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
+exp5;INSECTS-abrupt_balanced;ReMF;33;529;92,1690;174,2320;0,9200
+exp5;INSECTS-abrupt_balanced;Komorniczak;33;529;110,8780;209,5980;0,6600
+exp5;INSECTS-abrupt_balanced;Vanilla;33;529;0,0640;0,1200;0,6600
+exp5;INSECTS-abrupt_imbalanced;ReMF;33;3553;608,7460;171,3330;0,8800
+exp5;INSECTS-abrupt_imbalanced;Komorniczak;33;3553;742,5430;208,9900;0,7100
+exp5;INSECTS-abrupt_imbalanced;Vanilla;33;3553;0,4210;0,1190;4,4100
+exp5;INSECTS-incgradual_balanced;ReMF;33;242;41,2410;170,4170;0,6300
+exp5;INSECTS-incgradual_balanced;Komorniczak;33;242;50,2130;207,4900;0,5900
+exp5;INSECTS-incgradual_balanced;Vanilla;33;242;0,0290;0,1210;0,3000
+exp5;INSECTS-incgradual_imbalanced;ReMF;33;1434;242,6990;169,2460;0,7500
+exp5;INSECTS-incgradual_imbalanced;Komorniczak;33;1434;299,0750;208,5600;0,6700
+exp5;INSECTS-incgradual_imbalanced;Vanilla;33;1434;0,1700;0,1180;1,7800
+exp5;SPAM;ReMF;499;94;189,6160;2017,1880;5,8800
+exp5;SPAM;Komorniczak;499;94;292,7240;3114,0840;17,4500
+exp5;SPAM;Vanilla;499;94;0,0270;0,2830;1,6100

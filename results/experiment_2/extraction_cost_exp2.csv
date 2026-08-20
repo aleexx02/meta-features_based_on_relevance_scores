@@ -1,0 +1,4 @@
+experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
+exp2;chunk100_ninf10_sudden;ReMF;20;5000;571,5780;114,3160;0,2900
+exp2;chunk100_ninf10_sudden;Komorniczak;20;5000;758,3600;151,6720;0,6100
+exp2;chunk100_ninf10_sudden;Vanilla;20;5000;0,8280;0,1660;3,9900
