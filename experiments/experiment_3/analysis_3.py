@@ -497,21 +497,24 @@ if args.metrics:
             plt.close(); print(f"  Saved: {fname}")
 
 
-# ============================================================
-#  STREAM ANALYSIS  (reference cells, inline diagnostics)
-# ============================================================
 if args.stream_analysis:
     print("\n" + "="*60); print("STREAM ANALYSIS"); print("="*60)
     for cell in REF_CELLS:
+        f_drift = os.path.join(FIGURES_DIR, f'stream_drift_entropy_{cell}.png')
+        f_class = os.path.join(FIGURES_DIR, f'class_distribution_{cell}.png')
+        if os.path.exists(f_drift) and os.path.exists(f_class):
+            print(f"  {cell}: figures exist -- skipping"); continue
+
         print(f"\n  {cell}")
         di, cd, le, cpc, spec = stream_diagnostics(cell)
         boundaries = boundaries_from_cpc(cpc)
-        scores, _, _, _, _ = re_extract(cell)
-        dr = np.linalg.norm(scores[1:] - scores[:-1], axis=1)
-        dr = np.concatenate([[0], dr]); dr = dr / (np.max(dr) + 1e-10)
 
-        fname = os.path.join(FIGURES_DIR, f'stream_drift_entropy_{cell}.png')
-        if not os.path.exists(fname):
+        # ReMF re-extraction is the expensive step -- only do it if the drift
+        # figure (the one that needs it) is missing.
+        if not os.path.exists(f_drift):
+            scores, _, _, _, _ = re_extract(cell)
+            dr = np.linalg.norm(scores[1:] - scores[:-1], axis=1)
+            dr = np.concatenate([[0], dr]); dr = dr / (np.max(dr) + 1e-10)
             di_n = di / (np.max(di) + 1e-10)
             fig, ax1 = plt.subplots(figsize=(14, 4))
             ax1.plot(di_n, color='steelblue', label='Drift intensity', linewidth=1.5)
@@ -525,11 +528,10 @@ if args.stream_analysis:
             l1, lab1 = ax1.get_legend_handles_labels(); l2, lab2 = ax2.get_legend_handles_labels()
             ax1.legend(l1 + l2, lab1 + lab2, loc='upper right')
             ax1.set_title(f'Drift vs ReMF dynamics -- {cell}')
-            fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
-            plt.close(); print(f"  Saved: {fname}")
+            fig.tight_layout(); fig.savefig(f_drift, dpi=150, bbox_inches='tight')
+            plt.close(); print(f"  Saved: {f_drift}")
 
-        fname = os.path.join(FIGURES_DIR, f'class_distribution_{cell}.png')
-        if not os.path.exists(fname):
+        if not os.path.exists(f_class):
             fig, ax = plt.subplots(figsize=(14, 4))
             for c in range(cd.shape[1]):
                 ax.plot(cd[:, c], label=f'class {c}', linewidth=1.2)
@@ -537,10 +539,10 @@ if args.stream_analysis:
                 ax.axvline(x=b, color='grey', linestyle='--', linewidth=0.7, alpha=0.6)
             ax.set_xlabel('Window'); ax.set_ylabel('Proportion')
             ax.set_title(f'Class distribution over time -- {cell}'); ax.legend(ncol=4, fontsize=8)
-            fig.tight_layout(); fig.savefig(fname, dpi=150, bbox_inches='tight')
-            plt.close(); print(f"  Saved: {fname}")
+            fig.tight_layout(); fig.savefig(f_class, dpi=150, bbox_inches='tight')
+            plt.close(); print(f"  Saved: {f_class}")
 
-
+            
 # ============================================================
 #  GAP HEATMAP  (reference cells, fixed layout, mean over reps)
 # ============================================================
