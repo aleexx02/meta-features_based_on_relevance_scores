@@ -1,0 +1,3 @@
+experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
+exp1;sudden;ReMF;10;5000;555,7940;111,1590;0,1400
+exp1;sudden;komorniczak;10;5000;456,4320;91,2860;0,6100
