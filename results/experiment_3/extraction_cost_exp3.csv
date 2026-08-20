@@ -1,7 +1,7 @@
 experiment;tag;method;n_features;n_windows;time_s;ms_per_window;peak_mb
-exp3;sea_chunk100_sudden;ReMF;3;5000;79,9880;15,9980;0,0700
-exp3;sea_chunk100_sudden;komorniczak;3;5000;244,3230;48,8650;0,5200
-exp3;stagger_chunk100_sudden;ReMF;3;5000;76,1190;15,2240;0,0500
-exp3;stagger_chunk100_sudden;komorniczak;3;5000;243,5640;48,7130;0,4800
-exp3;led_chunk100_sudden;ReMF;24;5000;773,4040;154,6810;0,9700
-exp3;led_chunk100_sudden;komorniczak;24;5000;1111,1990;222,2400;0,6600
+exp3;sea_chunk100_sudden;ReMF;3;5000;79,988;15,998;0,07
+exp3;sea_chunk100_sudden;komorniczak;3;5000;244,323;48,865;0,52
+exp3;stagger_chunk100_sudden;ReMF;3;5000;76,119;15,224;0,05
+exp3;stagger_chunk100_sudden;komorniczak;3;5000;243,564;48,713;0,48
+exp3;led_chunk100_sudden;ReMF;24;5000;773,404;154,681;0,97
+exp3;led_chunk100_sudden;komorniczak;24;5000;1111,199;222,24;0,66

@@ -1084,7 +1084,7 @@ if RUN_BARS:
                    label=f'ReMF {ABFS_LABELS[version]}')
         ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
                color='#3cb44b', label='Komorniczak best-of-9')
-        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width, vanilla_ba, width, color='#808080', label='Distributional baseline')
+        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width, vanilla_ba, width, color='#808080', label='Vanilla baseline')
 
         # random-baseline marker per stream
         for gi, s in enumerate(streams):
