@@ -775,8 +775,14 @@ def write_combined_summary(specs, results_dir, out_name, meta_of,
         'gap ReMF - Komorniczak (best vs best)',
     ]
     cost_cols = [
-        'ReMF time (ms/win)',        'ReMF peak MB (rel.)',
-        'Komorniczak time (ms/win)', 'Komorniczak peak MB (rel.)',
+    'ReMF time (ms/win)',
+    'ReMF peak MB (rel.)',
+
+    'Komorniczak time (ms/win)',
+    'Komorniczak peak MB (rel.)',
+
+    'Vanilla time (ms/win)',
+    'Vanilla peak MB (rel.)',
     ]
     perclf_cols = []
     for clf in CLF_NAMES:
@@ -809,6 +815,7 @@ def write_combined_summary(specs, results_dir, out_name, meta_of,
         nf = spec.get('n_features')
         c_remf = cost.get(('ReMF', nf), {})
         c_kom = cost.get(('komorniczak', nf), {})
+        c_van = cost.get(('Vanilla', nf), {})
 
         meta = meta_of(spec)
         if header is None:
@@ -821,6 +828,7 @@ def write_combined_summary(specs, results_dir, out_name, meta_of,
             ab[2] - kb[2],
             c_remf.get('ms_per_window'), c_remf.get('peak_mb'),
             c_kom.get('ms_per_window'), c_kom.get('peak_mb'),
+            c_van.get('ms_per_window'), c_van.get('peak_mb')
         ]
         for j in range(N_CLFS):
             row += [remf_ba[j], remf_rep[j], kom_ba[j], kom_grp[j],

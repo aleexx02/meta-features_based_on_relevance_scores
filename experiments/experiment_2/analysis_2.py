@@ -1096,8 +1096,17 @@ def combined_tail_header(clf_names, include_cost):
             'vanilla best (clf)','vanilla best BA',
             'gap ReMF - Komorniczak (best vs best)']
     if include_cost:
-        cols += ['ReMF time (ms/win)','ReMF peak MB (rel.)',
-                 'Komorniczak time (ms/win)','Komorniczak peak MB (rel.)']
+            cols += [
+                'ReMF time (ms/win)',
+                'ReMF peak MB (rel.)',
+    
+                'Komorniczak time (ms/win)',
+                'Komorniczak peak MB (rel.)',
+    
+                'Vanilla time (ms/win)',
+                'Vanilla peak MB (rel.)'
+            ]
+        
     for clf in clf_names:
         cols += [f'ReMF {clf} BA', f'ReMF {clf} representation',
                  f'Komorniczak {clf} BA', f'Komorniczak {clf} group',
@@ -1116,11 +1125,23 @@ def combined_tail_values(loadf, has_reps, clf_names, ab, kb, remf_keys, komor_ke
     van_ba = vb_vec if vb_vec is not None else [None]*len(clf_names)
     vals = [f'{ab[0]} / {ab[1]}', ab[2], f'{kb[0]} / {kb[1]}', kb[2],
             vb_clf, vb_ba, ab[2]-kb[2]]
+    
     if include_cost:
-        c_remf=(cost or {}).get(('ReMF', n_features), {})
-        c_kom=(cost or {}).get(('komorniczak', n_features), {})
-        vals += [c_remf.get('ms_per_window'), c_remf.get('peak_mb'),
-                 c_kom.get('ms_per_window'), c_kom.get('peak_mb')]
+    
+        c_remf = (cost or {}).get(('ReMF', n_features), {})
+        c_kom  = (cost or {}).get(('Komorniczak', n_features), {})
+        c_van  = (cost or {}).get(('Vanilla', n_features), {})
+
+        vals += [
+            c_remf.get('ms_per_window'),
+            c_remf.get('peak_mb'),
+
+            c_kom.get('ms_per_window'),
+            c_kom.get('peak_mb'),
+
+            c_van.get('ms_per_window'),
+            c_van.get('peak_mb')
+        ]
     for j in range(len(clf_names)):
         vals += [remf_ba[j], remf_rep[j], kom_ba[j], kom_grp[j],
                  (float(van_ba[j]) if van_ba[j] is not None else None)]
@@ -1132,6 +1153,8 @@ if args.summary:
     ReMF_KEYS   = [(ABFS_LABELS[v], f'preq_abfs_{v}_ba') for v in ABFS_VERSIONS]
     KOMOR_KEYS = [(m, f'preq_komor_{m}_ba') for m in MEASURES]
     header, rows = None, []
+    cost = _read_cost_lookup(os.path.join(RESULTS_DIR,'extraction_cost_exp2.csv'))
+
     for drift_type, n_drifts, css, n_concepts in DRIFT_CONFIGS:
         for chunk_size in CHUNK_SIZES:
             for n_informative in N_INFORMATIVES:
@@ -1150,10 +1173,20 @@ if args.summary:
                     ('n_concepts', n_concepts),
                     ('random_baseline', 1.0 / n_concepts),
                 ]
-                tail = combined_tail_values(loadf, True, clf_names_preq, ab, kb,
-                                            ReMF_KEYS, KOMOR_KEYS, include_cost=False)
+                tail = combined_tail_values(
+                    loadf,
+                    True,
+                    clf_names_preq,
+                    ab,
+                    kb,
+                    ReMF_KEYS,
+                    KOMOR_KEYS,
+                    n_features=N_FEATURES,
+                    cost=cost,
+                    include_cost=True)
+                
                 if header is None:
-                    header = [c for c, _ in meta] + combined_tail_header(clf_names_preq, include_cost=False)
+                    header = [c for c, _ in meta] + combined_tail_header(clf_names_preq, include_cost=True)
                 rows.append([v for _, v in meta] + tail)
     if header is not None:
         write_summary_csv(os.path.join(RESULTS_DIR, 'summary_exp2.csv'), header, rows)

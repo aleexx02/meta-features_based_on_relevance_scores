@@ -801,7 +801,7 @@ def combined_tail_header(clf_names, include_cost):
             'gap ReMF - Komorniczak (best vs best)']
     if include_cost:
         cols += ['ReMF time (ms/win)','ReMF peak MB (rel.)',
-                 'Komorniczak time (ms/win)','Komorniczak peak MB (rel.)']
+                 'Komorniczak time (ms/win)','Komorniczak peak MB (rel.)', 'Vanilla time (ms/win)', 'Vanilla peak MB (rel.)']
     for clf in clf_names:
         cols += [f'ReMF {clf} BA', f'ReMF {clf} representation',
                  f'Komorniczak {clf} BA', f'Komorniczak {clf} group',
@@ -823,8 +823,15 @@ def combined_tail_values(loadf, has_reps, clf_names, ab, kb, remf_keys, komor_ke
     if include_cost:
         c_remf=(cost or {}).get(('ReMF', n_features), {})
         c_kom=(cost or {}).get(('komorniczak', n_features), {})
-        vals += [c_remf.get('ms_per_window'), c_remf.get('peak_mb'),
-                 c_kom.get('ms_per_window'), c_kom.get('peak_mb')]
+        c_van = (cost or {}).get(('Vanilla', n_features), {})
+        vals += [
+        c_remf.get('ms_per_window'),
+        c_remf.get('peak_mb'),
+        c_kom.get('ms_per_window'),
+        c_kom.get('peak_mb'),
+        c_van.get('ms_per_window'),
+        c_van.get('peak_mb')]
+
     for j in range(len(clf_names)):
         vals += [remf_ba[j], remf_rep[j], kom_ba[j], kom_grp[j],
                  (float(van_ba[j]) if van_ba[j] is not None else None)]
