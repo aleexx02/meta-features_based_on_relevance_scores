@@ -114,13 +114,15 @@ def n_features_of(cell):
  
 if __name__ == '__main__':
     spec = ExperimentSpec(
-        'exp3',
-        RESULTS_DIR,
-        CELLS,
-        SEEDS,
-        window_provider,
-        cost_remf,
-        cost_komor,
-        cost_vanilla,
-        n_features_of)
+    'exp3',
+    RESULTS_DIR,
+    CELLS,
+    SEEDS,
+    window_provider,
+    cost_remf,
+    cost_komor,
+    cost_vanilla,
+    n_features_of,
+    cost_cells=COST_CELLS
+)
     run_experiment(spec, do_vanilla=True, do_cost=True)
