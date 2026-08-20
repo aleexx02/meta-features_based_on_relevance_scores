@@ -39,6 +39,7 @@ SEEDS = list(np.random.randint(100, 10000, 5))
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
 RESULTS_DIR  = os.path.join(PROJECT_ROOT, 'results', 'experiment_2')
+COST_CELLS = ['chunk100_ninf10_sudden']   # 20 features (constant); one representative config
 
 # --- cell tag <-> config mapping (so a cell string can rebuild its stream) ---
 CELL_CONFIG = {}   # tag -> (drift_type, n_drifts, spacing, n_concepts, chunk_size, n_informative)
@@ -84,16 +85,12 @@ def window_provider(cell, seed):
 
 
 def cost_vanilla(cell, seed):
-
-    windows, _ = window_provider(cell, seed)
-
+    windows, _ = window_provider(cell, seed)   # windows already materialised (list)
     def _extract():
-
         Xv = vanilla_features_from_windows(windows)
-
         return len(Xv)
-
     return _extract
+
 
 def cost_remf(cell, seed):
     cfg = CELL_CONFIG[cell]
@@ -102,19 +99,19 @@ def cost_remf(cell, seed):
                   n_features=N_FEATURES, n_informative=ni, n_redundant=0,
                   n_repeated=0, concept_sigmoid_spacing=spacing, random_state=seed)
     stream = StreamGenerator(**config)
- 
+    stream.reset()
+    chunks = [(np.asarray(Xc, float), np.asarray(yc)) for Xc, yc in stream]  # generate OUTSIDE timer
+
     def _extract():
         remf = ABFS_match(n_features=N_FEATURES, categorical_features=[],
                           accuracy_window_size=cs, class_window_size=cs)
         n = 0
-        stream.reset()
-        for Xc, yc in stream:
+        for Xc, yc in chunks:
             for i in range(len(Xc)):
                 remf.update(Xc[i], yc[i])
             _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
- 
     return _extract
 
 
@@ -125,12 +122,13 @@ def cost_komor(cell, seed, measure='statistical'):
                   n_features=N_FEATURES, n_informative=ni, n_redundant=0,
                   n_repeated=0, concept_sigmoid_spacing=spacing, random_state=seed)
     stream = StreamGenerator(**config)
- 
+    stream.reset()
+    chunks = [(np.asarray(Xc, float), np.asarray(yc)) for Xc, yc in stream]
+
     def _extract():
         mfe = MFE(groups=[measure], suppress_warnings=True)
         n = 0
-        stream.reset()
-        for Xc, yc in stream:
+        for Xc, yc in chunks:
             try:
                 mfe.fit(Xc, yc)
                 mfe.extract(suppress_warnings=True)
@@ -138,7 +136,6 @@ def cost_komor(cell, seed, measure='statistical'):
                 pass
             n += 1
         return n
- 
     return _extract
 
 
@@ -148,14 +145,8 @@ def n_features_of(cell):
 
 if __name__ == '__main__':
     spec = ExperimentSpec(
-    'exp2',
-    RESULTS_DIR,
-    CELLS,
-    SEEDS,
-    window_provider,
-    cost_remf,
-    cost_komor,
-    cost_vanilla,
-    n_features_of)
+    'exp2', RESULTS_DIR, CELLS, SEEDS,
+    window_provider, cost_remf, cost_komor, cost_vanilla, n_features_of,
+    cost_cells=COST_CELLS)
 
     run_experiment(spec, do_vanilla=False, do_cost=True)

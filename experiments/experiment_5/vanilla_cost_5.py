@@ -46,60 +46,53 @@ def window_provider(cell, seed):
     return windows, labels
 
 
+def _read_chunks(cell):
+    """Read all (X, y) chunks for a real stream once, OUTSIDE any timer."""
+    stream_path = os.path.join(REAL_STREAM_DIR, f'{cell}.npy')
+    stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE, n_chunks=100000)
+    chunks = []
+    for _ in range(100000):
+        try:
+            X_chunk, y_chunk = stream.get_chunk()
+        except Exception:
+            break
+        if len(X_chunk) == 0:
+            break
+        chunks.append((np.asarray(X_chunk, float), np.asarray(y_chunk)))
+    return chunks
+
+
 def cost_vanilla(cell, seed):
-
-    windows, _ = window_provider(cell, seed)
-
+    chunks = _read_chunks(cell)
+    windows = [X for X, _ in chunks]
     def _extract():
-
         Xv = vanilla_features_from_windows(windows)
-
         return len(Xv)
-
     return _extract
 
 
 def cost_remf(cell, seed):
-    stream_path = os.path.join(REAL_STREAM_DIR, f'{cell}.npy')
+    chunks = _read_chunks(cell)          # file I/O OUTSIDE timer
     nf = N_FEATURES[cell]
- 
     def _extract():
-        stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
-                                      n_chunks=100000)
         remf = ABFS_match(n_features=nf, categorical_features=[],
-                          accuracy_window_size=CHUNK_SIZE,
-                          class_window_size=CHUNK_SIZE)
+                          accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
         n = 0
-        for _ in range(100000):
-            try:
-                X_chunk, y_chunk = stream.get_chunk()
-            except Exception:
-                break
-            if len(X_chunk) == 0:
-                break
+        for X_chunk, y_chunk in chunks:
             for i in range(len(X_chunk)):
                 remf.update(X_chunk[i], y_chunk[i])
             _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
- 
     return _extract
- 
+
+
 def cost_komor(cell, seed, measure='statistical'):
-    stream_path = os.path.join(REAL_STREAM_DIR, f'{cell}.npy')
- 
+    chunks = _read_chunks(cell)          # file I/O OUTSIDE timer
     def _extract():
-        stream = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE,
-                                      n_chunks=100000)
         mfe = MFE(groups=[measure], suppress_warnings=True)
         n = 0
-        for _ in range(100000):
-            try:
-                X_chunk, y_chunk = stream.get_chunk()
-            except Exception:
-                break
-            if len(X_chunk) == 0:
-                break
+        for X_chunk, y_chunk in chunks:
             try:
                 mfe.fit(X_chunk, y_chunk)
                 mfe.extract(suppress_warnings=True)
@@ -107,8 +100,9 @@ def cost_komor(cell, seed, measure='statistical'):
                 pass
             n += 1
         return n
- 
     return _extract
+
+
  
 def n_features_of(cell):
     return N_FEATURES[cell]

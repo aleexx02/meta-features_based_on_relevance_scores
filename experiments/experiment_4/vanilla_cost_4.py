@@ -52,16 +52,21 @@ def window_provider(cell, seed):
     return windows, labels
 
 def cost_vanilla(cell, seed):
-
-    windows, _ = window_provider(cell, seed)
+    data, cpc, s = _rebuild(cell, seed)      # data materialised OUTSIDE timer
+    cs = s['chunk_size']
 
     def _extract():
-
+        windows = []
+        for w in range(len(cpc)):
+            block = data[w*cs:(w+1)*cs, :-1]
+            if len(block) == 0:
+                break
+            windows.append(np.asarray(block, dtype=float))
         Xv = vanilla_features_from_windows(windows)
-
         return len(Xv)
-
     return _extract
+
+
 
 def cost_remf(cell, seed):
     data, cpc, s = _rebuild(cell, seed)
@@ -122,4 +127,4 @@ if __name__ == '__main__':
     cost_cells=COST_CELLS
     )
     
-    run_experiment(spec, do_vanilla=True, do_cost=True)
+    run_experiment(spec, do_vanilla=False, do_cost=True)

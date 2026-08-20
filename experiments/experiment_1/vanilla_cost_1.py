@@ -71,46 +71,43 @@ def window_provider(cell, seed):
 
 
 def cost_vanilla(cell, seed):
-
-    windows, _ = window_provider(cell, seed)
+    stream, _ = _build(CELL_CONFIG[cell], seed)
+    stream.reset()
+    chunks = [np.asarray(Xc, float) for i, (Xc, yc) in enumerate(stream) if i >= WARMUP]
 
     def _extract():
-
-        Xv = vanilla_features_from_windows(windows)
-
+        Xv = vanilla_features_from_windows(chunks)   # windowing already done; pure extraction
         return len(Xv)
-
     return _extract
 
 
 def cost_remf(cell, seed):
-    # stream built HERE, outside the timed closure — so tracemalloc measures
-    # only the extraction, not the stream array
     stream, _ = _build(CELL_CONFIG[cell], seed)
+    stream.reset()
+    chunks = [(np.asarray(Xc, float), np.asarray(yc)) for Xc, yc in stream]  # generate OUTSIDE timer
 
     def _extract():
         remf = ABFS_match(n_features=N_FEATURES, categorical_features=[],
-                          accuracy_window_size=CHUNK_SIZE_1,
-                          class_window_size=CHUNK_SIZE_1)
+                          accuracy_window_size=CHUNK_SIZE_1, class_window_size=CHUNK_SIZE_1)
         n = 0
-        stream.reset()
-        for Xc, yc in stream:
+        for Xc, yc in chunks:
             for i in range(len(Xc)):
                 remf.update(Xc[i], yc[i])
             _ = extract_metafeatures_raw(remf.relevance_scores())
             n += 1
         return n
-
     return _extract
- 
+
+
 def cost_komor(cell, seed, measure='statistical'):
     stream, _ = _build(CELL_CONFIG[cell], seed)
+    stream.reset()
+    chunks = [(np.asarray(Xc, float), np.asarray(yc)) for Xc, yc in stream]
 
     def _extract():
         mfe = MFE(groups=[measure], suppress_warnings=True)
         n = 0
-        stream.reset()
-        for Xc, yc in stream:
+        for Xc, yc in chunks:
             try:
                 mfe.fit(Xc, yc)
                 mfe.extract(suppress_warnings=True)
@@ -118,7 +115,6 @@ def cost_komor(cell, seed, measure='statistical'):
                 pass
             n += 1
         return n
-
     return _extract
  
 
