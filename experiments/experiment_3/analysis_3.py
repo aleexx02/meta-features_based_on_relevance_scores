@@ -866,7 +866,16 @@ if args.concept_dist_metafeatures:
 
     KEEP_CHUNK_SIZE = 100
     REP_SEED = SEED                      # single rep = rep-0
-    KOMOR_FAMILY = 'statistical'         # which pymfe family to fingerprint
+    BEST_KOMOR_FAMILY = {
+    "led_chunk100_gradual": "general",
+    "led_chunk100_sudden": "general",
+
+    "sea_chunk100_gradual": "statistical",
+    "sea_chunk100_sudden": "statistical",
+
+    "stagger_chunk100_gradual": "complexity",
+    "stagger_chunk100_sudden": "complexity",
+    }
     STREAM_DIR = os.path.join(FIGURES_DIR, '..', 'streams')
     os.makedirs(STREAM_DIR, exist_ok=True)
 
@@ -990,17 +999,21 @@ if args.concept_dist_metafeatures:
         method_mats['raw_features'] = (ids, _pairwise_l2(cm))
         raw_ref = method_mats['raw_features']
 
-        # Komorniczak from cache (single family, single rep)
-        Xk, yk = _load_komor_cache(cell, KOMOR_FAMILY, REP_SEED)
-        if Xk is None:
-            print(f"  [komor] cache miss for {cell} / {KOMOR_FAMILY} "
-                  f"seed{REP_SEED} -- skipping komor for this cell.")
+        # Komorniczak from cache (best family for this cell)
+        komor_family = BEST_KOMOR_FAMILY.get(cell)
+
+        if komor_family is None:
+            print(f"  [komor] no best-family mapping for {cell} -- skipping.")
         else:
-            # cache row order == window order == labels order (same chunk_iter,
-            # WARMUP_WINDOWS=0), so reuse `labels`; fall back to yk if lengths differ.
+            Xk, yk = _load_komor_cache(cell, komor_family, REP_SEED)
+
+        if Xk is None:
+            print(f"  [komor] cache miss for {cell} / {komor_family} seed{REP_SEED} -- skipping komor for this cell.")
+        else:
+            # cache row order == window order == labels order
             lab = labels if len(labels) == len(Xk) else yk
             ids, cm = _concept_means(Xk, lab)
-            method_mats[f'komorniczak_{KOMOR_FAMILY}'] = (ids, _pairwise_l2(cm))
+            method_mats[f'komorniczak_{komor_family}'] = (ids, _pairwise_l2(cm))
 
         for method, (ids_m, D) in method_mats.items():
             off = D[~np.eye(len(D), dtype=bool)]
