@@ -1108,7 +1108,159 @@ if RUN_BARS:
 
 
 
+if args.concept_dist_metafeatures:
+    import itertools
+    print("\n" + "=" * 60)
+    print("CONCEPT SEPARATION IN META-FEATURE SPACE (real streams)")
+    print("=" * 60)
 
+    BEST_KOMOR_FAMILY = {
+        "INSECTS-abrupt_balanced": "statistical",
+        "INSECTS-abrupt_imbalanced": "general",
+        "INSECTS-incgradual_balanced": "general",
+        "INSECTS-incgradual_imbalanced": "general",
+        "SPAM": "concept",
+    }
+
+    BEST_REMF_VARIANT = {
+        "INSECTS-abrupt_balanced": "aggstats",
+        "INSECTS-abrupt_imbalanced": "aggstats",
+        "INSECTS-incgradual_balanced": "aggstats",
+        "INSECTS-incgradual_imbalanced": "aggstats",
+        "SPAM": "raw",
+    }
+
+    STREAM_DIR = os.path.join(FIGURES_DIR, '..', 'streams')
+    os.makedirs(STREAM_DIR, exist_ok=True)
+
+    # ADAPT (2): Komorniczak cache dir/name for the real streams.
+    KOMOR_CACHE_DIR = os.path.join(PROJECT_ROOT, 'external', 'komorniczak',
+                                   'results', 'real')
+
+    def _load_komor_cache(stream, measure):
+        path = os.path.join(KOMOR_CACHE_DIR, f'komor_real_{stream}_{measure}.npy')
+        if not os.path.exists(path):
+            return None, None
+        arr = np.load(path)
+        if arr.ndim != 2 or arr.shape[0] == 0:
+            return None, None
+        X = arr[:, :-1].astype(float); y = arr[:, -1].astype(int)
+        X[np.isnan(X)] = 0; X[np.isinf(X)] = 0
+        return X, y
+
+    def _pairwise_l2(cm):
+        n = len(cm); D = np.zeros((n, n))
+        for i, j in itertools.combinations(range(n), 2):
+            d = float(np.linalg.norm(cm[i] - cm[j]))
+            D[i, j] = D[j, i] = d
+        return D
+
+    def _concept_means(X, labels):
+        ids = sorted(np.unique(labels).tolist())
+        cm = np.array([X[labels == c].mean(axis=0) for c in ids])
+        return ids, cm
+
+    def _vanilla_matrix(raw_windows):
+        feats = [np.concatenate([np.asarray(w, float).mean(axis=0),
+                                 np.asarray(w, float).std(axis=0)])
+                 for w in raw_windows]
+        X = np.array(feats, dtype=float); X[np.isnan(X)] = 1; X[np.isinf(X)] = 1
+        return X
+
+    def _raw_feature_matrix(raw_windows):
+        return np.array([np.asarray(w, float).mean(axis=0) for w in raw_windows])
+
+    # _plot_repr_comparison: reuse the same helper as Exp 3 (shared module,
+    # or paste the identical function here).
+
+    def _remf_and_raw_real(stream):
+        """ReMF matrices, per-window concept labels, and raw windows for one
+        real stream, reusing the same windowing as re_extract_stream()."""
+        drift_chunks = load_gt(stream)
+        n_features = N_FEATURES[stream]
+        stream_path = os.path.join(REAL_STREAM_DIR, f'{stream}.npy')
+        st = sl.streams.NPYParser(stream_path, chunk_size=CHUNK_SIZE, n_chunks=100000)
+        abfs = ABFS_match(n_features=n_features, categorical_features=[],
+                          accuracy_window_size=CHUNK_SIZE, class_window_size=CHUNK_SIZE)
+        mf = {'aggstats': [], 'raw': [], 'raw_temporal': []}
+        raw_windows, labels, wt_prev = [], [], None
+        for chunk_idx in range(100000):
+            concept = int(np.sum(drift_chunks <= chunk_idx))
+            try:
+                Xc, yc = st.get_chunk()
+            except Exception:
+                break
+            if len(Xc) == 0:
+                break
+            for i in range(len(Xc)):
+                abfs.update(Xc[i], yc[i])
+            wt = abfs.relevance_scores(); dc = abfs.pop_drift_count(); ts = abfs.time_since_drift
+            mf['aggstats'].append(extract_metafeatures(wt, wt_prev, dc, ts))
+            mf['raw'].append(extract_metafeatures_raw(wt))
+            mf['raw_temporal'].append(extract_metafeatures_raw_temporal(wt, wt_prev))
+            raw_windows.append(Xc); labels.append(concept); wt_prev = wt
+        def clean(a):
+            a = np.array(a, dtype=float); a[np.isnan(a)] = 0; a[np.isinf(a)] = 0; return a
+        return {v: clean(mf[v]) for v in ABFS_VERSIONS}, np.array(labels), raw_windows
+
+    rows_summary = []
+    for stream in REAL_STREAMS:
+        Xbv, labels, raw_windows = _remf_and_raw_real(stream)
+
+        method_mats = {}
+        for v in ABFS_VERSIONS:
+            ids, cm = _concept_means(Xbv[v], labels)
+            method_mats[f'ReMF_{v}'] = (ids, _pairwise_l2(cm))
+        ids, cm = _concept_means(_raw_feature_matrix(raw_windows), labels)
+        method_mats['raw_features'] = (ids, _pairwise_l2(cm))
+        raw_ref = method_mats['raw_features']
+
+        komor_family = BEST_KOMOR_FAMILY.get(stream)
+        Xk = yk = None
+        if komor_family is not None:
+            Xk, yk = _load_komor_cache(stream, komor_family)
+            if Xk is None:
+                print(f"  [komor] cache miss for {stream} / {komor_family} -- skipping komor.")
+            else:
+                if len(yk) != len(labels):
+                    print(f"  [komor] window-count mismatch for {stream} "
+                          f"(komor {len(yk)} vs remf {len(labels)}) -- using komor's own labels.")
+                ids, cm = _concept_means(Xk, yk)
+                method_mats[f'komorniczak_{komor_family}'] = (ids, _pairwise_l2(cm))
+
+        for method, (ids_m, D) in method_mats.items():
+            off = D[~np.eye(len(D), dtype=bool)]
+            rows_summary.append(dict(stream=stream, method=method,
+                                     n_concepts=len(ids_m),
+                                     l2_min=round(float(off.min()) if off.size else 0.0, 4),
+                                     l2_max=round(float(off.max()) if off.size else 0.0, 4),
+                                     l2_mean=round(float(off.mean()) if off.size else 0.0, 4)))
+            print(f"  {stream:30s} {method:22s} mean L2 "
+                  f"{(off.mean() if off.size else 0.0):.4f}")
+
+        best_remf = BEST_REMF_VARIANT.get(stream)
+        remf_key = f"ReMF_{best_remf}"
+        komor_key = f"komorniczak_{komor_family}" if komor_family else None
+        if remf_key not in method_mats or komor_key not in method_mats:
+            print(f"  {stream}: missing best ReMF or Komorniczak matrix -- skipping repr_comparison")
+            continue
+
+        panels = [
+            (raw_ref[1], raw_ref[0], "Raw Features"),
+            (method_mats[komor_key][1], method_mats[komor_key][0],
+             f"Komorniczak ({komor_family})"),
+            (method_mats[remf_key][1], method_mats[remf_key][0],
+             f"ReMF ({best_remf})"),
+        ]
+        _plot_repr_comparison(
+            panels, stream,
+            os.path.join(STREAM_DIR, f"repr_comparison_{stream}.png"))
+        print(f"  {stream:30s} repr_comparison -> repr_comparison_{stream}.png")
+
+    if rows_summary:
+        out = os.path.join(RESULTS_DIR, 'concept_distance_metafeatures_exp5.csv')
+        write_dict_csv(out, rows_summary)
+        print(f"  Saved: {out}")
 
 
 
