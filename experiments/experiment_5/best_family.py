@@ -48,11 +48,11 @@ for cell in cells:
         if not os.path.exists(p):
             continue
 
-        arr = np.load(p)   # (n_reps, n_windows, n_clfs)
-
-        ba = float(
-            np.mean(arr[:, -1, :], axis=0).max()
-        )
+        arr = np.load(p)
+        arr = np.squeeze(arr)            # kills any stray singleton axis
+        if arr.ndim != 2:
+            raise ValueError(f"{p}: expected (n_windows, n_clfs), got {arr.shape}")
+        ba = float(arr[-1, :].max())
 
         if ba > best_ba:
             best_version = version
