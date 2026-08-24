@@ -1011,7 +1011,7 @@ if args.concept_dist_features:
 if args.comparison_plot:
 
     print("\n" + "=" * 60)
-    print("VANILLA COLLAPSE FIGURE")
+    print("COMPARISON PLOT")
     print("=" * 60)
 
     CHUNK_SIZE = 100
