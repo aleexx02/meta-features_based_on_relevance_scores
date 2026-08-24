@@ -1,0 +1,685 @@
+% Auto-generated from summary_exp4.csv by make_tables.py
+% Requires \usepackage{booktabs} in your preamble.
+
+\begin{table}[htbp]\centering
+\caption{Extraction cost by feature count: time per window and peak memory (relative, tracemalloc peak Python heap --- not process RSS). Lower is better; cheapest per row in \textbf{bold}. Vanilla is mean+std only.}
+\begin{tabular}{lllll}
+\toprule
+\# features & ReMF time (ms/win) & Komorniczak time & ReMF mem (rel.) & Komorniczak mem \\
+\midrule
+3 & \textbf{9.2} & -- & \textbf{0.1} & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=1, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.987 (Aggstats)} & 0.908 (complexity) & 0.517 & 0.500 \\
+KNN & \textbf{0.998 (Aggstats)} & 0.952 (complexity) & 0.899 & 0.500 \\
+HT & 0.912 (Raw + temporal) & \textbf{0.977 (itemset)} & 0.785 & 0.500 \\
+MLP & 0.992 (Aggstats) & \textbf{0.999 (general)} & 0.998 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=3, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.905 (Aggstats)} & 0.813 (concept) & 0.271 & 0.250 \\
+KNN & 0.939 (Aggstats) & \textbf{0.944 (complexity)} & 0.698 & 0.250 \\
+HT & 0.819 (Raw + temporal) & \textbf{0.903 (general)} & 0.270 & 0.250 \\
+MLP & 0.983 (Aggstats) & \textbf{0.995 (statistical)} & 0.991 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=7, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.708 (Aggstats) & \textbf{0.730 (complexity)} & 0.271 & 0.250 \\
+KNN & 0.661 (Raw + temporal) & \textbf{0.767 (complexity)} & 0.358 & 0.250 \\
+HT & 0.720 (Raw + temporal) & \textbf{0.760 (general)} & 0.270 & 0.250 \\
+MLP & 0.968 (Aggstats) & \textbf{0.983 (concept)} & 0.960 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=15, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.658 (Aggstats) & \textbf{0.686 (complexity)} & 0.269 & 0.250 \\
+KNN & 0.394 (Raw + temporal) & \textbf{0.503 (complexity)} & 0.192 & 0.250 \\
+HT & 0.658 (Aggstats) & \textbf{0.703 (general)} & 0.268 & 0.250 \\
+MLP & 0.939 (Aggstats) & \textbf{0.946 (concept)} & 0.808 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=1, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.935 (Raw + temporal) & \textbf{0.953 (complexity)} & 0.524 & 0.500 \\
+KNN & \textbf{0.997 (Aggstats)} & 0.960 (complexity) & 0.799 & 0.500 \\
+HT & \textbf{0.984 (Aggstats)} & 0.969 (clustering) & 0.524 & 0.500 \\
+MLP & 0.982 (Aggstats) & \textbf{0.999 (general)} & 0.996 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=3, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.822 (Raw + temporal) & \textbf{0.877 (complexity)} & 0.279 & 0.250 \\
+KNN & 0.767 (Raw + temporal) & \textbf{0.891 (complexity)} & 0.450 & 0.250 \\
+HT & 0.859 (Raw + temporal) & \textbf{0.901 (general)} & 0.279 & 0.250 \\
+MLP & 0.980 (Aggstats) & \textbf{0.990 (statistical)} & 0.981 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=7, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.709 (Raw + temporal) & \textbf{0.828 (complexity)} & 0.277 & 0.250 \\
+KNN & 0.538 (Raw + temporal) & \textbf{0.721 (complexity)} & 0.251 & 0.250 \\
+HT & 0.780 (Raw + temporal) & \textbf{0.841 (general)} & 0.276 & 0.250 \\
+MLP & 0.954 (Aggstats) & \textbf{0.966 (concept)} & 0.937 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=15, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.626 (Raw + temporal) & \textbf{0.804 (complexity)} & 0.270 & 0.250 \\
+KNN & 0.568 (Raw + temporal) & \textbf{0.779 (complexity)} & 0.272 & 0.250 \\
+HT & 0.701 (Aggstats) & \textbf{0.803 (complexity)} & 0.269 & 0.250 \\
+MLP & 0.877 (Aggstats) & \textbf{0.926 (concept)} & 0.672 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=1, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.952 (Raw + temporal) & \textbf{0.988 (complexity)} & 0.532 & 0.500 \\
+KNN & 0.796 (Raw + temporal) & \textbf{0.987 (complexity)} & 0.609 & 0.500 \\
+HT & 0.982 (Aggstats) & \textbf{0.986 (complexity)} & 0.531 & 0.500 \\
+MLP & \textbf{0.997 (Aggstats)} & 0.997 (general) & 0.988 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=3, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.762 (Aggstats) & \textbf{0.941 (complexity)} & 0.292 & 0.250 \\
+KNN & 0.683 (Raw + temporal) & \textbf{0.919 (general)} & 0.364 & 0.250 \\
+HT & 0.884 (Raw + temporal) & \textbf{0.939 (complexity)} & 0.291 & 0.250 \\
+MLP & 0.966 (Aggstats) & \textbf{0.972 (statistical)} & 0.942 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=7, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.671 (Raw scores) & \textbf{0.930 (complexity)} & 0.286 & 0.250 \\
+KNN & 0.658 (Raw + temporal) & \textbf{0.915 (complexity)} & 0.312 & 0.250 \\
+HT & 0.839 (Aggstats) & \textbf{0.928 (complexity)} & 0.284 & 0.250 \\
+MLP & 0.890 (Aggstats) & \textbf{0.914 (concept)} & 0.838 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=15, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.639 (Raw scores) & \textbf{0.913 (complexity)} & 0.279 & 0.250 \\
+KNN & 0.624 (Raw + temporal) & \textbf{0.914 (complexity)} & 0.285 & 0.250 \\
+HT & 0.838 (Aggstats) & \textbf{0.915 (complexity)} & 0.275 & 0.250 \\
+MLP & 0.710 (Aggstats) & \textbf{0.814 (concept)} & 0.551 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=1, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.993 (Aggstats)} & 0.927 (statistical) & 0.568 & 0.500 \\
+KNN & \textbf{0.997 (Aggstats)} & 0.958 (complexity) & 0.916 & 0.500 \\
+HT & 0.847 (Aggstats) & \textbf{0.992 (clustering)} & 0.832 & 0.500 \\
+MLP & 0.992 (Raw + temporal) & \textbf{0.999 (general)} & 0.998 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=3, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.764 (Aggstats)} & 0.658 (concept) & 0.319 & 0.250 \\
+KNN & \textbf{0.968 (Aggstats)} & 0.939 (complexity) & 0.721 & 0.250 \\
+HT & 0.699 (Raw + temporal) & \textbf{0.893 (clustering)} & 0.319 & 0.250 \\
+MLP & 0.994 (Aggstats) & \textbf{0.995 (statistical)} & 0.991 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=7, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.604 (Aggstats) & \textbf{0.605 (concept)} & 0.298 & 0.250 \\
+KNN & 0.629 (Raw + temporal) & \textbf{0.737 (complexity)} & 0.348 & 0.250 \\
+HT & 0.586 (Raw + temporal) & \textbf{0.732 (general)} & 0.298 & 0.250 \\
+MLP & \textbf{0.982 (Aggstats)} & 0.982 (concept) & 0.962 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=15, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.557 (Aggstats) & \textbf{0.601 (general)} & 0.279 & 0.250 \\
+KNN & 0.378 (Raw + temporal) & \textbf{0.466 (complexity)} & 0.183 & 0.250 \\
+HT & 0.561 (Raw + temporal) & \textbf{0.678 (general)} & 0.279 & 0.250 \\
+MLP & 0.888 (Aggstats) & \textbf{0.939 (clustering)} & 0.814 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=1, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.993 (Aggstats)} & 0.943 (statistical) & 0.561 & 0.500 \\
+KNN & \textbf{0.994 (Aggstats)} & 0.958 (complexity) & 0.815 & 0.500 \\
+HT & 0.826 (Raw + temporal) & \textbf{0.941 (complexity)} & 0.560 & 0.500 \\
+MLP & 0.982 (Aggstats) & \textbf{0.999 (general)} & 0.996 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=3, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.759 (Aggstats)} & 0.721 (concept) & 0.314 & 0.250 \\
+KNN & 0.724 (Raw + temporal) & \textbf{0.865 (complexity)} & 0.451 & 0.250 \\
+HT & 0.738 (Raw + temporal) & \textbf{0.874 (general)} & 0.314 & 0.250 \\
+MLP & 0.987 (Aggstats) & \textbf{0.990 (statistical)} & 0.981 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=7, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.642 (Aggstats) & \textbf{0.707 (general)} & 0.292 & 0.250 \\
+KNN & 0.507 (Raw + temporal) & \textbf{0.668 (complexity)} & 0.247 & 0.250 \\
+HT & 0.618 (Raw + temporal) & \textbf{0.784 (general)} & 0.291 & 0.250 \\
+MLP & \textbf{0.967 (Aggstats)} & 0.964 (concept) & 0.937 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=15, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.596 (Aggstats) & \textbf{0.707 (general)} & 0.271 & 0.250 \\
+KNN & 0.529 (Raw + temporal) & \textbf{0.734 (complexity)} & 0.268 & 0.250 \\
+HT & 0.608 (Raw + temporal) & \textbf{0.733 (general)} & 0.271 & 0.250 \\
+MLP & \textbf{0.917 (Aggstats)} & 0.910 (concept) & 0.714 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=1, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.989 (Aggstats)} & 0.971 (concept) & 0.549 & 0.500 \\
+KNN & 0.769 (Raw + temporal) & \textbf{0.984 (complexity)} & 0.628 & 0.500 \\
+HT & 0.947 (Aggstats) & \textbf{0.970 (concept)} & 0.548 & 0.500 \\
+MLP & 0.997 (Aggstats) & \textbf{0.997 (general)} & 0.987 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=3, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.755 (Aggstats) & \textbf{0.832 (concept)} & 0.307 & 0.250 \\
+KNN & 0.661 (Raw + temporal) & \textbf{0.879 (general)} & 0.375 & 0.250 \\
+HT & 0.756 (Raw + temporal) & \textbf{0.860 (general)} & 0.306 & 0.250 \\
+MLP & 0.966 (Aggstats) & \textbf{0.973 (statistical)} & 0.943 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=7, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.690 (Aggstats) & \textbf{0.828 (general)} & 0.286 & 0.250 \\
+KNN & 0.628 (Raw + temporal) & \textbf{0.867 (complexity)} & 0.302 & 0.250 \\
+HT & 0.693 (Raw + temporal) & \textbf{0.835 (general)} & 0.286 & 0.250 \\
+MLP & \textbf{0.924 (Aggstats)} & 0.909 (concept) & 0.837 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- sea, ndrifts=15, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.668 (Aggstats) & \textbf{0.832 (general)} & 0.257 & 0.250 \\
+KNN & 0.607 (Raw + temporal) & \textbf{0.862 (complexity)} & 0.286 & 0.250 \\
+HT & 0.664 (Aggstats) & \textbf{0.842 (general)} & 0.258 & 0.250 \\
+MLP & \textbf{0.834 (Aggstats)} & 0.800 (concept) & 0.552 & 0.250 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=1, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{1.000 (Aggstats)} & 1.000 (complexity) & 0.518 & 0.500 \\
+KNN & 0.997 (Aggstats) & \textbf{0.999 (concept)} & 0.901 & 0.500 \\
+HT & 0.922 (Aggstats) & \textbf{1.000 (complexity)} & 0.818 & 0.500 \\
+MLP & 0.995 (Aggstats) & \textbf{0.999 (general)} & 0.995 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=3, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.588 (Aggstats) & \textbf{0.987 (info-theory)} & 0.346 & 0.333 \\
+KNN & 0.962 (Aggstats) & \textbf{0.998 (complexity)} & 0.665 & 0.333 \\
+HT & 0.689 (Aggstats) & \textbf{0.999 (complexity)} & 0.347 & 0.333 \\
+MLP & 0.991 (Aggstats) & \textbf{0.995 (general)} & 0.982 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=7, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.466 (Aggstats) & \textbf{0.982 (info-theory)} & 0.350 & 0.333 \\
+KNN & 0.418 (Raw + temporal) & \textbf{0.991 (complexity)} & 0.350 & 0.333 \\
+HT & 0.499 (Aggstats) & \textbf{0.999 (complexity)} & 0.349 & 0.333 \\
+MLP & 0.968 (Aggstats) & \textbf{0.986 (concept)} & 0.934 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=15, drifttype=sudden, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.503 (Aggstats) & \textbf{0.980 (info-theory)} & 0.343 & 0.333 \\
+KNN & 0.472 (Raw scores) & \textbf{0.969 (statistical)} & 0.398 & 0.333 \\
+HT & 0.508 (Raw + temporal) & \textbf{0.999 (complexity)} & 0.345 & 0.333 \\
+MLP & 0.928 (Aggstats) & \textbf{0.967 (concept)} & 0.765 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=1, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.999 (Aggstats)} & 0.999 (concept) & 0.523 & 0.500 \\
+KNN & 0.995 (Aggstats) & \textbf{0.999 (complexity)} & 0.803 & 0.500 \\
+HT & 0.852 (Aggstats) & \textbf{0.999 (concept)} & 0.522 & 0.500 \\
+MLP & 0.983 (Aggstats) & \textbf{0.999 (general)} & 0.990 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=3, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.529 (Aggstats) & \textbf{0.998 (info-theory)} & 0.347 & 0.333 \\
+KNN & 0.433 (Raw + temporal) & \textbf{0.997 (complexity)} & 0.387 & 0.333 \\
+HT & 0.525 (Aggstats) & \textbf{0.998 (info-theory)} & 0.350 & 0.333 \\
+MLP & 0.979 (Aggstats) & \textbf{0.991 (concept)} & 0.954 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=7, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.372 (Aggstats) & \textbf{0.998 (info-theory)} & 0.354 & 0.333 \\
+KNN & 0.444 (Raw + temporal) & \textbf{0.979 (statistical)} & 0.401 & 0.333 \\
+HT & 0.452 (Aggstats) & \textbf{0.998 (info-theory)} & 0.353 & 0.333 \\
+MLP & 0.947 (Aggstats) & \textbf{0.971 (concept)} & 0.866 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=15, drifttype=sudden, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.443 (Aggstats) & \textbf{0.995 (info-theory)} & 0.346 & 0.333 \\
+KNN & 0.436 (Raw scores) & \textbf{0.968 (concept)} & 0.381 & 0.333 \\
+HT & 0.501 (Raw + temporal) & \textbf{0.996 (complexity)} & 0.346 & 0.333 \\
+MLP & 0.879 (Aggstats) & \textbf{0.942 (concept)} & 0.542 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=1, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.998 (Aggstats)} & 0.998 (clustering) & 0.538 & 0.500 \\
+KNN & 0.795 (Raw scores) & \textbf{0.999 (complexity)} & 0.614 & 0.500 \\
+HT & 0.690 (Aggstats) & \textbf{0.998 (concept)} & 0.537 & 0.500 \\
+MLP & \textbf{0.998 (Aggstats)} & 0.997 (general) & 0.966 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=3, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.531 (Aggstats) & \textbf{0.995 (clustering)} & 0.352 & 0.333 \\
+KNN & 0.390 (Raw + temporal) & \textbf{0.995 (info-theory)} & 0.364 & 0.333 \\
+HT & 0.361 (Aggstats) & \textbf{0.996 (clustering)} & 0.356 & 0.333 \\
+MLP & 0.940 (Aggstats) & \textbf{0.976 (concept)} & 0.872 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=7, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.413 (Aggstats) & \textbf{0.996 (clustering)} & 0.361 & 0.333 \\
+KNN & 0.458 (Raw scores) & \textbf{0.992 (complexity)} & 0.370 & 0.333 \\
+HT & 0.442 (Raw + temporal) & \textbf{0.997 (info-theory)} & 0.359 & 0.333 \\
+MLP & 0.863 (Aggstats) & \textbf{0.927 (concept)} & 0.646 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=15, drifttype=sudden, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.422 (Aggstats) & \textbf{0.994 (info-theory)} & 0.345 & 0.333 \\
+KNN & 0.447 (Raw + temporal) & \textbf{0.989 (model-based)} & 0.348 & 0.333 \\
+HT & 0.475 (Raw + temporal) & \textbf{0.994 (info-theory)} & 0.345 & 0.333 \\
+MLP & 0.675 (Aggstats) & \textbf{0.849 (concept)} & 0.332 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=1, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.994 (Aggstats) & \textbf{1.000 (complexity)} & 0.565 & 0.500 \\
+KNN & 0.997 (Aggstats) & \textbf{0.999 (complexity)} & 0.918 & 0.500 \\
+HT & 0.830 (Aggstats) & \textbf{1.000 (complexity)} & 0.862 & 0.500 \\
+MLP & 0.992 (Aggstats) & \textbf{0.999 (general)} & 0.995 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=3, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.641 (Aggstats) & \textbf{0.980 (complexity)} & 0.383 & 0.333 \\
+KNN & 0.980 (Aggstats) & \textbf{0.997 (complexity)} & 0.692 & 0.333 \\
+HT & 0.614 (Aggstats) & \textbf{0.991 (landmarking)} & 0.383 & 0.333 \\
+MLP & 0.976 (Aggstats) & \textbf{0.995 (general)} & 0.982 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=7, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.449 (Aggstats) & \textbf{0.962 (complexity)} & 0.365 & 0.333 \\
+KNN & 0.376 (Raw scores) & \textbf{0.954 (complexity)} & 0.342 & 0.333 \\
+HT & 0.448 (Aggstats) & \textbf{0.964 (landmarking)} & 0.365 & 0.333 \\
+MLP & 0.955 (Aggstats) & \textbf{0.982 (general)} & 0.943 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=15, drifttype=gradual, chunksize=100. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.463 (Aggstats) & \textbf{0.949 (complexity)} & 0.350 & 0.333 \\
+KNN & 0.444 (Raw + temporal) & \textbf{0.930 (complexity)} & 0.407 & 0.333 \\
+HT & 0.442 (Raw + temporal) & \textbf{0.948 (complexity)} & 0.350 & 0.333 \\
+MLP & 0.920 (Aggstats) & \textbf{0.929 (model-based)} & 0.788 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=1, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.995 (Aggstats) & \textbf{0.999 (complexity)} & 0.556 & 0.500 \\
+KNN & 0.994 (Aggstats) & \textbf{0.997 (complexity)} & 0.820 & 0.500 \\
+HT & 0.751 (Aggstats) & \textbf{0.999 (complexity)} & 0.555 & 0.500 \\
+MLP & 0.982 (Aggstats) & \textbf{0.999 (general)} & 0.990 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=3, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.612 (Aggstats) & \textbf{0.980 (info-theory)} & 0.377 & 0.333 \\
+KNN & 0.415 (Raw + temporal) & \textbf{0.977 (complexity)} & 0.390 & 0.333 \\
+HT & 0.372 (Raw + temporal) & \textbf{0.982 (landmarking)} & 0.376 & 0.333 \\
+MLP & 0.963 (Aggstats) & \textbf{0.991 (concept)} & 0.960 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=7, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.485 (Aggstats) & \textbf{0.966 (complexity)} & 0.360 & 0.333 \\
+KNN & 0.438 (Raw scores) & \textbf{0.943 (statistical)} & 0.408 & 0.333 \\
+HT & 0.413 (Aggstats) & \textbf{0.966 (complexity)} & 0.360 & 0.333 \\
+MLP & 0.934 (Aggstats) & \textbf{0.965 (concept)} & 0.887 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=15, drifttype=gradual, chunksize=200. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.459 (Aggstats) & \textbf{0.950 (complexity)} & 0.341 & 0.333 \\
+KNN & 0.409 (Raw + temporal) & \textbf{0.940 (complexity)} & 0.382 & 0.333 \\
+HT & 0.447 (Raw scores) & \textbf{0.950 (complexity)} & 0.341 & 0.333 \\
+MLP & 0.865 (Aggstats) & \textbf{0.905 (concept)} & 0.621 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=1, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.995 (Aggstats) & \textbf{0.998 (clustering)} & 0.548 & 0.500 \\
+KNN & 0.795 (Raw scores) & \textbf{0.997 (complexity)} & 0.632 & 0.500 \\
+HT & 0.508 (Aggstats) & \textbf{0.997 (complexity)} & 0.547 & 0.500 \\
+MLP & \textbf{0.998 (Aggstats)} & 0.997 (general) & 0.966 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=3, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.695 (Aggstats) & \textbf{0.978 (info-theory)} & 0.370 & 0.333 \\
+KNN & 0.395 (Raw + temporal) & \textbf{0.962 (complexity)} & 0.373 & 0.333 \\
+HT & 0.365 (Raw + temporal) & \textbf{0.976 (info-theory)} & 0.369 & 0.333 \\
+MLP & 0.936 (Aggstats) & \textbf{0.973 (concept)} & 0.887 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=7, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.466 (Aggstats) & \textbf{0.959 (info-theory)} & 0.351 & 0.333 \\
+KNN & 0.414 (Raw scores) & \textbf{0.945 (concept)} & 0.364 & 0.333 \\
+HT & 0.394 (Raw + temporal) & \textbf{0.961 (complexity)} & 0.351 & 0.333 \\
+MLP & 0.841 (Aggstats) & \textbf{0.913 (concept)} & 0.709 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- stagger, ndrifts=15, drifttype=gradual, chunksize=500. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.476 (Aggstats) & \textbf{0.947 (info-theory)} & 0.322 & 0.333 \\
+KNN & 0.401 (Raw scores) & \textbf{0.948 (concept)} & 0.354 & 0.333 \\
+HT & 0.393 (Aggstats) & \textbf{0.949 (complexity)} & 0.334 & 0.333 \\
+MLP & 0.673 (Aggstats) & \textbf{0.836 (concept)} & 0.346 & 0.333 \\
+\bottomrule
+\end{tabular}
+\end{table}

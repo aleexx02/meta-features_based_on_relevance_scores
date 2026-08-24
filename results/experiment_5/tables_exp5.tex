@@ -1,0 +1,84 @@
+% Auto-generated from summary_exp5.csv by make_tables.py
+% Requires \usepackage{booktabs} in your preamble.
+
+\begin{table}[htbp]\centering
+\caption{Extraction cost by feature count: time per window and peak memory (relative, tracemalloc peak Python heap --- not process RSS). Lower is better; cheapest per row in \textbf{bold}. Vanilla is mean+std only.}
+\begin{tabular}{lllll}
+\toprule
+\# features & ReMF time (ms/win) & Komorniczak time & ReMF mem (rel.) & Komorniczak mem \\
+\midrule
+33 & \textbf{157.8} & -- & \textbf{0.8} & -- \\
+499 & \textbf{1781.7} & -- & \textbf{5.9} & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- INSECTS-abrupt\_balanced, ndrifts=5. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.658 (Aggstats) & \textbf{0.670 (info-theory)} & 0.546 & 0.167 \\
+KNN & \textbf{0.673 (Aggstats)} & 0.599 (complexity) & 0.496 & 0.167 \\
+HT & \textbf{0.698 (Aggstats)} & 0.678 (statistical) & 0.539 & 0.167 \\
+MLP & 0.555 (Aggstats) & \textbf{0.627 (general)} & 0.350 & 0.167 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- INSECTS-abrupt\_imbalanced, ndrifts=5. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.675 (Aggstats) & 0.802 (statistical) & \textbf{0.803} & 0.167 \\
+KNN & \textbf{0.809 (Raw + temporal)} & 0.729 (complexity) & 0.785 & 0.167 \\
+HT & 0.691 (Aggstats) & \textbf{0.914 (statistical)} & 0.803 & 0.167 \\
+MLP & 0.911 (Aggstats) & \textbf{0.964 (general)} & 0.702 & 0.167 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- INSECTS-incgradual\_balanced, ndrifts=1. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.924 (Aggstats) & 0.912 (concept) & \textbf{0.956} & 0.500 \\
+KNN & 0.820 (Aggstats) & \textbf{0.922 (concept)} & 0.884 & 0.500 \\
+HT & 0.942 (Aggstats) & 0.912 (concept) & \textbf{0.951} & 0.500 \\
+MLP & \textbf{0.954 (Aggstats)} & 0.931 (general) & 0.855 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- INSECTS-incgradual\_imbalanced, ndrifts=1. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & 0.953 (Aggstats) & 0.986 (statistical) & \textbf{0.990} & 0.500 \\
+KNN & 0.975 (Raw scores) & \textbf{0.975 (complexity)} & 0.959 & 0.500 \\
+HT & 0.941 (Aggstats) & 0.990 (statistical) & \textbf{0.990} & 0.500 \\
+MLP & 0.994 (Aggstats) & \textbf{0.994 (general)} & 0.976 & 0.500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering
+\caption{Per-classifier balanced accuracy --- SPAM, ndrifts=5. Best method per row in \textbf{bold}; ReMF representation / Komorniczak group in parentheses.}
+\begin{tabular}{lllll}
+\toprule
+Classifier & ReMF & Komorniczak & vanilla & random \\
+\midrule
+GNB & \textbf{0.719 (Raw scores)} & 0.565 (concept) & 0.538 & 0.167 \\
+KNN & \textbf{0.625 (Aggstats)} & 0.579 (concept) & 0.571 & 0.167 \\
+HT & \textbf{0.649 (Raw + temporal)} & 0.523 (statistical) & 0.513 & 0.167 \\
+MLP & 0.423 (Raw + temporal) & 0.415 (general) & \textbf{0.478} & 0.167 \\
+\bottomrule
+\end{tabular}
+\end{table}
