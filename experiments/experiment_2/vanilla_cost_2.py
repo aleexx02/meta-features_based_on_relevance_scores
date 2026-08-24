@@ -85,10 +85,25 @@ def window_provider(cell, seed):
 
 
 def cost_vanilla(cell, seed):
-    windows, _ = window_provider(cell, seed)   # windows already materialised (list)
+    windows, _ = window_provider(cell, seed)
+
     def _extract():
-        Xv = vanilla_features_from_windows(windows)
-        return len(Xv)
+        n = 0
+
+        for Xc in windows:
+
+            feat = np.concatenate([
+                Xc.mean(axis=0),
+                Xc.std(axis=0)
+            ])
+
+            feat[np.isnan(feat)] = 1
+            feat[np.isinf(feat)] = 1
+
+            n += 1
+
+        return n
+
     return _extract
 
 
@@ -149,4 +164,4 @@ if __name__ == '__main__':
     window_provider, cost_remf, cost_komor, cost_vanilla, n_features_of,
     cost_cells=COST_CELLS)
 
-    run_experiment(spec, do_vanilla=False, do_cost=True)
+    run_experiment(spec, do_vanilla=True, do_cost=True)

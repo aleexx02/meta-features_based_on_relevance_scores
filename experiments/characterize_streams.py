@@ -114,8 +114,18 @@ def plot_fingerprint(cm, concept_ids, title, out_path, centre=True,
                      max_features=60):
     """Per-concept feature means: concept (rows) x feature (cols).
  
-    centre=True subtracts each feature's mean ACROSS concepts before plotting,
-    so the colour shows how each concept deviates from the average concept.
+    centre=True subtracts each feature's mean across concepts before plotting.
+    The resulting heatmap shows how each concept differs from the average
+    concept for that feature.
+
+    Colour interpretation:
+        red   -> higher than the average concept
+        blue  -> lower than the average concept
+        white -> approximately average
+
+    This removes absolute feature levels and highlights the concept-specific
+    patterns that would otherwise be difficult to see when features are not
+    naturally centred (e.g. SEA, STAGGER, LED).
     This is essential for generators whose features are not centred on zero
     (SEA on [0,10], STAGGER on [0,2], LED on [0,1]): plotting raw means there
     puts every cell at the top of a symmetric colour scale and the plot comes
@@ -149,10 +159,20 @@ def plot_fingerprint(cm, concept_ids, title, out_path, centre=True,
     if kept is not None:
         ax.set_xlabel(f"feature (top {n_f} of {cm.shape[1]} by variation "
                       f"across concepts)")
-    lab = ("deviation from per-feature mean" if centre else "mean feature value")
-    ax.set_title(f"Concept fingerprints (per-concept feature means)\n{title}"
-                 + (f"\nmax deviation {vmax:.3g}" if centre else ""),
-                 fontsize=10)
+    lab = ("difference from average concept" if centre else "mean feature value")
+    if centre:
+        ax.set_title(
+            f"Concept fingerprints in raw feature space\n"
+            f"{title}\n"
+            f"(feature values relative to the average concept)",
+            fontsize=10
+        )
+    else:
+        ax.set_title(
+            f"Concept fingerprints in raw feature space\n"
+            f"{title}",
+            fontsize=10
+        )
     cbar = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02)
     cbar.set_label(lab, fontsize=8)
     fig.tight_layout()
@@ -199,7 +219,7 @@ def plot_distance_matrix(cm, concept_ids, title, out_path):
     ax.set_xticklabels(concept_ids, fontsize=6, rotation=90)
     ax.set_yticks(range(n))
     ax.set_yticklabels(concept_ids, fontsize=6)
-    ax.set_title(f"Pairwise concept distance (L2)\n{title}", fontsize=10)
+    ax.set_title(f"Concept separation in raw feature space\n{title}", fontsize=10)
 
     if n <= 12 and finite.size > 0:
         span = vmax - vmin
@@ -213,7 +233,7 @@ def plot_distance_matrix(cm, concept_ids, title, out_path):
                         color="white" if norm < 0.5 else "black")
 
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("L2 distance", fontsize=8)
+    cbar.set_label("concept separation", fontsize=8)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
@@ -231,7 +251,7 @@ def plot_spread_curve(sweep_name, sweep_vals, summaries, title, out_path):
     ax.fill_between(x, lo, hi, alpha=0.2, color="steelblue", label="min-max range")
     ax.plot(x, mean, "o-", color="steelblue", label="mean pairwise L2")
     ax.set_xlabel(sweep_name)
-    ax.set_ylabel("concept separation (L2)")
+    ax.set_ylabel(" mean concept separation (L2)")
     ax.set_title(f"Concept separation vs {sweep_name}\n{title}", fontsize=10)
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)

@@ -64,10 +64,24 @@ def _read_chunks(cell):
 
 def cost_vanilla(cell, seed):
     chunks = _read_chunks(cell)
-    windows = [X for X, _ in chunks]
+
     def _extract():
-        Xv = vanilla_features_from_windows(windows)
-        return len(Xv)
+        n = 0
+
+        for X_chunk, _ in chunks:
+
+            feat = np.concatenate([
+                X_chunk.mean(axis=0),
+                X_chunk.std(axis=0)
+            ])
+
+            feat[np.isnan(feat)] = 1
+            feat[np.isinf(feat)] = 1
+
+            n += 1
+
+        return n
+
     return _extract
 
 
@@ -121,4 +135,4 @@ if __name__ == '__main__':
     cost_cells=CELLS
     )
     
-    run_experiment(spec, do_vanilla=False, do_cost=True)
+    run_experiment(spec, do_vanilla=True, do_cost=True)

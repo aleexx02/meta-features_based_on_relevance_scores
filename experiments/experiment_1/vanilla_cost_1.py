@@ -71,13 +71,25 @@ def window_provider(cell, seed):
 
 
 def cost_vanilla(cell, seed):
-    stream, _ = _build(CELL_CONFIG[cell], seed)
-    stream.reset()
-    chunks = [np.asarray(Xc, float) for i, (Xc, yc) in enumerate(stream) if i >= WARMUP]
+    windows, _ = window_provider(cell, seed)
 
     def _extract():
-        Xv = vanilla_features_from_windows(chunks)   # windowing already done; pure extraction
-        return len(Xv)
+        n = 0
+
+        for Xc in windows:
+
+            feat = np.concatenate([
+                Xc.mean(axis=0),
+                Xc.std(axis=0)
+            ])
+
+            feat[np.isnan(feat)] = 1
+            feat[np.isinf(feat)] = 1
+
+            n += 1
+
+        return n
+
     return _extract
 
 
@@ -133,4 +145,4 @@ if __name__ == '__main__':
     cost_vanilla,
     n_features_of
     )
-    run_experiment(spec, do_vanilla=False, do_cost=True)
+    run_experiment(spec, do_vanilla=True, do_cost=True)

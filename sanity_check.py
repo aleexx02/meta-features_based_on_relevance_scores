@@ -64,7 +64,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ================
  
 # set to True to run StreamLearn, False for SEA/STAGGER
-RUN_STREAMLEARN = False
+RUN_STREAMLEARN = True
 
 # StreamLearn configuration
 SL_RANDOM_STATE = 42
@@ -82,9 +82,9 @@ SL_DRIFT_CONFIGS = [
 ]
 
 SL_MF_CONFIGS = [
-    ('aggstats', MF_NAMES_AGGSTATS, 8),
-    ('raw', MF_NAMES_RAW,  5),
-    ('raw_temporal', MF_NAMES_RAW_TEMPORAL, 6),
+    ('ReMF-Aggstats', MF_NAMES_AGGSTATS, 8),
+    ('ReMF-Raw', MF_NAMES_RAW,  5),
+    ('ReMF-Raw+Temporal', MF_NAMES_RAW_TEMPORAL, 6),
 ]
 
 
@@ -101,7 +101,7 @@ CONFIGS = [
     ("orig",     ConfigResetWeightProp),  # reset + weight propagation (ABFS-style choices)
     ("noweight", ConfigReset),            # reset only (no weight propagation)
     ("noreset",  ConfigWeightProp),       # weight propagation only (no reset)
-    ("emf",      ReMF),                     # ReMF: no reset, no weight propagation
+    ("ReMF",      ReMF),                     # ReMF: no reset, no weight propagation
 ]
 
 # SEA / STAGGER configuration
@@ -300,11 +300,11 @@ if RUN_STREAMLEARN:
                     abfs.update(X_chunk[i], y_chunk[i])
                 wt = abfs.relevance_scores()
                 if window_counter >= SL_WARMUP:
-                    if mf_type == 'aggstats':
+                    if mf_type == 'ReMF-Aggstats':
                         mf = extract_metafeatures(wt=wt, wt_prev=wt_prev, drift_count=abfs.pop_drift_count(), time_since_drift=abfs.time_since_drift)
-                    elif mf_type == 'raw':
+                    elif mf_type == 'ReMF-Raw':
                         mf = extract_metafeatures_raw(wt)
-                    elif mf_type == 'raw_temporal':
+                    elif mf_type == 'ReMF-Raw+Temporal':
                         mf = extract_metafeatures_raw_temporal(wt=wt, wt_prev=wt_prev)
                     meta_features.append(mf)
                     concept_labels.append(concept_labels_all[window_counter])
@@ -316,7 +316,7 @@ if RUN_STREAMLEARN:
             raw_vectors = meta_features[:, :SL_N_FEATURES] if mf_type in ('raw', 'raw_temporal') else np.array([])
 
             plot_metafeatures(meta_features, mf_names, n_mf_cols, boundaries[0] if boundaries else None,
-                SL_WARMUP,title=f'Meta-features ({mf_type}) - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})',
+                SL_WARMUP,title=f'{mf_type} - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})',
                 filename=f'metafeatures_over_time_{stream_type}_{drift_type}_{mf_type}.png')
 
             plot_pca(meta_features, concept_labels,title=f'PCA ({mf_type}) - StreamLearn {drift_type} (seed={SL_RANDOM_STATE})',
@@ -345,7 +345,7 @@ else:
         print(f"{stream_type} - {drift_type}")
         print(f"{'='*60}")
 
-        mf_type   = 'aggstats'
+        mf_type   = 'ReMF-Aggstats'
         mf_names  = MF_NAMES_AGGSTATS
         n_mf_cols = 4
         feature_names = ['size', 'color', 'shape'] if categorical_feats == [0, 1, 2] \
@@ -400,10 +400,10 @@ else:
             # PCA — on aggstats meta-features
             plot_pca(
                 meta_features, concept_labels,
-                title=f'PCA (aggstats) - {stream_type} {drift_type} [{cfg_name}]',
+                title=f'PCA ({mf_type}) - {stream_type} {drift_type} [{cfg_name}]',
                 filename=f'pca_{stream_type}_{drift_type}_{cfg_name}.png')
 
-            if cfg_name == 'emf':
+            if cfg_name == 'ReMF':
                 print_sanity_check_summary(
                     f'{stream_type} {drift_type}', False, mf_type, mf_names,
                     meta_features, concept_labels, raw_vectors, N_FEATURES_SS)

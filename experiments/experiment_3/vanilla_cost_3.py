@@ -60,15 +60,24 @@ def cost_vanilla(cell, seed):
     cs = s['chunk_size']
 
     def _extract():
-        windows = []
+        n = 0
+
         for w in range(len(cpc)):
-            block = data[w*cs:(w+1)*cs, :-1]  # windowing is timed, matching ReMF/Komor
+            block = data[w*cs:(w+1)*cs, :-1]
+
             if len(block) == 0:
                 break
-            windows.append(np.asarray(block, dtype=float))
-        Xv = vanilla_features_from_windows(windows)
-        return len(Xv)
 
+            Xc = np.asarray(block, dtype=float)
+
+            # vanilla descriptor for ONE window
+            _ = np.concatenate([
+                Xc.mean(axis=0),
+                Xc.std(axis=0)
+            ])
+
+            n += 1
+        return n
     return _extract
 
 def cost_remf(cell, seed):
@@ -129,4 +138,4 @@ if __name__ == '__main__':
     n_features_of,
     cost_cells=COST_CELLS
 )
-    run_experiment(spec, do_vanilla=False, do_cost=True)
+    run_experiment(spec, do_vanilla=True, do_cost=True)
