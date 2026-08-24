@@ -295,6 +295,9 @@ def write_dict_csv(path, rows):
     print(f"  Saved: {path}")
 
 
+
+
+
 # ============================================================
 #  SANITY  (reference cells only)
 # ============================================================
@@ -927,36 +930,6 @@ if args.concept_dist_metafeatures:
             d = float(np.linalg.norm(cm[i] - cm[j]))
             D[i, j] = D[j, i] = d
         return D
-
-    def _plot_distance_matrix(D, concept_ids, title, out_path):
-        n = len(D)
-        Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
-        finite = Dm[np.isfinite(Dm)]
-        if finite.size == 0:
-            vmin, vmax = 0.0, 1.0
-        else:
-            vmin, vmax = float(finite.min()), float(finite.max())
-            if vmin == vmax:
-                vmin, vmax = vmin - 0.5, vmax + 0.5
-        cmap = plt.cm.viridis.copy(); cmap.set_bad(color="lightgrey")
-        fig, ax = plt.subplots(figsize=(max(4, n * 0.35), max(4, n * 0.35)))
-        im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
-        ax.set_xticks(range(n)); ax.set_xticklabels(concept_ids, fontsize=6, rotation=90)
-        ax.set_yticks(range(n)); ax.set_yticklabels(concept_ids, fontsize=6)
-        ax.set_title(title, fontsize=10)
-        if n <= 12 and finite.size > 0:
-            span = vmax - vmin
-            for i in range(n):
-                for j in range(n):
-                    if i == j:
-                        continue
-                    norm = (Dm[i, j] - vmin) / span if span > 0 else 0.5
-                    ax.text(j, i, f"{Dm[i, j]:.2f}", ha="center", va="center",
-                            fontsize=6, color="white" if norm < 0.5 else "black")
-        cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label("L2 distance", fontsize=8)
-        fig.tight_layout(); fig.savefig(out_path, dpi=150, bbox_inches="tight")
-        plt.close()
 
     # ---- rep-0 fingerprint sources ------------------------------------------
     def _remf_and_raw(cell, seed):

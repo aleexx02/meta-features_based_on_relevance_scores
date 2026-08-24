@@ -272,45 +272,165 @@ def plot_heatmap_balanced_accuracy_comparison(
     print(f"  Heatmap saved: {path}")
 
 
+def _normalize_distance_matrix(D):
+    """
+    Normalize a distance matrix by its mean off-diagonal distance.
+
+    Returns
+    -------
+    D_norm : ndarray
+        Relative distance matrix.
+    mean_l2 : float
+        Original mean off-diagonal L2 distance.
+    """
+    D = np.asarray(D, dtype=float)
+
+    off = D[~np.eye(len(D), dtype=bool)]
+    mean_l2 = float(off.mean()) if off.size else 1.0
+
+    if mean_l2 <= 0:
+        mean_l2 = 1.0
+
+    return D / mean_l2, mean_l2
+
 
 def _plot_repr_comparison(panels, cell, out_path):
-    """panels = [(D, ids, subtitle), ...]; shared off-diagonal colour scale."""
-    all_vals = []
-    for D, _, _ in panels:
-        Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
-        v = Dm[np.isfinite(Dm)]
-        if v.size:
-            all_vals.extend(v.tolist())
-    if len(all_vals):
-        vmin, vmax = float(np.min(all_vals)), float(np.max(all_vals))
-    else:
-        vmin, vmax = 0.0, 1.0
-    if vmin == vmax:
-        vmin -= 0.5; vmax += 0.5
-    span = vmax - vmin
+    """
+    panels = [(D, ids, subtitle), ...]
 
-    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    Each panel is normalised by its own mean off-diagonal distance.
+    Colours therefore show relative concept-separation structure,
+    while subtitles report the original absolute scale.
+    """
+
+    # --------------------------------------------------
+    # Precompute normalized matrices and global scale
+    # --------------------------------------------------
+
+    processed = []
+    all_vals = []
+
+    for D, ids_, subtitle in panels:
+
+        Dplot, mean_l2 = _normalize_distance_matrix(D)
+
+        Dplot = Dplot.copy()
+        np.fill_diagonal(Dplot, np.nan)
+
+        finite = Dplot[np.isfinite(Dplot)]
+
+        if finite.size:
+            all_vals.extend(finite)
+
+        processed.append(
+            (Dplot, ids_, subtitle, mean_l2)
+        )
+
+    if all_vals:
+        global_vmin = float(np.min(all_vals))
+        global_vmax = float(np.max(all_vals))
+    else:
+        global_vmin = 0.0
+        global_vmax = 1.0
+
+    if global_vmin == global_vmax:
+        global_vmin -= 0.5
+        global_vmax += 0.5
+
+    # --------------------------------------------------
+    # Plot
+    # --------------------------------------------------
+
+    fig, axes = plt.subplots(
+        1,
+        len(processed),
+        figsize=(16, 5)
+    )
+
+    if len(processed) == 1:
+        axes = [axes]
+
+    cmap = plt.cm.viridis.copy()
+    cmap.set_bad(color="lightgrey")
+
     im = None
-    for ax, (D, ids_, subtitle) in zip(axes, panels):
-        Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
-        finite = Dm[np.isfinite(Dm)]
-        mean_l2 = float(finite.mean()) if finite.size else 0.0
-        cmap = plt.cm.viridis.copy(); cmap.set_bad(color="lightgrey")
-        im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
-        ax.set_title(f"{subtitle}\nmean L2 = {mean_l2:.2f}", fontsize=10)
-        ax.set_xticks(range(len(ids_))); ax.set_xticklabels(ids_, fontsize=6)
-        ax.set_yticks(range(len(ids_))); ax.set_yticklabels(ids_, fontsize=6)
-        if len(ids_) <= 12 and finite.size:
-            for i in range(len(D)):
-                for j in range(len(D)):
-                    if i == j:
+
+    for ax, (Dplot, ids_, subtitle, mean_l2) in zip(axes, processed):
+
+        im = ax.imshow(
+            Dplot,
+            cmap=cmap,
+            aspect="auto",
+            vmin=global_vmin,
+            vmax=global_vmax,
+        )
+
+        ax.set_title(
+            f"{subtitle}\n"
+            f"(mean-normalised)\n"
+            f"raw mean L2 = {mean_l2:.2f}",
+            fontsize=10
+        )
+
+        ax.set_xticks(range(len(ids_)))
+        ax.set_xticklabels(ids_, fontsize=6)
+
+        ax.set_yticks(range(len(ids_)))
+        ax.set_yticklabels(ids_, fontsize=6)
+
+        # annotate small matrices only
+        if len(ids_) <= 12:
+
+            span = global_vmax - global_vmin
+
+            for i in range(len(Dplot)):
+                for j in range(len(Dplot)):
+
+                    if i == j or np.isnan(Dplot[i, j]):
                         continue
-                    norm = (Dm[i, j] - vmin) / span if span > 0 else 0.5
-                    ax.text(j, i, f"{Dm[i, j]:.2f}", ha="center", va="center",
-                            fontsize=6, color="white" if norm < 0.5 else "black")
-    cbar = fig.colorbar(im, ax=axes, fraction=0.025, pad=0.02)
-    cbar.set_label("Concept distance (L2)", fontsize=9)
-    fig.suptitle(f"{cell}: concept separation across representations",
-                    fontsize=11)
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+
+                    norm = (
+                        (Dplot[i, j] - global_vmin) / span
+                        if span > 0 else 0.5
+                    )
+
+                    ax.text(
+                        j,
+                        i,
+                        f"{Dplot[i, j]:.2f}",
+                        ha="center",
+                        va="center",
+                        fontsize=6,
+                        color="white" if norm < 0.5 else "black"
+                    )
+
+    # --------------------------------------------------
+    # Shared colorbar
+    # --------------------------------------------------
+
+    cbar = fig.colorbar(
+        im,
+        ax=axes,
+        fraction=0.03,
+        pad=0.02
+    )
+
+    cbar.set_label(
+        "Relative concept distance\n(mean-normalised L2)",
+        fontsize=9
+    )
+
+    fig.suptitle(
+        f"{cell}: relative concept separation across representations",
+        fontsize=11
+    )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        out_path,
+        dpi=150,
+        bbox_inches="tight"
+    )
+
     plt.close()

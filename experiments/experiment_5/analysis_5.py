@@ -425,7 +425,6 @@ def plot_concept_distribution(concept_labels, title, out_path, n_concepts=None):
     plt.close(); print(f"  Saved: {out_path}")
 
 
-
 # ============================================================
 #  SANITY CHECK
 #  relevance_scores_{stream}.png
