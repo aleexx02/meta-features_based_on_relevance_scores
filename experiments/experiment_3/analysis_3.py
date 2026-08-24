@@ -60,6 +60,7 @@ from metafeatures.mf_extraction import (
 )
 from streams.generate_synthetic_streams import exp3_specs, SEED, CHUNK_SIZES_EXP3 as CHUNK_SIZES
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
+from plot_results import _plot_repr_comparison
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -875,27 +876,27 @@ if args.concept_dist_metafeatures:
     KEEP_CHUNK_SIZE = 100
     REP_SEED = SEED                      # single rep = rep-0
     BEST_KOMOR_FAMILY = {
-    "led_chunk100_gradual": "general",
-    "led_chunk100_sudden": "general",
+        "led_chunk100_gradual": "general",
+        "led_chunk100_sudden": "general",
 
-    "sea_chunk100_gradual": "statistical",
-    "sea_chunk100_sudden": "statistical",
+        "sea_chunk100_gradual": "statistical",
+        "sea_chunk100_sudden": "statistical",
 
-    "stagger_chunk100_gradual": "complexity",
-    "stagger_chunk100_sudden": "complexity",
+        "stagger_chunk100_gradual": "complexity",
+        "stagger_chunk100_sudden": "complexity",
     }
 
     BEST_REMF_VARIANT = {
-    "led_chunk100_gradual": "aggstats",
-    "led_chunk100_sudden": "aggstats",
+        "led_chunk100_gradual": "aggstats",
+        "led_chunk100_sudden": "aggstats",
 
-    "sea_chunk100_gradual": "aggstats",
-    "sea_chunk100_sudden": "aggstats",
+        "sea_chunk100_gradual": "aggstats",
+        "sea_chunk100_sudden": "aggstats",
 
-    "stagger_chunk100_gradual": "aggstats",
-    "stagger_chunk100_sudden": "aggstats",
-}
-    
+        "stagger_chunk100_gradual": "aggstats",
+        "stagger_chunk100_sudden": "aggstats",
+    }
+
     STREAM_DIR = os.path.join(FIGURES_DIR, '..', 'streams')
     os.makedirs(STREAM_DIR, exist_ok=True)
 
@@ -906,7 +907,7 @@ if args.concept_dist_metafeatures:
 
     def _load_komor_cache(cell, measure, seed):
         """Return the cached per-window pymfe matrix for one family, last
-        column dropped (it is the concept id), or None if absent."""
+        column dropped (it is the concept id), or (None, None) if absent."""
         path = os.path.join(KOMOR_CACHE_DIR,
                             f'komor_{cell}_{measure}_seed{seed}.npy')
         if not os.path.exists(path):
@@ -949,8 +950,8 @@ if args.concept_dist_metafeatures:
                 for j in range(n):
                     if i == j:
                         continue
-                    norm = (D[i, j] - vmin) / span if span > 0 else 0.5
-                    ax.text(j, i, f"{D[i, j]:.2f}", ha="center", va="center",
+                    norm = (Dm[i, j] - vmin) / span if span > 0 else 0.5
+                    ax.text(j, i, f"{Dm[i, j]:.2f}", ha="center", va="center",
                             fontsize=6, color="white" if norm < 0.5 else "black")
         cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         cbar.set_label("L2 distance", fontsize=8)
@@ -1021,30 +1022,28 @@ if args.concept_dist_metafeatures:
 
         # Komorniczak from cache (best family for this cell)
         komor_family = BEST_KOMOR_FAMILY.get(cell)
-
+        Xk = yk = None
         if komor_family is None:
-            print(f"  [komor] no best-family mapping for {cell} -- skipping.")
+            print(f"  [komor] no best-family mapping for {cell} -- skipping komor.")
         else:
             Xk, yk = _load_komor_cache(cell, komor_family, REP_SEED)
+            if Xk is None:
+                print(f"  [komor] cache miss for {cell} / {komor_family} "
+                      f"seed{REP_SEED} -- skipping komor for this cell.")
+            else:
+                if len(yk) != len(labels):
+                    print(f"  [komor] window-count mismatch for {cell} "
+                          f"(komor {len(yk)} vs remf {len(labels)}) "
+                          f"-- using komor's own labels.")
+                ids, cm = _concept_means(Xk, yk)
+                method_mats[f'komorniczak_{komor_family}'] = (ids, _pairwise_l2(cm))
 
-        if Xk is None:
-            print(f"  [komor] cache miss for {cell} / {komor_family} seed{REP_SEED} -- skipping komor for this cell.")
-        else:
-            # cache row order == window order == labels order
-            lab = labels if len(labels) == len(Xk) else yk
-            ids, cm = _concept_means(Xk, lab)
-            method_mats[f'komorniczak_{komor_family}'] = (ids, _pairwise_l2(cm))
-
+        # record numbers for every method (no per-method PNGs any more)
         for method, (ids_m, D) in method_mats.items():
             off = D[~np.eye(len(D), dtype=bool)]
             l2_mean = float(off.mean()) if off.size else 0.0
             l2_min = float(off.min()) if off.size else 0.0
             l2_max = float(off.max()) if off.size else 0.0
-            title = (f"{method}  |  {cell}\n"
-                     f"concept distance in meta-feature space "
-                     f"(mean L2 {l2_mean:.3f}, rep-0)")
-            out = os.path.join(STREAM_DIR, f"distance_mf_{method}_{cell}.png")
-            _plot_distance_matrix(D, ids_m, title, out)
             rows_summary.append(dict(cell=cell, method=method,
                                      n_concepts=len(ids_m), rep=int(REP_SEED),
                                      l2_min=round(l2_min, 4),
@@ -1052,154 +1051,37 @@ if args.concept_dist_metafeatures:
                                      l2_mean=round(l2_mean, 4)))
             print(f"  {cell:28s} {method:22s} mean L2 {l2_mean:.4f}")
 
-        # ---- HERO 3-panel: Raw Features vs Best Komorniczak vs Best ReMF ----
-
-        ids_raw, D_raw = raw_ref
-
+        # ---- repr_comparison: Raw Features vs Best Komorniczak vs Best ReMF --
         best_remf = BEST_REMF_VARIANT.get(cell)
         best_komor = BEST_KOMOR_FAMILY.get(cell)
-
         remf_key = f"ReMF_{best_remf}"
         komor_key = f"komorniczak_{best_komor}"
 
         if remf_key not in method_mats:
-            print(f"  missing {remf_key} for {cell} -- skipping hero panel")
+            print(f"  missing {remf_key} for {cell} -- skipping repr_comparison")
             continue
-
         if komor_key not in method_mats:
-            print(f"  missing {komor_key} for {cell} -- skipping hero panel")
+            print(f"  missing {komor_key} for {cell} -- skipping repr_comparison")
             continue
-
-        ids_k, D_k = method_mats[komor_key]
-        ids_r, D_r = method_mats[remf_key]
 
         panels = [
-            (D_raw, ids_raw, "Raw Features"),
-            (D_k, ids_k, f"Komorniczak ({best_komor})"),
-            (D_r, ids_r, f"ReMF ({best_remf})")
+            (raw_ref[1], raw_ref[0], "Raw Features"),
+            (method_mats[komor_key][1], method_mats[komor_key][0],
+             f"Komorniczak ({best_komor})"),
+            (method_mats[remf_key][1], method_mats[remf_key][0],
+             f"ReMF ({best_remf})"),
         ]
-
-        # -------------------------------------------------------
-        # Shared colour scale across ALL representations
-        # -------------------------------------------------------
-        all_vals = []
-
-        for D, _, _ in panels:
-            Dm = D.astype(float).copy()
-            np.fill_diagonal(Dm, np.nan)
-
-            vals = Dm[np.isfinite(Dm)]
-            if vals.size:
-                all_vals.extend(vals)
-
-        if len(all_vals):
-            global_vmin = float(np.min(all_vals))
-            global_vmax = float(np.max(all_vals))
-        else:
-            global_vmin, global_vmax = 0.0, 1.0
-
-        if global_vmin == global_vmax:
-            global_vmin -= 0.5
-            global_vmax += 0.5
-
-        # -------------------------------------------------------
-        # Plot
-        # -------------------------------------------------------
-        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-
-        for ax, (D, ids_, subtitle) in zip(axes, panels):
-
-            Dm = D.astype(float).copy()
-            np.fill_diagonal(Dm, np.nan)
-
-            finite = Dm[np.isfinite(Dm)]
-
-            mean_l2 = float(finite.mean()) if finite.size else 0.0
-
-            cmap = plt.cm.viridis.copy()
-            cmap.set_bad(color="lightgrey")
-
-            im = ax.imshow(
-                Dm,
-                cmap=cmap,
-                aspect="auto",
-                vmin=global_vmin,
-                vmax=global_vmax
-            )
-
-            ax.set_title(
-                f"{subtitle}\nmean L2 = {mean_l2:.2f}",
-                fontsize=10
-            )
-
-            ax.set_xticks(range(len(ids_)))
-            ax.set_xticklabels(ids_, fontsize=6)
-
-            ax.set_yticks(range(len(ids_)))
-            ax.set_yticklabels(ids_, fontsize=6)
-
-            if len(ids_) <= 12 and finite.size:
-
-                span = global_vmax - global_vmin
-
-                for i in range(len(D)):
-                    for j in range(len(D)):
-
-                        if i == j:
-                            continue
-
-                        norm = (
-                            (D[i, j] - global_vmin) / span
-                            if span > 0 else 0.5
-                        )
-
-                        ax.text(
-                            j, i,
-                            f"{D[i, j]:.2f}",
-                            ha="center",
-                            va="center",
-                            fontsize=6,
-                            color="white" if norm < 0.5 else "black"
-                        )
-
-        # Single shared colourbar
-        cbar = fig.colorbar(
-            im,
-            ax=axes,
-            fraction=0.025,
-            pad=0.02
-        )
-        cbar.set_label("Concept distance (L2)", fontsize=9)
-
-        fig.suptitle(
-            f"{cell}: concept separation across representations (rep-0)",
-            fontsize=11
-        )
-
-        fig.tight_layout()
-
-        hero = os.path.join(
-            STREAM_DIR,
-            f"hero_raw_vs_komor_vs_remf_{cell}.png"
-        )
-
-        fig.savefig(
-            hero,
-            dpi=150,
-            bbox_inches="tight"
-        )
-
-        plt.close()
-
-        print(f"  {cell:28s} hero panel -> {hero}")
-
-
+        _plot_repr_comparison(
+            panels, cell,
+            os.path.join(STREAM_DIR, f"repr_comparison_{cell}.png"))
+        print(f"  {cell:28s} repr_comparison -> repr_comparison_{cell}.png")
 
     if rows_summary:
         out = os.path.join(RESULTS_DIR, 'concept_distance_metafeatures_exp3.csv')
         write_dict_csv(out, rows_summary)
         print(f"  Saved: {out}")
 
+        
 
 if args.concept_dist_features:
     print("\n" + "=" * 60)

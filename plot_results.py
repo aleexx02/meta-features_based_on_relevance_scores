@@ -270,3 +270,47 @@ def plot_heatmap_balanced_accuracy_comparison(
     plt.savefig(path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"  Heatmap saved: {path}")
+
+
+
+def _plot_repr_comparison(panels, cell, out_path):
+    """panels = [(D, ids, subtitle), ...]; shared off-diagonal colour scale."""
+    all_vals = []
+    for D, _, _ in panels:
+        Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
+        v = Dm[np.isfinite(Dm)]
+        if v.size:
+            all_vals.extend(v.tolist())
+    if len(all_vals):
+        vmin, vmax = float(np.min(all_vals)), float(np.max(all_vals))
+    else:
+        vmin, vmax = 0.0, 1.0
+    if vmin == vmax:
+        vmin -= 0.5; vmax += 0.5
+    span = vmax - vmin
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    im = None
+    for ax, (D, ids_, subtitle) in zip(axes, panels):
+        Dm = D.astype(float).copy(); np.fill_diagonal(Dm, np.nan)
+        finite = Dm[np.isfinite(Dm)]
+        mean_l2 = float(finite.mean()) if finite.size else 0.0
+        cmap = plt.cm.viridis.copy(); cmap.set_bad(color="lightgrey")
+        im = ax.imshow(Dm, cmap=cmap, aspect="auto", vmin=vmin, vmax=vmax)
+        ax.set_title(f"{subtitle}\nmean L2 = {mean_l2:.2f}", fontsize=10)
+        ax.set_xticks(range(len(ids_))); ax.set_xticklabels(ids_, fontsize=6)
+        ax.set_yticks(range(len(ids_))); ax.set_yticklabels(ids_, fontsize=6)
+        if len(ids_) <= 12 and finite.size:
+            for i in range(len(D)):
+                for j in range(len(D)):
+                    if i == j:
+                        continue
+                    norm = (Dm[i, j] - vmin) / span if span > 0 else 0.5
+                    ax.text(j, i, f"{Dm[i, j]:.2f}", ha="center", va="center",
+                            fontsize=6, color="white" if norm < 0.5 else "black")
+    cbar = fig.colorbar(im, ax=axes, fraction=0.025, pad=0.02)
+    cbar.set_label("Concept distance (L2)", fontsize=9)
+    fig.suptitle(f"{cell}: concept separation across representations",
+                    fontsize=11)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()

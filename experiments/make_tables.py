@@ -1,33 +1,28 @@
-#!/usr/bin/env python3
 """
 make_tables.py -- turn a summary_expN.csv (the combined per-cell summary) into
 ready-to-paste LaTeX tables for the report/slides.
 
-Usage:
-    python make_tables.py summary_exp3.csv                 # writes tables_exp3.tex
-    python make_tables.py summary_exp3.csv --out out.tex   # custom output name
+Usage (run from anywhere; pass the path to the CSV):
+    python make_tables.py experiment_3/summary_exp3.csv
+        -> writes experiment_3/tables_exp3.tex  (next to the CSV, by default)
+    python make_tables.py experiment_3/summary_exp3.csv --out somewhere/foo.tex
+
+Loop over all experiments from the experiments/ folder:
+    for d in experiment_*; do python make_tables.py "$d"/summary_*.csv; done
 
 What it emits, adapting to the file automatically:
   * PER-CLASSIFIER table (rows = GNB/KNN/HT/MLP): each method's balanced
     accuracy per classifier, with ReMF's best representation and Komorniczak's
     best group annotated. Row winner across the four methods is bolded.
     One such table per cell (per stream / per sweep point).
-  * COST table (if the file has cost columns): ReMF vs Komorniczak time and
-    peak memory, one row per distinct feature count.
+  * COST table (if the file has cost columns): ReMF / Komorniczak / vanilla
+    time and peak memory, one row per distinct feature count.
 
 Reads the European format the summary uses (';' delimiter, comma decimals).
 Nothing here re-runs experiments; it only formats the CSV you already have.
 """
 import csv, sys, argparse, os
 from collections import OrderedDict
-
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..'))
-RESULTS_DIR_EXP1  = os.path.join(PROJECT_ROOT, 'results', 'experiment_1')
-RESULTS_DIR_EXP2  = os.path.join(PROJECT_ROOT, 'results', 'experiment_2')
-RESULTS_DIR_EXP3  = os.path.join(PROJECT_ROOT, 'results', 'experiment_3')
-RESULTS_DIR_EXP4  = os.path.join(PROJECT_ROOT, 'results', 'experiment_4')
-RESULTS_DIR_EXP5  = os.path.join(PROJECT_ROOT, 'results', 'experiment_5')
 
 def parse_num(s):
     if s is None: return None
@@ -43,12 +38,10 @@ def read_rows(path):
 def tex_escape(s):
     return (str(s).replace('_', r'\_').replace('%', r'\%').replace('&', r'\&'))
 
-# classifier order as stored in the summary
 CLFS = ['GNB', 'KNN', 'HT', 'MLP']
 METHODS = ['ReMF', 'Komorniczak', 'vanilla', 'random']
 
 def cell_label(row):
-    """Human label for a cell, from whichever metadata the file carries."""
     bits = []
     for k in ('stream', 'n_informative', 'n_drifts', 'drift_type', 'chunk_size'):
         if k in row and row[k] not in ('', None):
@@ -56,7 +49,6 @@ def cell_label(row):
     return ', '.join(bits) if bits else 'cell'
 
 def per_clf_table(row):
-    """One per-classifier LaTeX table for a single cell/row."""
     rb = parse_num(row.get('random_baseline'))
     lines = []
     lines.append(r'\begin{table}[htbp]\centering')
@@ -92,10 +84,22 @@ def per_clf_table(row):
     lines.append(r'\end{table}')
     return '\n'.join(lines)
 
+def _bold_min(vals, fmt='{:.1f}'):
+    nums = [(i, v) for i, v in enumerate(vals) if v is not None]
+    best_i = min(nums, key=lambda t: t[1])[0] if nums else None
+    out = []
+    for i, v in enumerate(vals):
+        if v is None:
+            out.append('--')
+        else:
+            s = fmt.format(v)
+            out.append(rf'\textbf{{{s}}}' if i == best_i else s)
+    return out
+
 def cost_table(rows):
-    """One cost table across distinct feature counts, if cost columns exist."""
     if not any('ReMF time (ms/win)' in r for r in rows):
         return None
+    has_vanilla = any('vanilla time (ms/win)' in r for r in rows)
     seen = OrderedDict()
     for r in rows:
         nf = r.get('n_features')
@@ -103,93 +107,70 @@ def cost_table(rows):
         rm = parse_num(r.get('ReMF peak MB (rel.)'))
         kt = parse_num(r.get('Komorniczak time (ms/win)'))
         km = parse_num(r.get('Komorniczak peak MB (rel.)'))
-        if nf in seen or all(x is None for x in (rt, rm, kt, km)):
+        vt = parse_num(r.get('vanilla time (ms/win)')) if has_vanilla else None
+        vm = parse_num(r.get('vanilla peak MB (rel.)')) if has_vanilla else None
+        if nf in seen or all(x is None for x in (rt, rm, kt, km, vt, vm)):
             continue
         if rt is None and kt is None:
             continue
-        seen[nf] = (rt, rm, kt, km)
+        seen[nf] = (rt, rm, kt, km, vt, vm)
     if not seen:
         return None
+    ncol = 'lllllll' if has_vanilla else 'lllll'
     lines = []
     lines.append(r'\begin{table}[htbp]\centering')
     lines.append(r'\caption{Extraction cost by feature count: time per window and peak '
                  r'memory (relative, tracemalloc peak Python heap --- not process RSS). '
-                 r'Lower is better; winner per row in \textbf{bold}.}')
-    lines.append(r'\begin{tabular}{lllll}')
+                 r'Lower is better; cheapest per row in \textbf{bold}. Vanilla is mean+std only.}')
+    lines.append(r'\begin{tabular}{' + ncol + r'}')
     lines.append(r'\toprule')
-    lines.append(r'\# features & ReMF time (ms/win) & Komorniczak time & ReMF mem (rel.) & Komorniczak mem \\')
+    if has_vanilla:
+        lines.append(r'\# features & ReMF time & Komorniczak time & vanilla time '
+                     r'& ReMF mem & Komorniczak mem & vanilla mem \\')
+    else:
+        lines.append(r'\# features & ReMF time (ms/win) & Komorniczak time '
+                     r'& ReMF mem (rel.) & Komorniczak mem \\')
     lines.append(r'\midrule')
-    for nf, (rt, rm, kt, km) in seen.items():
-        def pick(a, b, va, vb):
-            # bold the smaller (better) of the two
-            fa = '--' if va is None else f'{va:.1f}'
-            fb = '--' if vb is None else f'{vb:.1f}'
-            if va is not None and vb is not None:
-                if va < vb: fa = rf'\textbf{{{fa}}}'
-                elif vb < va: fb = rf'\textbf{{{fb}}}'
-            return fa, fb
-        t_remf, t_kom = pick('t', 't', rt, kt)
-        m_remf, m_kom = pick('m', 'm', rm, km)
-        lines.append(f'{tex_escape(nf)} & {t_remf} & {t_kom} & {m_remf} & {m_kom} ' + r'\\')
+    for nf, (rt, rm, kt, km, vt, vm) in seen.items():
+        if has_vanilla:
+            t_remf, t_kom, t_van = _bold_min([rt, kt, vt])
+            m_remf, m_kom, m_van = _bold_min([rm, km, vm])
+            lines.append(f'{tex_escape(nf)} & {t_remf} & {t_kom} & {t_van} '
+                         f'& {m_remf} & {m_kom} & {m_van} ' + r'\\')
+        else:
+            t_remf, t_kom = _bold_min([rt, kt])
+            m_remf, m_kom = _bold_min([rm, km])
+            lines.append(f'{tex_escape(nf)} & {t_remf} & {t_kom} & {m_remf} & {m_kom} ' + r'\\')
     lines.append(r'\bottomrule')
     lines.append(r'\end{tabular}')
     lines.append(r'\end{table}')
     return '\n'.join(lines)
 
-
-
-def process_summary(csv_path, out_path):
-    rows = read_rows(csv_path)
-
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('csv')
+    ap.add_argument('--out', default=None)
+    args = ap.parse_args()
+    rows = read_rows(args.csv)
     if not rows:
-        print(f'No rows in {csv_path}')
-        return
-
+        print('No rows in', args.csv); return
+    # default output: sits NEXT TO the input CSV, named tables_<stem-without-summary_>.tex
+    if args.out:
+        out = args.out
+    else:
+        d = os.path.dirname(os.path.abspath(args.csv))
+        stem = os.path.splitext(os.path.basename(args.csv))[0].replace('summary_', '')
+        out = os.path.join(d, f'tables_{stem}.tex')
     chunks = []
-    chunks.append('% Auto-generated from ' + os.path.basename(csv_path))
-    chunks.append('% Requires \\usepackage{booktabs}.\n')
-
+    chunks.append('% Auto-generated from ' + os.path.basename(args.csv) + ' by make_tables.py')
+    chunks.append('% Requires \\usepackage{booktabs} in your preamble.\n')
     ct = cost_table(rows)
-    if ct:
-        chunks.append(ct + '\n')
-
+    if ct: chunks.append(ct + '\n')
     for r in rows:
         chunks.append(per_clf_table(r) + '\n')
-
-    with open(out_path, 'w') as f:
+    with open(out, 'w') as f:
         f.write('\n'.join(chunks))
-
-    print(f'Wrote {out_path}')
-
-
-def main():
-
-    exp_dirs = [
-        RESULTS_DIR_EXP1,
-        RESULTS_DIR_EXP2,
-        RESULTS_DIR_EXP3,
-        RESULTS_DIR_EXP4,
-        RESULTS_DIR_EXP5,
-    ]
-
-    for exp_id, exp_dir in enumerate(exp_dirs, start=1):
-
-        csv_file = os.path.join(
-            exp_dir,
-            f"summary_exp{exp_id}.csv"
-        )
-
-        if not os.path.exists(csv_file):
-            print(f"Missing: {csv_file}")
-            continue
-
-        out_file = os.path.join(
-            exp_dir,
-            f"tables_exp{exp_id}.tex"
-        )
-
-        process_summary(csv_file, out_file)
-
+    print(f'Wrote {out}: {len(rows)} per-classifier table(s)' + (' + 1 cost table' if ct else ''))
 
 if __name__ == '__main__':
     main()

@@ -117,6 +117,7 @@ from metafeatures.mf_extraction import (
 )
 from streams.generate_real_streams import REAL_STREAMS, N_FEATURES, CHUNK_SIZE
 from classifier_sweep_prequential import BASE_CLFS_PREQUENTIAL
+from plot_results import _plot_repr_comparison
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -142,6 +143,7 @@ parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary', action='store_true')
 parser.add_argument('--sparsity', action='store_true',
                     help='SPAM relevance-spread check (effective dimensionality)')
+parser.add_argument('--concept_dist_metafeatures', action='store_true')
 
 args = parser.parse_args()
 
@@ -1103,6 +1105,10 @@ if RUN_BARS:
         fig.tight_layout()
         fig.savefig(fname, dpi=150, bbox_inches='tight')
         plt.close(); print(f"  Saved: {fname}")
+
+
+
+
 
 
 
