@@ -344,7 +344,7 @@ def _plot_repr_comparison(panels, cell, out_path):
     fig, axes = plt.subplots(
         1,
         len(processed),
-        figsize=(16, 5)
+        figsize=(16, 6)
     )
 
     if len(processed) == 1:
@@ -409,14 +409,15 @@ def _plot_repr_comparison(panels, cell, out_path):
     # --------------------------------------------------
 
     cbar = fig.colorbar(
-        im,
-        ax=axes,
-        fraction=0.03,
-        pad=0.02
+    im,
+    ax=axes,
+    orientation="horizontal",
+    fraction=0.05,
+    pad=0.12
     )
 
     cbar.set_label(
-        "Relative concept distance\n(mean-normalised L2)",
+        "Relative concept distance (mean-normalised L2)",
         fontsize=9
     )
 
@@ -426,6 +427,8 @@ def _plot_repr_comparison(panels, cell, out_path):
     )
 
     fig.tight_layout()
+    
+    fig.subplots_adjust(bottom=0.18)
 
     fig.savefig(
         out_path,
