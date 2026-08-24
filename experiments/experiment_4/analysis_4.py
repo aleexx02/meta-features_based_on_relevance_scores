@@ -84,6 +84,7 @@ parser.add_argument('--concept_dist', action='store_true')
 parser.add_argument('--vanilla', action='store_true')
 parser.add_argument('--summary',         action='store_true')
 parser.add_argument('--concept_dist_features', action='store_true')
+parser.add_argument('--comparison_plot', action='store_true')
 args = parser.parse_args()
 
 EXP_TAG = 'exp4'
@@ -988,6 +989,196 @@ if args.concept_dist_features:
         out = os.path.join(RESULTS_DIR, f'{name}_exp4.csv')
         write_dict_csv(out, rows)
         print(f"  Saved: {out}")
+
+
+
+
+# ============================================================
+# COMPARISON PLOT: Vanilla vs Random vs ReMF vs Komorniczak
+# Recurrence exposes positional shortcuts.
+#
+# Two panels:
+#   SEA (chunk=100)
+#   STAGGER (chunk=100)
+#
+# Curves:
+#   ReMF (best variant, best classifier)
+#   Komorniczak (best group, best classifier)
+#   Vanilla (best classifier)
+#   Random baseline
+# ============================================================
+
+if args.comparison_plot:
+
+    print("\n" + "=" * 60)
+    print("VANILLA COLLAPSE FIGURE")
+    print("=" * 60)
+
+    CHUNK_SIZE = 100
+    DRIFT_TYPE = "sudden"
+
+    COLORS = {
+        "ReMF": "#911eb4",
+        "Komorniczak": "#3cb44b",
+        "Vanilla": "#808080",
+        "Baseline": "#e6194b",
+    }
+
+    def best_remf(cell):
+        best = None
+
+        for version in ABFS_VERSIONS:
+            d = load(f'preq_abfs_{version}_ba',
+                     cell,
+                     optional=True)
+
+            if d is None:
+                continue
+
+            val = float(np.max(np.mean(d[:, -1, :], axis=0)))
+
+            best = val if best is None else max(best, val)
+
+        return best
+
+    def best_komor(cell):
+        best = None
+
+        for measure in MEASURES:
+            d = load(f'preq_komor_{measure}_ba',
+                     cell,
+                     optional=True)
+
+            if d is None:
+                continue
+
+            val = float(np.max(np.mean(d[:, -1, :], axis=0)))
+
+            best = val if best is None else max(best, val)
+
+        return best
+
+    def best_vanilla(cell):
+
+        d = load('preq_vanilla_ba',
+                 cell,
+                 optional=True)
+
+        if d is None:
+            return None
+
+        return float(np.max(np.mean(d[:, -1, :], axis=0)))
+
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12, 5),
+        sharey=True,
+    )
+
+    for ax, gen in zip(axes, ["sea", "stagger"]):
+
+        remf_vals = []
+        komor_vals = []
+        vanilla_vals = []
+        baseline_vals = []
+
+        xs = []
+
+        for nd in EXP4_N_DRIFTS:
+
+            cell = f"{gen}_chunk{CHUNK_SIZE}_ndrift{nd}_{DRIFT_TYPE}"
+
+            spec = SPEC_BY_NAME[cell]
+
+            xs.append(nd)
+
+            remf_vals.append(best_remf(cell))
+            komor_vals.append(best_komor(cell))
+            vanilla_vals.append(best_vanilla(cell))
+            baseline_vals.append(1.0 / spec["n_concepts"])
+
+        ax.plot(
+            xs,
+            remf_vals,
+            marker="o",
+            linewidth=2.5,
+            color=COLORS["ReMF"],
+            label="ReMF (best variant)"
+        )
+
+        ax.plot(
+            xs,
+            komor_vals,
+            marker="s",
+            linewidth=2.5,
+            color=COLORS["Komorniczak"],
+            label="Komorniczak (best group)"
+        )
+
+        ax.plot(
+            xs,
+            vanilla_vals,
+            marker="^",
+            linewidth=2.5,
+            color=COLORS["Vanilla"],
+            label="Vanilla"
+        )
+
+        ax.plot(
+            xs,
+            baseline_vals,
+            "--",
+            linewidth=1.8,
+            color=COLORS["Baseline"],
+            label="Random baseline"
+        )
+
+        ax.set_title(gen.upper())
+        ax.set_xlabel("n_drifts")
+
+        ax.set_xticks(EXP4_N_DRIFTS)
+
+        ax.grid(alpha=0.3)
+
+    axes[0].set_ylabel(
+        "Balanced accuracy\n(mean over reps)"
+    )
+
+    axes[0].set_ylim(0.0, 1.02)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        ncol=4,
+        bbox_to_anchor=(0.5, 1.05)
+    )
+
+    fig.suptitle(
+        "Effect of recurrence on concept identification\n"
+        f"(chunk_size={CHUNK_SIZE}, {DRIFT_TYPE})",
+        fontsize=13
+    )
+
+    fig.tight_layout()
+
+    out = os.path.join(
+        FIGURES_DIR,
+        "comparison_plot_exp4.png"
+    )
+
+    fig.savefig(
+        out,
+        dpi=150,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(f"  Saved: {out}")
 
 
 print("\nAnalysis 4 complete.")
