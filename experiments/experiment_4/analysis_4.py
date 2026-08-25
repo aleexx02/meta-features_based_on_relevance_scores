@@ -1013,6 +1013,13 @@ if args.comparison_plot:
     print("\n" + "=" * 60)
     print("COMPARISON PLOT")
     print("=" * 60)
+    d = load(
+    "preq_vanilla_ba",
+    "sea_chunk100_ndrift1_sudden",
+    optional=True)
+
+
+    print(d.shape)
 
     CHUNK_SIZE = 100
     DRIFT_TYPE = "sudden"
@@ -1024,161 +1031,196 @@ if args.comparison_plot:
         "Baseline": "#e6194b",
     }
 
-    def best_remf(cell):
+    CLASSIFIERS = {
+    0: "GNB",
+    1: "HT",
+    2: "KNN",
+    3: "MLP"
+    }
+
+    def classifier_score(d, clf_idx):
+        return float(np.mean(d[:, -1, clf_idx]))
+
+    
+    def classifier_remf(cell, clf_idx):
         best = None
 
         for version in ABFS_VERSIONS:
-            d = load(f'preq_abfs_{version}_ba',
-                     cell,
-                     optional=True)
+
+            d = load(
+                f"preq_abfs_{version}_ba",
+                cell,
+                optional=True
+            )
 
             if d is None:
                 continue
 
-            val = float(np.max(np.mean(d[:, -1, :], axis=0)))
+            val = float(np.mean(d[:, -1, clf_idx]))
 
             best = val if best is None else max(best, val)
 
         return best
 
-    def best_komor(cell):
+    def classifier_komor(cell, clf_idx):
         best = None
 
         for measure in MEASURES:
-            d = load(f'preq_komor_{measure}_ba',
-                     cell,
-                     optional=True)
+
+            d = load(
+                f"preq_komor_{measure}_ba",
+                cell,
+                optional=True
+            )
 
             if d is None:
                 continue
 
-            val = float(np.max(np.mean(d[:, -1, :], axis=0)))
+            val = float(np.mean(d[:, -1, clf_idx]))
 
             best = val if best is None else max(best, val)
 
         return best
 
-    def best_vanilla(cell):
+    def classifier_vanilla(cell, clf_idx):
 
-        d = load('preq_vanilla_ba',
-                 cell,
-                 optional=True)
+        d = load(
+            "preq_vanilla_ba",
+            cell,
+            optional=True
+        )
 
         if d is None:
             return None
 
-        return float(np.max(np.mean(d[:, -1, :], axis=0)))
+        return float(np.mean(d[:, -1, clf_idx]))
 
-    fig, axes = plt.subplots(
-        1,
-        2,
-        figsize=(12, 5),
-        sharey=True,
-    )
+    for clf_idx, clf_name in CLASSIFIERS.items():
 
-    for ax, gen in zip(axes, ["sea", "stagger"]):
-
-        remf_vals = []
-        komor_vals = []
-        vanilla_vals = []
-        baseline_vals = []
-
-        xs = []
-
-        for nd in EXP4_N_DRIFTS:
-
-            cell = f"{gen}_chunk{CHUNK_SIZE}_ndrift{nd}_{DRIFT_TYPE}"
-
-            spec = SPEC_BY_NAME[cell]
-
-            xs.append(nd)
-
-            remf_vals.append(best_remf(cell))
-            komor_vals.append(best_komor(cell))
-            vanilla_vals.append(best_vanilla(cell))
-            baseline_vals.append(1.0 / spec["n_concepts"])
-
-        ax.plot(
-            xs,
-            remf_vals,
-            marker="o",
-            linewidth=2.5,
-            color=COLORS["ReMF"],
-            label="ReMF (best variant)"
+        fig, axes = plt.subplots(
+            1,
+            2,
+            figsize=(12, 5),
+            sharey=True,
         )
 
-        ax.plot(
-            xs,
-            komor_vals,
-            marker="s",
-            linewidth=2.5,
-            color=COLORS["Komorniczak"],
-            label="Komorniczak (best group)"
+        for ax, gen in zip(axes, ["sea", "stagger"]):
+
+            remf_vals = []
+            komor_vals = []
+            vanilla_vals = []
+            baseline_vals = []
+
+            xs = []
+
+            for nd in EXP4_N_DRIFTS:
+
+                cell = (
+                    f"{gen}_chunk{CHUNK_SIZE}"
+                    f"_ndrift{nd}_{DRIFT_TYPE}"
+                )
+
+                spec = SPEC_BY_NAME[cell]
+
+                xs.append(nd)
+
+                remf_vals.append(
+                    classifier_remf(cell, clf_idx)
+                )
+
+                komor_vals.append(
+                    classifier_komor(cell, clf_idx)
+                )
+
+                vanilla_vals.append(
+                    classifier_vanilla(cell, clf_idx)
+                )
+
+                baseline_vals.append(
+                    1.0 / spec["n_concepts"]
+                )
+
+            ax.plot(
+                xs,
+                remf_vals,
+                marker="o",
+                linewidth=2.5,
+                color=COLORS["ReMF"],
+                label="ReMF"
+            )
+
+            ax.plot(
+                xs,
+                komor_vals,
+                marker="s",
+                linewidth=2.5,
+                color=COLORS["Komorniczak"],
+                label="Komorniczak"
+            )
+
+            ax.plot(
+                xs,
+                vanilla_vals,
+                marker="^",
+                linewidth=2.5,
+                color=COLORS["Vanilla"],
+                label="Vanilla"
+            )
+
+            ax.plot(
+                xs,
+                baseline_vals,
+                "--",
+                linewidth=1.8,
+                color=COLORS["Baseline"],
+                label="Random"
+            )
+
+            ax.set_title(gen.upper())
+            ax.set_xlabel("n_drifts")
+            ax.set_xticks(EXP4_N_DRIFTS)
+            ax.grid(alpha=0.3)
+
+        axes[0].set_ylabel(
+            "Balanced accuracy\n(mean over reps)"
+        )
+        axes[0].set_ylim(0.0, 1.02)
+
+        handles, labels = (
+            axes[0].get_legend_handles_labels()
         )
 
-        ax.plot(
-            xs,
-            vanilla_vals,
-            marker="^",
-            linewidth=2.5,
-            color=COLORS["Vanilla"],
-            label="Vanilla"
+        fig.legend(
+            handles,
+            labels,
+            loc="upper center",
+            ncol=4,
+            bbox_to_anchor=(0.5, 1.05)
         )
 
-        ax.plot(
-            xs,
-            baseline_vals,
-            "--",
-            linewidth=1.8,
-            color=COLORS["Baseline"],
-            label="Random baseline"
+        fig.suptitle(
+            "Effect of recurrence on concept identification\n"
+            f"{clf_name} "
+            f"(chunk_size={CHUNK_SIZE}, {DRIFT_TYPE})",
+            fontsize=13
         )
 
-        ax.set_title(gen.upper())
-        ax.set_xlabel("n_drifts")
+        fig.tight_layout()
 
-        ax.set_xticks(EXP4_N_DRIFTS)
+        out = os.path.join(
+            FIGURES_DIR,
+            f"comparison_plot_exp4_{clf_name}.png"
+        )
 
-        ax.grid(alpha=0.3)
+        fig.savefig(
+            out,
+            dpi=150,
+            bbox_inches="tight"
+        )
 
-    axes[0].set_ylabel(
-        "Balanced accuracy\n(mean over reps)"
-    )
+        plt.close()
 
-    axes[0].set_ylim(0.0, 1.02)
-
-    handles, labels = axes[0].get_legend_handles_labels()
-
-    fig.legend(
-        handles,
-        labels,
-        loc="upper center",
-        ncol=4,
-        bbox_to_anchor=(0.5, 1.05)
-    )
-
-    fig.suptitle(
-        "Effect of recurrence on concept identification\n"
-        f"(chunk_size={CHUNK_SIZE}, {DRIFT_TYPE})",
-        fontsize=13
-    )
-
-    fig.tight_layout()
-
-    out = os.path.join(
-        FIGURES_DIR,
-        "comparison_plot_exp4.png"
-    )
-
-    fig.savefig(
-        out,
-        dpi=150,
-        bbox_inches="tight"
-    )
-
-    plt.close()
-
-    print(f"  Saved: {out}")
+        print(f"  Saved: {out}")
 
 
 print("\nAnalysis 4 complete.")
