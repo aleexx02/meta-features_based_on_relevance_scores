@@ -49,7 +49,6 @@ from metafeatures.mf_extraction import (
 from plot_results import print_sanity_check_summary
 from strlearn.streams import StreamGenerator
 
-
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 # path to results folder
 RESULTS_DIR = os.path.join(PROJECT_ROOT, 'results/sanity_check')
@@ -64,7 +63,7 @@ os.makedirs(FIGURES_DIR, exist_ok=True)
 # ================
  
 # set to True to run StreamLearn, False for SEA/STAGGER
-RUN_STREAMLEARN = True
+RUN_STREAMLEARN = False
 
 # StreamLearn configuration
 SL_RANDOM_STATE = 42
@@ -155,90 +154,6 @@ def make_stagger_sudden_drift_12(drift_position=5000, seed=42):
     for x, y in after:
         yield x, int(y)
 
-
-def analyse_stationarity(scores_over_time, boundaries, window_size,
-                         score_interval, figures_dir, tag, warmup_rows=0):
-    """Within-segment stability vs across-drift change of the ReMF
-    relevance vector. Small within + large across => the vector is stable
-    within a concept and moves at drift, which validates reading a change
-    in the relevance vector as a change of concept.
-
-    scores_over_time : (T, d) per-window relevance vectors
-    boundaries       : chunk indices where the concept changes
-    window_size      : chunk size in instances (SL_WINDOW_SIZE)
-    score_interval   : score sampling interval in instances (SL_SCORE_INTERVAL)
-    warmup_rows      : leading score rows to drop (cold-start of the stumps)
-    """
-    S = np.asarray(scores_over_time, dtype=float)
-    if warmup_rows:
-        S = S[warmup_rows:]
-    T, d = S.shape
-
-    factor = window_size // score_interval               # score rows per chunk
-    bnd_rows = sorted({int(b * factor) - warmup_rows for b in boundaries})
-    bnd_rows = [b for b in bnd_rows if 0 < b < T]
-
-    edges = [0] + bnd_rows + [T]
-    segments = [(edges[k], edges[k + 1]) for k in range(len(edges) - 1)]
-
-    within_per_seg, seg_means = [], []
-    for (a, b) in segments:
-        seg = S[a:b]
-        if len(seg) < 2:
-            continue
-        mu = seg.mean(axis=0)
-        seg_means.append(mu)
-        within_per_seg.append(np.linalg.norm(seg - mu, axis=1).mean())
-    within = float(np.mean(within_per_seg)) if within_per_seg else float('nan')
-    within_med = float(np.median(within_per_seg)) if within_per_seg else float('nan')
-
-    across_list = [np.linalg.norm(seg_means[k + 1] - seg_means[k])
-                   for k in range(len(seg_means) - 1)]
-    across = float(np.mean(across_list)) if across_list else float('nan')
-
-    def _cos(u, v):
-        nu, nv = np.linalg.norm(u), np.linalg.norm(v)
-        return float(np.dot(u, v) / (nu * nv)) if (nu and nv) else np.nan
-
-    within_cos = [_cos(S[t], S[t - 1])
-                  for (a, b) in segments for t in range(a + 1, b)]
-    within_cos = float(np.nanmean(within_cos)) if within_cos else float('nan')
-
-    across_cos = [_cos(S[br], S[br - 1]) for br in bnd_rows if 0 < br < T]
-    across_cos = float(np.nanmean(across_cos)) if across_cos else float('nan')
-
-    ratio = across / within if (within == within and within > 0) else float('nan')
-
-    dist_to_mean = np.full(T, np.nan)
-    valid_segs = [s for s in segments if s[1] - s[0] >= 2]
-    for (a, b), mu in zip(valid_segs, seg_means):
-        dist_to_mean[a:b] = np.linalg.norm(S[a:b] - mu, axis=1)
-
-    fig, ax = plt.subplots(figsize=(9, 3.2))
-    ax.plot(dist_to_mean, color='#1C7293', lw=1.3)
-    for br in bnd_rows:
-        ax.axvline(br, color='#C0392B', ls='--', lw=1, alpha=0.8)
-    ax.set_xlabel(f'window (sampled every {score_interval} instances)')
-    ax.set_ylabel('distance to segment mean (L2)')
-    ax.set_title(f'ReMF relevance-vector stability within concepts - {tag}')
-    ax.margins(x=0)
-    fig.tight_layout()
-    fpath = os.path.join(figures_dir, f'stationarity_{tag}.png')
-    fig.savefig(fpath, dpi=150)
-    plt.close(fig)
-
-    print(f"\n=== Stationarity analysis: {tag} ===")
-    print(f"  segments analysed          : {len(seg_means)}")
-    print(f"  within-segment variation   : {within:.4f} (mean) / {within_med:.4f} (median)  -- small = stable")
-    print(f"  across-drift jump          : {across:.4f}  -- large = responsive")
-    print(f"  jump / within ratio        : {ratio:.2f}   -- >>1 = clean separation")
-    print(f"  within-seg consec cos-sim  : {within_cos:.4f}  -- ~1 = nothing moving within a concept")
-    print(f"  across-drift consec cos-sim: {across_cos:.4f}  -- lower = change at drift")
-    print(f"*** Stationarity figure saved at:\n\t '{fpath}' ***")
-
-    return {'within': within, 'within_median': within_med, 'across': across,
-            'ratio': ratio, 'within_cos': within_cos, 'across_cos': across_cos,
-            'n_segments': len(seg_means), 'figure': fpath}
 
 
 def plot_relevance_scores(scores_over_time, n_features, score_interval,drift_line, drift_moments, feature_names,title, filename):
@@ -347,16 +262,6 @@ if RUN_STREAMLEARN:
         concept_labels_all = np.array([int(np.bincount(concept_selector_saved[i*SL_WINDOW_SIZE:(i+1)*SL_WINDOW_SIZE]).argmax())
             for i in range(SL_N_CHUNKS)])
         boundaries = [i for i in range(1, SL_N_CHUNKS) if concept_labels_all[i] != concept_labels_all[i-1]]
-
-
-        # stationarity: relevance vector is stable within a concept,
-        # and shifts at drift. Drop stump cold-start (SL_WARMUP chunks).
-        analyse_stationarity(
-            scores_over_time, boundaries,
-            SL_WINDOW_SIZE, SL_SCORE_INTERVAL, FIGURES_DIR,
-            tag=f'{stream_type}_{drift_type}',
-            warmup_rows=SL_WARMUP * (SL_WINDOW_SIZE // SL_SCORE_INTERVAL),
-        )
 
         # plot relevance scores, mark concept boundaries
         fig, ax = plt.subplots(figsize=(14, 4))
@@ -562,4 +467,3 @@ else:
                 f"{comparison[cfg_name]['dominant_before']:>15s}"
                 f"{comparison[cfg_name]['dominant_after']:>15s}"
             )
-
