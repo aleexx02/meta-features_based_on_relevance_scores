@@ -1124,9 +1124,7 @@ if RUN_BARS:
         width = 0.8 / n_bars
         x = np.arange(n_groups)
 
-        fig, ax = plt.subplots(
-            figsize=(max(6, n_groups * 3), 5)
-        )
+        fig, ax = plt.subplots(figsize=(max(7, n_groups * 3.5), 6))
 
         for bi, version in enumerate(ABFS_VERSIONS):
 
@@ -1195,7 +1193,8 @@ if RUN_BARS:
 
         ax.set_title(titles[group_name])
 
-        ax.legend(fontsize=8, ncol=2)
+        ax.legend(fontsize=8, ncol=2,loc='upper center',bbox_to_anchor=(0.5, 1.15))
+
         ax.grid(alpha=0.3, axis='y')
 
         fig.tight_layout()
