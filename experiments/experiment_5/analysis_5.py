@@ -1027,83 +1027,193 @@ if RUN_GAP:
 
         
 
-# ============================================================
+# =============================================================================
 #  BARS - BA per ReMF version (best clf) + Komorniczak, per stream
-#  (Exp 5 has no swept parameter, so this replaces the sensitivity
-#   curves used in Exp 2/3/4: grouped bars, one group per stream.)
-# ============================================================
+#  3 figures: one for INSECTS-abrupt, one for INSECTS-incgradual, one for SPAM
+# =============================================================================
+PLOT_GROUPS = {
+    'insects_abrupt': [
+        'INSECTS-abrupt_balanced',
+        'INSECTS-abrupt_imbalanced'
+    ],
+    'insects_incgradual': [
+        'INSECTS-incgradual_balanced',
+        'INSECTS-incgradual_imbalanced'
+    ],
+    'spam': [
+        'SPAM'
+    ]
+}
+
 if RUN_BARS:
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("BA per version, per stream")
-    print("="*60)
+    print("=" * 60)
 
-    VERSION_COLORS = {'aggstats': '#911eb4', 'raw': '#4363d8', 'raw_temporal': '#f58231'}
+    VERSION_COLORS = {
+        'aggstats': '#911eb4',
+        'raw': '#4363d8',
+        'raw_temporal': '#f58231'
+    }
 
-    streams, abfs_ba, komor_ba, vanilla_ba = ([], {v: [] for v in ABFS_VERSIONS}, [], [])
-    for stream_name in REAL_STREAMS:
-        # best clf per ReMF version at the final window
-        row_ok = False
-        per_version = {}
-        for version in ABFS_VERSIONS:
-            d = load(f'preq_abfs_{version}_ba', stream_name, optional=True)
-            per_version[version] = float(np.max(d[-1, :])) if d is not None else np.nan
-            row_ok |= d is not None
+    for group_name, selected_streams in PLOT_GROUPS.items():
 
-        vb = np.nan
-        d = load('preq_vanilla_ba', stream_name, optional=True)
-        if d is not None:
-            vb = float(np.max(d[-1, :]))
+        streams = []
+        abfs_ba = {v: [] for v in ABFS_VERSIONS}
+        komor_ba = []
+        vanilla_ba = []
 
-        # best Komorniczak group (best clf)
-        kb = np.nan
-        for measure in MEASURES:
-            d = load(f'preq_komor_{measure}_ba', stream_name, optional=True)
+        for stream_name in selected_streams:
+
+            row_ok = False
+            per_version = {}
+
+            for version in ABFS_VERSIONS:
+                d = load(
+                    f'preq_abfs_{version}_ba',
+                    stream_name,
+                    optional=True
+                )
+
+                per_version[version] = (
+                    float(np.max(d[-1, :]))
+                    if d is not None else np.nan
+                )
+
+                row_ok |= d is not None
+
+            vb = np.nan
+            d = load(
+                'preq_vanilla_ba',
+                stream_name,
+                optional=True
+            )
+
             if d is not None:
-                v = float(np.max(d[-1, :]))
-                kb = v if np.isnan(kb) else max(kb, v)
-        if not row_ok and np.isnan(kb):
+                vb = float(np.max(d[-1, :]))
+
+            kb = np.nan
+
+            for measure in MEASURES:
+                d = load(
+                    f'preq_komor_{measure}_ba',
+                    stream_name,
+                    optional=True
+                )
+
+                if d is not None:
+                    v = float(np.max(d[-1, :]))
+                    kb = v if np.isnan(kb) else max(kb, v)
+
+            if not row_ok and np.isnan(kb):
+                continue
+
+            streams.append(stream_name)
+
+            for version in ABFS_VERSIONS:
+                abfs_ba[version].append(per_version[version])
+
+            komor_ba.append(kb)
+            vanilla_ba.append(vb)
+
+        if not streams:
             continue
-        streams.append(stream_name)
-        for version in ABFS_VERSIONS:
-            abfs_ba[version].append(per_version[version])
-        komor_ba.append(kb)
-        vanilla_ba.append(vb)
 
-    if not streams:
-        print("  no data -- skipping.")
-    else:
-        fname = os.path.join(FIGURES_DIR, 'ba_per_version.png')
         n_groups = len(streams)
-        n_bars   = len(ABFS_VERSIONS) + 2            # 3 versions + Komorniczak + vanilla
-        width    = 0.8 / n_bars
-        x        = np.arange(n_groups)
+        n_bars = len(ABFS_VERSIONS) + 2
+        width = 0.8 / n_bars
+        x = np.arange(n_groups)
 
-        fig, ax = plt.subplots(figsize=(max(8, n_groups * 1.8), 5))
+        fig, ax = plt.subplots(
+            figsize=(max(6, n_groups * 3), 5)
+        )
+
         for bi, version in enumerate(ABFS_VERSIONS):
-            ax.bar(x + bi * width, abfs_ba[version], width,
-                   color=VERSION_COLORS[version],
-                   label=f'ReMF {ABFS_LABELS[version]}')
-        ax.bar(x + len(ABFS_VERSIONS) * width, komor_ba, width,
-               color='#3cb44b', label='Komorniczak best-of-9')
-        ax.bar(x + (len(ABFS_VERSIONS) + 1) * width, vanilla_ba, width, color='#808080', label='Vanilla baseline')
 
-        # random-baseline marker per stream
+            ax.bar(
+                x + bi * width,
+                abfs_ba[version],
+                width,
+                color=VERSION_COLORS[version],
+                label=f'ReMF {ABFS_LABELS[version]}'
+            )
+
+        ax.bar(
+            x + len(ABFS_VERSIONS) * width,
+            komor_ba,
+            width,
+            color='#3cb44b',
+            label='Komorniczak best-of-9'
+        )
+
+        ax.bar(
+            x + (len(ABFS_VERSIONS) + 1) * width,
+            vanilla_ba,
+            width,
+            color='#808080',
+            label='Vanilla baseline'
+        )
+
         for gi, s in enumerate(streams):
-            rb = 1.0 / N_CONCEPTS[s]
-            ax.hlines(rb, x[gi] - width/2, x[gi] + n_bars*width - width/2,
-                      color='red', linestyle='--', linewidth=1.0,
-                      label='random baseline' if gi == 0 else None)
 
-        ax.set_xticks(x + (n_bars - 1) * width / 2)
-        ax.set_xticklabels(streams, rotation=20, ha='right', fontsize=9)
-        ax.set_ylabel('Final balanced accuracy (best clf)')
+            rb = 1.0 / N_CONCEPTS[s]
+
+            ax.hlines(
+                rb,
+                x[gi] - width / 2,
+                x[gi] + n_bars * width - width / 2,
+                color='red',
+                linestyle='--',
+                linewidth=1.0,
+                label='random baseline' if gi == 0 else None
+            )
+
+        ax.set_xticks(
+            x + (n_bars - 1) * width / 2
+        )
+
+        ax.set_xticklabels(
+            streams,
+            rotation=15,
+            ha='right'
+        )
+
+        ax.set_ylabel(
+            'Final balanced accuracy (best clf)'
+        )
+
         ax.set_ylim(0, 1)
-        ax.set_title('Exp 5: ReMF vs Komorniczak vs Vanilla (BA, best classifier)')
+
+        titles = {
+            'insects_abrupt':
+                'Exp 5: INSECTS Abrupt',
+            'insects_incgradual':
+                'Exp 5: INSECTS Incremental/Gradual',
+            'spam':
+                'Exp 5: SPAM'
+        }
+
+        ax.set_title(titles[group_name])
+
         ax.legend(fontsize=8, ncol=2)
         ax.grid(alpha=0.3, axis='y')
+
         fig.tight_layout()
-        fig.savefig(fname, dpi=150, bbox_inches='tight')
-        plt.close(); print(f"  Saved: {fname}")
+
+        fname = os.path.join(
+            FIGURES_DIR,
+            f'ba_per_version_{group_name}.png'
+        )
+
+        fig.savefig(
+            fname,
+            dpi=150,
+            bbox_inches='tight'
+        )
+
+        plt.close()
+
+        print(f"  Saved: {fname}")
 
 
 
