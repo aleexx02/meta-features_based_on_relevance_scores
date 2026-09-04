@@ -1193,7 +1193,9 @@ if RUN_BARS:
 
         ax.set_title(titles[group_name])
 
-        ax.legend(fontsize=8, ncol=2,loc='upper center',bbox_to_anchor=(0.5, 1.15))
+        ax.legend(fontsize=8,ncol=2,loc='upper center',bbox_to_anchor=(0.5, 1.28),frameon=True)
+
+        fig.tight_layout(rect=[0, 0, 1, 0.85])
 
         ax.grid(alpha=0.3, axis='y')
 
