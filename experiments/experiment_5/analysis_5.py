@@ -1177,7 +1177,7 @@ if RUN_BARS:
         )
 
         ax.set_ylabel(
-            'Balanced accuracy (best classifier per method)'
+            'Balanced accuracy'
         )
 
         ax.set_ylim(0, 1)
