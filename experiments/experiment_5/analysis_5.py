@@ -1163,7 +1163,7 @@ if RUN_BARS:
                 color='red',
                 linestyle='--',
                 linewidth=1.0,
-                label='random baseline' if gi == 0 else None
+                label='Random baseline' if gi == 0 else None
             )
 
         ax.set_xticks(
@@ -1177,18 +1177,18 @@ if RUN_BARS:
         )
 
         ax.set_ylabel(
-            'Final balanced accuracy (best clf)'
+            'Balanced accuracy (best classifier per method)'
         )
 
         ax.set_ylim(0, 1)
 
         titles = {
             'insects_abrupt':
-                'Exp 5: INSECTS Abrupt',
+                'Best Balanced Accuracy by Method on INSECTS (Abrupt)',
             'insects_incgradual':
-                'Exp 5: INSECTS Incremental/Gradual',
+                'Best Balanced Accuracy by Method on INSECTS (Incremental/Gradual)',
             'spam':
-                'Exp 5: SPAM'
+                'Best Balanced Accuracy by Method on SPAM'
         }
 
         ax.set_title(titles[group_name])
